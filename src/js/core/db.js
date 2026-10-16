@@ -107,6 +107,7 @@ export const DB = (() => {
       itemsFound: {}, // id -> date: equippable items found
       evoMoves: {}, // id -> date: moves evolved at some point
       ach: {}, // id -> date: achievements earned
+      gifts: {}, // id -> date: one-time gifts claimed (server/api.mjs, claimGift)
       missions: {}, // daily / weekly missions (systems/progress.js)
       profile: { favs: [], title: '' }, // public profile: 3 favourites and title
       stats: {
@@ -510,6 +511,27 @@ export const DB = (() => {
     return pushing;
   }
 
+  /**
+   * Claims a one-time gift (once per account, the server decides): uploads the
+   * save with it and keeps the result. → { ok } or { ok: false, claimed } or { ok: false, error }.
+   */
+  async function claimGift(id) {
+    if (mode !== 'cloud' || guest || !save || !uid) return { ok: false, error: 'Sign in with Google to claim it.' };
+    if (pushing) await pushing.catch(() => {});
+    try {
+      const r = await api('api/gift', { method: 'POST', body: { id, save: plain(fold(save)) } });
+      if (r && r.save && save) {
+        applyInPlace(merge(plain(fold(save)), migrate(r.save)));
+        write(K_CLOUD + uid, save);
+        write(K_OK + uid, Date.now());
+      }
+      if (UI && UI.refreshCoins) UI.refreshCoins();
+      return { ok: !!(r && r.ok), claimed: !!(r && r.claimed) };
+    } catch (e) {
+      return { ok: false, error: errorText(e) };
+    }
+  }
+
   // If an upload was already scheduled earlier, keep it (a purchase doesn't wait for the next run).
   let pushDue = 0;
   function schedulePush(ms) {
@@ -739,6 +761,7 @@ export const DB = (() => {
     merge,
     setName,
     upgradesOf,
+    claimGift,
     api,
     onSync(fn) {
       listeners.add(fn);

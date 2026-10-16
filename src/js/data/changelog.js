@@ -11,6 +11,10 @@ export const CHANGELOG = [
     title: ['Damage meter, your stats and search', 'Medidor de daño, tus estadísticas y buscador'],
     new: [
       [
+        'Coming from the original game? Claim the welcome gift on the main menu: 300 gacha tickets and 50,000 coins, once per account.',
+        '¿Vienes del juego original? Reclama el regalo de bienvenida en el menú principal: 300 tickets del gacha y 50.000 monedas, una vez por cuenta.'
+      ],
+      [
         'Damage meter: key R (or Settings › Graphics) shows how much damage each move deals and, in co-op, each teammate. Burns and poisons count for whoever applied them.',
         'Medidor de daño: la tecla R (o Ajustes › Gráficos) enseña cuánto daño hace cada movimiento y, en grupo, cada compañero. Las quemaduras y venenos cuentan para quien los puso.'
       ],

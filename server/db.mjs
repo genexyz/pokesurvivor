@@ -84,6 +84,14 @@ CREATE TABLE IF NOT EXISTS lb_entries (
 CREATE INDEX IF NOT EXISTS lb_entries_top ON lb_entries (board, t DESC);
 CREATE INDEX IF NOT EXISTS lb_entries_uids ON lb_entries USING gin (uids);
 
+-- One-time gifts already claimed (one row per account and gift).
+CREATE TABLE IF NOT EXISTS gifts (
+  uid text NOT NULL,
+  id  text NOT NULL,
+  at  timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (uid, id)
+);
+
 CREATE TABLE IF NOT EXISTS reports (
   board  text NOT NULL,
   e      text NOT NULL,

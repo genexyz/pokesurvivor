@@ -64,6 +64,8 @@ export const MenuUI = (() => {
     Social.on(() => {
       if (UI.isOpen('scr-menu')) socialLine();
     });
+    $('menu-gift').insertAdjacentHTML('afterbegin', `<span class="mi-ico">${Icons.html('ticket10', 26)}</span>`);
+    $('menu-gift').onclick = claimGift;
     $('btn-logout').onclick = () => {
       if (DB.guest && !confirm("You're a guest: all your progress will be lost. Log out?")) return;
       Audio.music(null);
@@ -110,6 +112,7 @@ export const MenuUI = (() => {
       (DB.guest ? '<br><span style="color:#ffb0b8">Guest mode: not saved</span>' : '');
 
     socialLine();
+    giftLine();
     // Mission rewards waiting to be claimed.
     Progress.checkAch();
     const pend = Progress.pending();
@@ -125,6 +128,28 @@ export const MenuUI = (() => {
       });
     }
     InvitePop.refresh();
+  }
+
+  // ---------------- welcome gift ----------------
+
+  // For players coming from the original game's website: once per account (server/api.mjs, GIFTS).
+  const GIFT = 'migrate';
+
+  function giftLine() {
+    $('menu-gift').classList.toggle('hidden', !DB.online || !!(DB.save.gifts || {})[GIFT]);
+  }
+
+  async function claimGift() {
+    const b = $('menu-gift');
+    if (b.disabled) return;
+    b.disabled = true;
+    const r = await DB.claimGift(GIFT);
+    b.disabled = false;
+    if (r.ok) {
+      Audio.sfx('confirm');
+      UI.toast('Welcome back! +300 tickets and +50,000 coins', 3500);
+    } else UI.toast(r.claimed ? 'This account already claimed the welcome gift' : r.error, 3500);
+    if (UI.isOpen('scr-menu')) giftLine();
   }
 
   /** Text under "Friends" and "Play": who is online, requests, room. */

@@ -12,6 +12,7 @@
  * of all of them: merging takes the larger of each entry and nothing is lost.
  *   led.base: the balance before the ledger existed (or at the start).
  *   led.old:  changes from an older version of the game (tabs not yet updated).
+ *   led.g_*:  one-time gifts granted by the server (server/api.mjs, claimGift).
  */
 export const SaveMerge = (() => {
   const CUR = {
@@ -113,7 +114,7 @@ export const SaveMerge = (() => {
       for (const k in older.pupg[d]) mine[k] = Math.max(mine[k] || 0, older.pupg[d][k]);
     }
     // What's been earned is never lost: union of legendaries, arenas, items, achievements...
-    for (const coll of ['legends', 'arenas', 'itemsFound', 'evoMoves', 'ach']) {
+    for (const coll of ['legends', 'arenas', 'itemsFound', 'evoMoves', 'ach', 'gifts']) {
       r[coll] = r[coll] || {};
       for (const k in older[coll] || {}) if (!r[coll][k]) r[coll][k] = older[coll][k];
     }

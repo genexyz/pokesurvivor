@@ -7,7 +7,7 @@ import * as live from './live.mjs';
 // The same save merge the browser uses.
 import { SaveMerge } from '../src/js/core/save-merge.js';
 
-const { merge } = SaveMerge;
+const { merge, ledOf, ledSum, CUR } = SaveMerge;
 
 export const NICK = /^[A-Za-z0-9_ñÑáéíóúÁÉÍÓÚ]{3,16}$/;
 const BOARD = /^[sg]_(d\d{8}|w\d{4}-\d{2}j|m\d{6}j|all2)(_p\d{1,4})?$/;
@@ -63,11 +63,13 @@ async function getSave(u) {
   return r.rows[0] ? { save: r.rows[0].save, ban: r.rows[0].ban } : { save: null };
 }
 
-/** Uploads the save: it is MERGED with the stored one (row locked meanwhile) and the result is returned. */
-async function putSave(u, body) {
-  const incoming = body.save;
+/**
+ * Merges `incoming` with the stored save (row locked meanwhile), lets `edit(c, m)`
+ * change the result inside the same transaction, and stores it.
+ */
+async function storeSave(u, incoming, edit) {
   if (!isObj(incoming)) fail(400, 'Missing save');
-  const merged = await tx(async c => {
+  return tx(async c => {
     const r = await c.query('SELECT save FROM saves WHERE uid = $1 FOR UPDATE', [u.id]);
     const m = r.rows[0] ? merge(incoming, r.rows[0].save) : incoming;
     // What the server doesn't allow: negative or odd balances.
@@ -76,6 +78,7 @@ async function putSave(u, body) {
     m.tickets = isObj(m.tickets) ? m.tickets : {};
     m.tickets.t1 = n(m.tickets.t1);
     m.tickets.t10 = n(m.tickets.t10);
+    const out = edit ? await edit(c, m) : undefined;
     const json = JSON.stringify(m);
     if (json.length > MAX_SAVE) fail(413, 'Save too large');
     // (ban is left alone: only moderation changes it.)
@@ -84,9 +87,45 @@ async function putSave(u, body) {
        ON CONFLICT (uid) DO UPDATE SET save = EXCLUDED.save, v = EXCLUDED.v, updated_at = now()`,
       [u.id, json, int(m.v) || 3]
     );
-    return m;
+    return Object.assign({ save: m }, out);
   });
-  return { save: merged };
+}
+
+/** Uploads the save: it is MERGED with the stored one and the result is returned. */
+async function putSave(u, body) {
+  return storeSave(u, body.save);
+}
+
+// ---------------- one-time gifts ----------------
+
+/** What each gift gives, per ledger currency (save-merge.js: c coins, t1 tickets, t10 ×10 tickets). */
+const GIFTS = {
+  // For players coming from the original game's website.
+  migrate: { c: 50000, t1: 300 }
+};
+
+/**
+ * Claims a gift ONCE per account (the gifts table decides) and uploads the save
+ * with it. The gift goes into the save's ledger under its own entry
+ * (led['g_' + id]): merging with any device's copy keeps it and never adds it twice.
+ */
+async function claimGift(u, body) {
+  const id = String(body.id || '');
+  const g = Object.prototype.hasOwnProperty.call(GIFTS, id) ? GIFTS[id] : fail(400, 'Unknown gift');
+  return storeSave(u, body.save, async (c, m) => {
+    const r = await c.query('INSERT INTO gifts (uid, id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [u.id, id]);
+    m.gifts = isObj(m.gifts) ? m.gifts : {};
+    if (!r.rowCount) {
+      m.gifts[id] = m.gifts[id] || Date.now();
+      return { ok: false, claimed: true };
+    }
+    const led = (m.led = ledOf(m, 'old'));
+    led['g_' + id] = {};
+    for (const k in g) led['g_' + id][k] = [g[k], 0];
+    for (const k in CUR) CUR[k][1](m, Math.max(0, ledSum(led, k)));
+    m.gifts[id] = Date.now();
+    return { ok: true };
+  });
 }
 
 /** Deletes the account and everything that belongs to it. */
@@ -99,6 +138,7 @@ async function deleteAccount(u) {
       'DELETE FROM run_starts WHERE uid = $1',
       'DELETE FROM lb_entries WHERE $1 = ANY(uids)',
       'DELETE FROM reports WHERE by_uid = $1',
+      'DELETE FROM gifts WHERE uid = $1',
       'DELETE FROM "session" WHERE "userId" = $1',
       'DELETE FROM "account" WHERE "userId" = $1',
       'DELETE FROM "user" WHERE id = $1'
@@ -346,6 +386,7 @@ export async function handleApi(req, res, url) {
     let out;
     if (p === '/api/save' && m === 'GET') out = await getSave(u);
     else if (p === '/api/save' && m === 'PUT') out = await putSave(u, body);
+    else if (p === '/api/gift' && m === 'POST') out = await claimGift(u, body);
     else if (p === '/api/account' && m === 'DELETE') out = await deleteAccount(u);
     else if (p === '/api/nick' && m === 'POST') out = await claimNick(u, body);
     else if (p === '/api/profile' && m === 'PUT') out = await putProfile(u, body);

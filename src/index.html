@@ -125,6 +125,7 @@
     <div class="box">
       <div class="menu-list">
         <button class="menu-item play" data-go="play">Play<small>Enter the dungeon</small></button>
+        <button class="menu-item gift hidden" id="menu-gift">Welcome gift<small>From the original game? 300 tickets and 50,000 coins</small></button>
         <button class="menu-item" data-go="dex">Pokémon<small id="menu-dex-count">Your collection</small></button>
         <button class="menu-item" data-go="upgrades">Upgrades<small>Make every run stronger</small></button>
         <button class="menu-item" data-go="gacha">Gacha<small>9 regions · Pokémon and shinies</small></button>
@@ -483,7 +484,7 @@
 </section>
 
 <section id="scr-over" class="scr dim hidden">
-  <div class="box center" style="width:min(480px,100%)">
+  <div class="box center" id="over-box">
     <h2 id="over-title">You fell…</h2>
     <div id="over-stats" class="stats"></div>
     <button id="btn-again" class="btn gold">Back to menu</button>

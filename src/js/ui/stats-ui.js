@@ -148,8 +148,8 @@ export const StatsUI = (() => {
     const moves = p.slots.map((g, i) => g.map(m => moveCard(p, m, g.length > 1 ? '' : i + 1)).join('')).join('');
     return (
       `<div class="stats-list">${rows}</div>` +
-      (fx.length ? `<h3 class="set-h">Active effects</h3><div class="stats-list">${fx.join('')}</div>` : '') +
-      `<h3 class="set-h">Your moves</h3><div class="cards move-cards">${moves}</div>`
+      (fx.length ? `<h3 class="st-h">Active effects</h3><div class="stats-list">${fx.join('')}</div>` : '') +
+      `<h3 class="st-h">Your moves</h3><div class="cards move-cards">${moves}</div>`
     );
   }
 
@@ -168,7 +168,7 @@ export const StatsUI = (() => {
     if (!d || !d.total) return '<p class="sub">No damage yet.</p>';
     const head = `<div class="dmg-head"><span>Total <b>${Recount.fmt(d.total)}</b></span><span><b>${Recount.fmt(d.dps)}</b> per second</span></div>`;
     const team = d.team
-      ? `<h3 class="set-h">Group</h3>` +
+      ? `<h3 class="st-h">Group</h3>` +
         bars(
           d.team,
           r => r.color,
@@ -180,7 +180,7 @@ export const StatsUI = (() => {
       r => (r.type && U.TYPE_COLOR[r.type]) || '#b0b8c8',
       r => (r.id ? Icons.html('move:' + r.id, 18) : '<i class="dmg-dot"></i>')
     );
-    return head + team + (d.team ? '<h3 class="set-h">Your moves</h3>' : '') + mine;
+    return head + team + (d.team ? '<h3 class="st-h">Your moves</h3>' : '') + mine;
   }
 
   return { preview, moveFacts, moveCard, statsHtml, damageHtml };
