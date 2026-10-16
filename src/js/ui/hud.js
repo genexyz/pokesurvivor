@@ -11,6 +11,7 @@ import { EnemyMgr } from '../entities/enemy.js';
 import { Player } from '../entities/player.js';
 import { Spawner } from '../systems/spawner.js';
 import { Rift } from '../systems/rift.js';
+import { Story } from '../systems/story.js';
 import { Events } from '../systems/events.js';
 import { Weather } from '../systems/weather.js';
 import { Recount } from '../systems/recount.js';
@@ -313,13 +314,24 @@ export const HUD = (() => {
     const effects = ex > px + ER;
 
     // ---------- clock / biome / kills ----------
+    // Story: the clock counts down to the gym, with the route's name and a progress line
+    // (ticks: mini-bosses); in the gym, the leader instead.
+    const story = Story.hud(st.time);
     ctx.textAlign = 'center';
-    ctx.font = F(800, 26);
-    ctx.fillStyle = 'rgba(255,255,255,.95)';
-    ctx.fillText(U.mmss(st.time), w / 2, 42);
+    ctx.font = F(800, story && story.gym ? 20 : 26);
+    ctx.fillStyle = story && story.gym ? '#ffd23f' : 'rgba(255,255,255,.95)';
+    ctx.fillText(!story ? U.mmss(st.time) : story.gym ? 'GYM BATTLE' : U.mmss(story.clock), w / 2, 42);
     ctx.font = F(600, 10);
     ctx.fillStyle = '#8fa3c4';
-    ctx.fillText(World.biomeName().toUpperCase() + '  ·  ' + pl.kills + ' DEFEATED  ·  ' + pl.coins + ' COINS', w / 2, 58);
+    const place = story ? story.place : World.biomeName();
+    ctx.fillText(place.toUpperCase() + '  ·  ' + pl.kills + ' DEFEATED  ·  ' + pl.coins + ' COINS', w / 2, 58);
+    if (story && !story.gym) {
+      const sw = 150,
+        sx = (w - sw) / 2;
+      bar(ctx, sx, 62, sw, 4, story.progress, '#ffd23f');
+      ctx.fillStyle = '#ff8ad8';
+      for (const m of story.marks) ctx.fillRect(Math.round(sx + sw * m) - 1, 61, 2, 6);
+    }
 
     // ---------- weather (top right) ----------
     const wx = Weather.current;
@@ -339,14 +351,17 @@ export const HUD = (() => {
     }
 
     // ---------- boss bar ----------
-    const boss = EnemyMgr.all().find(e => e.boss && !e.dead);
-    if (boss) {
+    // (Up to two at once: a gym leader sends out a pair.)
+    const bosses = EnemyMgr.all().filter(e => e.boss && !e.dead);
+    const boss = bosses[0];
+    bosses.slice(0, 2).forEach((b, i) => {
       const bw = Math.min(420, w - 80);
-      bar(ctx, (w - bw) / 2, 70, bw, 12, boss.hp / boss.maxHp, '#ffcb3d');
+      const by = 70 + i * 16;
+      bar(ctx, (w - bw) / 2, by, bw, 12, b.hp / b.maxHp, '#ffcb3d');
       ctx.font = F(800, 10);
       ctx.fillStyle = '#20160a';
-      ctx.fillText(boss.name.toUpperCase(), w / 2, 80);
-    }
+      ctx.fillText(b.name.toUpperCase(), w / 2, by + 10);
+    });
 
     // ---------- notice ----------
     // ---------- off-screen shinies: sparkle on the edge ----------

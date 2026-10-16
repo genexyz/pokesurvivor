@@ -57,6 +57,8 @@ Reviewed on 2026-10-16. Source: the **37 open PRs on upstream `JPTER78/pokesurvi
 ## 1. Game modes
 
 ### #107 — Kanto Stages & Gyms (@eloy-garrido)
+> **Ported (2026-10-16)** as Story mode, redesigned and with all 8 Kanto gyms: see `STORY_MODE.md`.
+
 - **Play** opens a mode selector with two options: *Endless* (the current mode) and *Kanto Gyms*. Kanto Gyms lists 8 stages, each with its badge art, its leader portrait and its status (Play / COMPLETED / COMING SOON).
 - **Stage 1 (Viridian Forest → Pewter Gym):**
   - Fixed 10-minute run with themed spawns (Route 1/Viridian Forest: Pidgey, Rattata, Caterpie, Weedle, Pikachu, Zubat…).

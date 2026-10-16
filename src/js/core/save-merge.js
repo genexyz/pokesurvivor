@@ -77,6 +77,7 @@ export const SaveMerge = (() => {
    * cloud one). Nothing earned is ever lost:
    *   - collections (owned, shiny): union
    *   - upgrades and stats: the maximum of each
+   *   - story clears: per stage, the first date, most clears and best time
    *   - coins and tickets: each device's ledger (see above)
    *   - partner, pity...: those of the most recent version
    * It is idempotent: merging twice gives the same result.
@@ -117,6 +118,22 @@ export const SaveMerge = (() => {
     for (const coll of ['legends', 'arenas', 'itemsFound', 'evoMoves', 'ach', 'gifts']) {
       r[coll] = r[coll] || {};
       for (const k in older[coll] || {}) if (!r[coll][k]) r[coll][k] = older[coll][k];
+    }
+    // Story clears: the first date, the most clears and the fastest time of either.
+    r.story = isObj(r.story) ? r.story : {};
+    for (const id in isObj(older.story) ? older.story : {}) {
+      const o = older.story[id],
+        m = r.story[id];
+      if (!isObj(o)) continue;
+      if (!isObj(m)) {
+        r.story[id] = Object.assign({}, o);
+        continue;
+      }
+      m.at = Math.min(num(m.at) || Infinity, num(o.at) || Infinity);
+      if (!isFinite(m.at)) m.at = 0;
+      m.clears = Math.max(num(m.clears), num(o.clears));
+      const best = [num(m.best), num(o.best)].filter(Boolean);
+      m.best = best.length ? Math.min(...best) : 0;
     }
     // Missions of the same day/week: the highest progress and whatever was already claimed.
     const mo = older.missions || {},

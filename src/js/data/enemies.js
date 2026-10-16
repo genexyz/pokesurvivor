@@ -33,7 +33,7 @@
 import { U } from '../core/util.js';
 import { RNG } from '../core/rng.js';
 import { Balance } from './balance.js';
-import { DEX } from './pokedex.js';
+import { DEX, DEX_BY } from './pokedex.js';
 import { SPRITE_META } from './sprites-meta.js';
 import { Events } from '../systems/events.js';
 
@@ -212,13 +212,10 @@ export const Enemies = (() => {
 
   let cast = null; // [{ from, list: [def] }]
   let bosses = null; // [boss def]
+  let exclusive = false; // story: only the current leg spawns (not the earlier ones too)
 
-  /** Rolls the cast of a new run. */
-  function rollRun() {
-    cast = TIERS.map((tier, ti) => ({
-      from: tier.from,
-      list: castFor(tier).map(p => defFor(p, tier, ti))
-    }));
+  /** The fastest plain Pokémon of each tier becomes its runner. */
+  function markRunners() {
     for (const tier of cast) {
       const plain = tier.list.filter(d => d.behavior === 'chase' || d.behavior === 'charger' || d.behavior === 'tank');
       const r = plain.sort((a, b) => b.spd - a.spd)[0];
@@ -228,6 +225,48 @@ export const Enemies = (() => {
         r.hp = Math.round(r.hp * B.def.runner.hp);
       }
     }
+  }
+
+  /** Boss definition of a Pokémon from a boss slot ({ hp, dmg, xp }). */
+  function bossDef(p, slot, at) {
+    const BB = B.boss;
+    return {
+      at,
+      dex: p.dex,
+      name: p.name,
+      hp: Math.round(slot.hp * BB.hp),
+      spd: Math.round(U.clamp(BB.spd.base + baseSpd(p) * BB.spd.k, BB.spd.min, BB.spd.max)),
+      dmg: Math.round(slot.dmg * BB.dmg),
+      xp: slot.xp,
+      behavior: behaviorOf(p) === 'ranged' ? 'ranged' : baseSpd(p) > BB.chargerSpd ? 'charger' : 'chase',
+      shotDmg: Math.round(slot.dmg * BB.shotDmg),
+      shotCd: BB.shotCd,
+      range: BB.range
+    };
+  }
+
+  // Before the first boss slot (story stages put bosses there): a gentler starting point.
+  const BOSS_ZERO = { at: 0, hp: 700, dmg: 26, xp: 120 };
+  /** A boss slot at endless second `t`, interpolated between BOSS_SLOTS (story mode). */
+  function bossAt(t) {
+    const pts = [BOSS_ZERO, ...BOSS_SLOTS];
+    let i = 0;
+    while (i < pts.length - 2 && t > pts[i + 1].at) i++;
+    const a = pts[i],
+      b = pts[i + 1],
+      k = U.clamp((t - a.at) / (b.at - a.at), 0, 1);
+    const mix = key => a[key] + (b[key] - a[key]) * k;
+    return { hp: mix('hp'), dmg: mix('dmg'), xp: Math.round(mix('xp')) };
+  }
+
+  /** Rolls the cast of a new run. */
+  function rollRun() {
+    exclusive = false;
+    cast = TIERS.map((tier, ti) => ({
+      from: tier.from,
+      list: castFor(tier).map(p => defFor(p, tier, ti))
+    }));
+    markRunners();
     const used = new Set();
     const BB = B.boss;
     bosses = BOSS_SLOTS.map(slot => {
@@ -236,20 +275,34 @@ export const Enemies = (() => {
       if (!pool.length) pool = DEX.filter(p => ok(p) && p.bst >= BB.fallbackBst);
       const p = RC.pick(pool);
       used.add(p.dex);
-      return {
-        at: slot.at,
-        dex: p.dex,
-        name: p.name,
-        hp: Math.round(slot.hp * BB.hp),
-        spd: Math.round(U.clamp(BB.spd.base + baseSpd(p) * BB.spd.k, BB.spd.min, BB.spd.max)),
-        dmg: Math.round(slot.dmg * BB.dmg),
-        xp: slot.xp,
-        behavior: behaviorOf(p) === 'ranged' ? 'ranged' : baseSpd(p) > BB.chargerSpd ? 'charger' : 'chase',
-        shotDmg: Math.round(slot.dmg * BB.shotDmg),
-        shotCd: BB.shotCd,
-        range: BB.range
-      };
+      return bossDef(p, slot, slot.at);
     });
+    return { cast, bosses };
+  }
+
+  /**
+   * The cast of a story stage (data/stages.js): each leg's Pokémon with the tier
+   * template of its endless-equivalent second, and its mini-bosses.
+   * @param eq  stage second -> endless second (systems/story.js)
+   */
+  function rollStory(stage, eq) {
+    exclusive = true;
+    cast = stage.legs.map(leg => {
+      const ti = tierAt(eq(leg.from));
+      const list = leg.mons
+        .map(d => DEX_BY[d])
+        .filter(p => p && SPRITE_META[p.dex])
+        .map(p => defFor(p, TIERS[ti], ti));
+      return { from: leg.from, list };
+    });
+    markRunners();
+    const M = Balance.story.mini;
+    bosses = (stage.minis || [])
+      .filter(m => DEX_BY[m.dex] && SPRITE_META[m.dex])
+      .map(m => {
+        const slot = bossAt(eq(m.at));
+        return Object.assign(bossDef(DEX_BY[m.dex], { hp: slot.hp * M.hp, dmg: slot.dmg * M.dmg, xp: slot.xp }, m.at), { mini: true });
+      });
     return { cast, bosses };
   }
 
@@ -292,8 +345,9 @@ export const Enemies = (() => {
     if (horde) return horde;
     if (!cast) rollRun();
     const bag = [];
+    const cur = exclusive ? cast.filter(tier => t >= tier.from).pop() : null;
     for (const tier of cast) {
-      if (t < tier.from) continue;
+      if (t < tier.from || (cur && tier !== cur)) continue;
       const w = t - tier.from > B.bag.oldAfter ? B.bag.oldWeight : B.bag.weight; // old tiers lose weight
       for (const e of tier.list) for (let i = 0; i < w; i++) bag.push(e);
     }
@@ -313,6 +367,9 @@ export const Enemies = (() => {
     TIERS,
     BOSS_SLOTS,
     rollRun,
+    rollStory,
+    bossAt,
+    bossDef,
     scale,
     bossScale,
     bagAt,

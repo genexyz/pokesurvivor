@@ -23,6 +23,7 @@ import { Enemy, EnemyMgr } from '../entities/enemy.js';
 import { Rift } from './rift.js';
 import { Judgment } from './judgment.js';
 import { Events } from './events.js';
+import { Story } from './story.js';
 import { Coop } from '../net/coop.js';
 import { Game } from '../game.js';
 
@@ -66,9 +67,14 @@ export const Spawner = (() => {
     announce = null;
     announceT = 0;
     preloadT = 0;
-    Enemies.rollRun();
+    if (Story.active) Story.rollCast();
+    else Enemies.rollRun();
     Sprites.preload(Enemies.upcomingDex(0, 80));
   }
+
+  // Story mode: a stage second plays like endless second Story.eq(t) (Balance.story).
+  const SB = Balance.story;
+  const cap = () => (Story.active ? SB.cap : B.cap);
 
   /** Enemies per second based on the run's minute. */
   function rate(t) {
@@ -123,10 +129,11 @@ export const Spawner = (() => {
     const pt = freePoint(pl, angle == null ? R.angle() : angle, isFlyer(def));
     if (!pt) return null;
     const shiny = rollShiny(def.dex);
-    const e = new Enemy(def, pt[0], pt[1], scaled(Enemies.scale(t), Coop.scaleHp(players.length) * B.hpK(t)));
+    const et = Story.eq(t);
+    const e = new Enemy(def, pt[0], pt[1], scaled(Enemies.scale(et), Coop.scaleHp(players.length) * B.hpK(et)));
     e.dmg *= B.dmgK;
-    e.xp = Math.round(e.xp * B.xpK);
-    if (EnemyMgr.count >= B.cap * B.eliteFrom) {
+    e.xp = Math.round(e.xp * B.xpK * (Story.active ? SB.xpK : 1));
+    if (EnemyMgr.count >= cap() * B.eliteFrom) {
       e.maxHp = e.hp = Math.round(e.maxHp * B.elite.hp);
       e.dmg *= B.elite.dmg;
       e.xp = Math.round(e.xp * B.elite.xp);
@@ -144,7 +151,7 @@ export const Spawner = (() => {
   function spawnBoss(pl, t, b) {
     const [x, y] = ringPoint(pl, R.angle());
     const k = Coop.scaleHp(players.length) * (players.length > 1 ? Balance.coop.bossHp : 1);
-    const e = new Enemy(b, x, y, scaled(Enemies.bossScale(t), k), true);
+    const e = new Enemy(b, x, y, scaled(Enemies.bossScale(Story.eq(t)), k), true);
     if (rollShiny(b.dex)) e.makeShiny();
     EnemyMgr.add(e);
     say(e.shiny ? `A wild shiny ${e.name} appeared!` : `A wild ${e.name} appeared!`, 3.2);
@@ -157,9 +164,11 @@ export const Spawner = (() => {
   function update(dt, who, t) {
     players = Array.isArray(who) ? who : [who];
     if (announceT > 0) announceT -= dt;
-    // Nothing else spawns in the rift arena (and the boss clock waits).
+    // Nothing else spawns in the rift arena (and the boss clock waits), nor in a story gym.
     // During Arceus's Judgment, only its legendaries (systems/judgment.js).
-    if (Rift.inArena || Judgment.active) return;
+    if (Rift.inArena || Judgment.active || Story.inGym) return;
+    const et = Story.eq(t),
+      density = Story.active ? SB.density * (Story.active.density || 1) : 1;
 
     // Preload whatever will spawn in the next minute.
     preloadT -= dt;
@@ -180,11 +189,11 @@ export const Spawner = (() => {
     const bossFight = EnemyMgr.bossAlive();
 
     // --- normal trickle ---
-    if (EnemyMgr.count < B.cap) {
-      acc += B.rate(t) * Coop.scaleRate(players.length) * (bossFight ? B.bossFightRate : 1) * dt;
+    if (EnemyMgr.count < cap()) {
+      acc += B.rate(et) * density * Coop.scaleRate(players.length) * (bossFight ? B.bossFightRate : 1) * dt;
       let n = Math.floor(acc);
       acc -= n;
-      while (n-- > 0 && EnemyMgr.count < B.cap) spawnOne(anchor(), t);
+      while (n-- > 0 && EnemyMgr.count < cap()) spawnOne(anchor(), t);
     }
 
     // --- swarm ---
@@ -194,7 +203,10 @@ export const Spawner = (() => {
       surgeT = R.range(S.every[0], S.every[1]);
       const base = R.angle();
       const target = anchor();
-      const n = Math.min(B.cap - EnemyMgr.count, Math.round((S.base + Math.floor(t / S.growEvery)) * Coop.scaleRate(players.length) * S.k));
+      const n = Math.min(
+        cap() - EnemyMgr.count,
+        Math.round((S.base + Math.floor(et / S.growEvery)) * Coop.scaleRate(players.length) * S.k)
+      );
       for (let i = 0; i < n; i++) spawnOne(target, t, base + R.range(-S.spread, S.spread));
       say('Pokémon swarm!', 2.2);
       Audio.sfx('surge');
@@ -207,7 +219,7 @@ export const Spawner = (() => {
       target = anchor() || Game.player,
       t = Game.st.time,
       S = B.burst;
-    for (let i = 0; i < n && EnemyMgr.count < B.cap + S.overCap; i++) spawnOne(target, t, base + R.range(-S.spread, S.spread));
+    for (let i = 0; i < n && EnemyMgr.count < cap() + S.overCap; i++) spawnOne(target, t, base + R.range(-S.spread, S.spread));
   }
 
   /**
@@ -261,7 +273,7 @@ export const Spawner = (() => {
       return B.shinyRate;
     },
     get CAP() {
-      return B.cap;
+      return cap();
     },
     debugForceShiny(n = 1) {
       shinies.force(n);

@@ -854,6 +854,151 @@ export const Icons = (() => {
         '............'
       ]
     },
+    // ---------- story gym badges (data/stages.js: 'badge:' + stage id) ----------
+    // Boulder Badge: grey octagon
+    'badge:kanto_1': {
+      pal: { d: '#6f7480', g: '#a9aeb8', w: '#e3e6ec' },
+      rows: [
+        '...kkkkkk...',
+        '..kddddddk..',
+        '.kddwwwwddk.',
+        'kddwwggggddk',
+        'kdwwggggggdk',
+        'kdwggggggddk',
+        'kdwgggggdddk',
+        'kdggggggdddk',
+        'kddggggdddk.',
+        '.kdddddddk..',
+        '..kddddddk..',
+        '...kkkkkk...'
+      ]
+    },
+    // Cascade Badge: blue drop
+    'badge:kanto_2': {
+      pal: { b: '#4fa8ff', d: '#2a5fb0', w: '#cfeaff' },
+      rows: [
+        '.....kk.....',
+        '....kbbk....',
+        '....kbbk....',
+        '...kwbbbk...',
+        '..kwbbbbbk..',
+        '.kwbbbbbbbk.',
+        '.kwbbbbbbdk.',
+        'kbbbbbbbbddk',
+        'kbbbbbbbdddk',
+        '.kbbbbbdddk.',
+        '..kkddddkk..',
+        '....kkkk....'
+      ]
+    },
+    // Thunder Badge: orange star
+    'badge:kanto_3': {
+      pal: { y: '#ffd23f', o: '#ff9a2e', r: '#c8561a' },
+      rows: [
+        '.....kk.....',
+        '....kyyk....',
+        '.kk.kyyk.kk.',
+        '.kykkyykkyk.',
+        '..kyyooyyk..',
+        'kkyyorroyykk',
+        'kyyyorroyyyk',
+        '.kkyyooyykk.',
+        '..kyykkyyk..',
+        '.kyk.kk.kyk.',
+        '.kk.kyyk.kk.',
+        '.....kk.....'
+      ]
+    },
+    // Rainbow Badge: flower
+    'badge:kanto_4': {
+      pal: { r: '#ff5f6d', o: '#ff9a2e', y: '#ffd23f', g: '#5fe08a', b: '#4fa8ff', p: '#c47bff', w: '#fff3b0' },
+      rows: [
+        '....kkkk....',
+        '...krrrok...',
+        '.kkkrrook...',
+        'kppkkookykk.',
+        'kpppkwwkyyyk',
+        'kpppkwwkyyyk',
+        '.kkbbkkgyyk.',
+        '..kbbbkggkk.',
+        '..kbbbkgggk.',
+        '...kbbkgggk.',
+        '....kkkkkk..',
+        '............'
+      ]
+    },
+    // Soul Badge: pink heart
+    'badge:kanto_5': {
+      pal: { p: '#ff7ac8', d: '#c03a8a', w: '#ffd0ec' },
+      rows: [
+        '............',
+        '.kkk....kkk.',
+        'kwwpk..kppdk',
+        'kwppppkppppk',
+        'kwpppppppddk',
+        'kpppppppppdk',
+        '.kpppppppdk.',
+        '..kpppppddk.',
+        '...kpppddk..',
+        '....kppdk...',
+        '.....kdk....',
+        '......k.....'
+      ]
+    },
+    // Marsh Badge: gold rings
+    'badge:kanto_6': {
+      pal: { y: '#ffd23f', d: '#c08a10', w: '#fff3b0' },
+      rows: [
+        '...kkkkkk...',
+        '..kwwyyyyk..',
+        '.kwykkkkydk.',
+        'kwyk....kydk',
+        'kyk.kkkk.kdk',
+        'kyk.kwyk.kdk',
+        'kyk.kydk.kdk',
+        'kyk.kkkk.kdk',
+        'kyyk....kddk',
+        '.kyykkkkddk.',
+        '..kddddddk..',
+        '...kkkkkk...'
+      ]
+    },
+    // Volcano Badge: flame
+    'badge:kanto_7': {
+      pal: { r: '#ff5f3d', o: '#ff9a2e', y: '#ffd23f', d: '#b8283a' },
+      rows: [
+        '.....k......',
+        '....krk.....',
+        '....krrk.k..',
+        '...krrrkkrk.',
+        '..krrorrrrk.',
+        '..krooorrrdk',
+        '.krroyyorrdk',
+        '.kroyyyyordk',
+        '.kroyyyyordk',
+        '.krroyyorrdk',
+        '..kdrrrrddk.',
+        '...kkkkkkk..'
+      ]
+    },
+    // Earth Badge: green leaf
+    'badge:kanto_8': {
+      pal: { g: '#5fe08a', d: '#2f9a52', w: '#c8ffd8' },
+      rows: [
+        '.....kk.....',
+        '....kwgk....',
+        '...kwgggk...',
+        '..kwggdggk..',
+        '.kwgggdgggk.',
+        'kwggggdggggk',
+        'kgggggdgggdk',
+        '.kggggdggdk.',
+        '..kgggdgdk..',
+        '...kggddk...',
+        '....kgdk....',
+        '.....kk.....'
+      ]
+    },
     // ---------- achievement medals (bronze, silver, gold) ----------
     medal1: { pal: { r: '#ff5f6d', q: '#b8283a', m: '#d08a4a', n: '#8a5226', w: '#ffd0a0', s: '#ffe8c8' }, rows: MEDAL },
     medal2: { pal: { r: '#4fb4ff', q: '#2a6fb0', m: '#c9d2de', n: '#7d8899', w: '#ffffff', s: '#ffffff' }, rows: MEDAL },

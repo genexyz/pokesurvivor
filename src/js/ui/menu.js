@@ -18,6 +18,7 @@ import { RankingUI } from './ranking-ui.js';
 import { SearchSelect } from './search-select.js';
 import { GoalsUI } from './goals-ui.js';
 import { SettingsUI } from './settings-ui.js';
+import { PlayUI } from './play-ui.js';
 import { Flow } from '../game.js';
 
 export const MenuUI = (() => {
@@ -48,7 +49,7 @@ export const MenuUI = (() => {
         const go = b.dataset.go;
         if (go === 'play') {
           if (Social.room) LobbyUI.open();
-          else Flow.play();
+          else PlayUI.open();
         } else if (go === 'dex') openDex();
         else if (go === 'upgrades') openUpgrades();
         else if (go === 'gacha') GachaUI.open();
@@ -156,7 +157,7 @@ export const MenuUI = (() => {
   function socialLine() {
     const room = Social.room;
     const play = document.querySelector('#scr-menu [data-go=play] small');
-    if (play) play.textContent = room ? 'Back to your room (' + room.members.length + '/' + Social.MAX_PLAYERS + ')' : 'Enter the dungeon';
+    if (play) play.textContent = room ? 'Back to your room (' + room.members.length + '/' + Social.MAX_PLAYERS + ')' : 'Endless · Story';
     const fr = Social.friends;
     const on = fr.filter(f => f.status === 'ok' && f.online).length;
     const req = fr.filter(f => f.status === 'in').length;

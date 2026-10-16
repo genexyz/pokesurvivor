@@ -104,6 +104,7 @@ export const DB = (() => {
       pity: {}, // banner generation -> pulls without a ★5
       legends: {}, // dex -> date: legendaries defeated in rifts
       arenas: {}, // type -> date: rift arenas won
+      story: {}, // stage id -> { at, clears, best }: story stages cleared (= badges; data/stages.js)
       itemsFound: {}, // id -> date: equippable items found
       evoMoves: {}, // id -> date: moves evolved at some point
       ach: {}, // id -> date: achievements earned
@@ -190,6 +191,14 @@ export const DB = (() => {
         s.pban[d] = [...new Set(l.filter(id => typeof id === 'string' && (!Moves || Moves.BY_ID[id])))].slice(0, 3);
       }
     } else s.pban = {};
+    // Story clears: { at, clears, best } per stage, whole numbers only.
+    if (isObj(s.story)) {
+      for (const id of Object.keys(s.story)) {
+        const r = s.story[id];
+        if (!isObj(r)) delete s.story[id];
+        else s.story[id] = { at: n(r.at) || Date.now(), clears: Math.max(1, n(r.clears)), best: n(r.best) };
+      }
+    } else s.story = {};
     if (Upgrades)
       for (const d of Object.keys(s.pupg || {})) {
         const u = s.pupg[d];

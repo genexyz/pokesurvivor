@@ -12,7 +12,7 @@
  * Units: seconds, pixels (world), per-second rates; chances in [0, 1].
  *
  * Sections (in this order):
- *   run, spawn, drops, interact, coop, gacha · enemies · player, combat,
+ *   run, story, spawn, drops, interact, coop, gacha · enemies · player, combat,
  *   levelup, items · events, rift, judgment, hazards, weather
  */
 import { U } from '../core/util.js';
@@ -111,6 +111,39 @@ Balance.run = {
   rescueDupCoins: 150, // rescuing a Pokémon you already own
   shinyDupCoins: 300, // catching a wild shiny you already own
   missions: { daily: 3, weekly: 2 } // missions drawn per day / per week
+};
+
+/**
+ * Story mode (systems/story.js; stages and their `pace` in data/stages.js).
+ * A stage plays like endless squeezed or stretched: at stage second t, enemies,
+ * spawn rate, swarms and bosses are those of endless second eq = pace × t / duration
+ * (so the gym fights at eq = pace). A slow pace (Brock: 180) gives you far more time
+ * to level up than the enemies grow; pace 600 (Giovanni) is endless minute 10.
+ */
+Balance.story = {
+  duration: 600, // seconds of routes before the gym
+  cap: 48, // simultaneous enemies (endless: Balance.spawn.cap)
+  density: 1, // × endless spawn rate (a stage can add its own `density`)
+  xpK: 1, // × experience of every enemy
+  warnAt: 30, // seconds before the gym: "the gym is ahead" notice
+  pullAt: 3, // seconds before the gym: every pickup on the map flies to you
+  // Bosses use endless's boss curve at their eq second (Enemies.bossAt), then:
+  mini: { hp: 1, dmg: 1 }, // mini-bosses on the routes (each grants a bond)
+  gym: {
+    hp: 0.75, // × boss HP at the pace, per team member (× its own k)
+    dmg: 1, // × boss damage
+    arenaR: 12, // arena radius (tiles)
+    intro: 2.2, // seconds from arriving to the first wave
+    lull: 2.5, // seconds between waves
+    north: 5, // the leader's Pokémon appear this far north of the center (tiles)
+    spread: 2.6, // ...and this far apart when two come out (tiles)
+    won: 3.5 // seconds to grab what's left before the summary
+  },
+  /** Reward for clearing a stage (first time and repeats), from its pace. */
+  reward: (pace, first) =>
+    first
+      ? { coins: Math.round((pace * 2.5) / 50) * 50, t1: Math.round(pace / 30) }
+      : { coins: Math.round((pace * 0.6) / 10) * 10, t1: Math.max(1, Math.round(pace / 200)) }
 };
 
 /** Co-op difficulty scaling (net/coop.js). n = number of players. */
