@@ -1,5 +1,5 @@
 /* ============ pokedex.js — GENERADO, no editar a mano ============
- * Lo produce tools/fetch_pokedex.py. Los datos se bajaron una vez de
+ * Lo produce scripts/fetch_pokedex.py. Los datos se bajaron una vez de
  * PokeAPI y viven aqui: el juego no hace ninguna peticion a internet.
  *
  * hp/spd/atk son stats de juego derivados de los stats base.

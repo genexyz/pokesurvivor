@@ -21,6 +21,12 @@ G.FIREBASE_CONFIG = {
   databaseURL: 'https://pokesurvivor-free-default-rtdb.europe-west1.firebasedatabase.app'
 };
 
+// npm run dev:emulator: el emulador local de Firebase (docs/FIREBASE.md), nunca el proyecto de verdad.
+if (window.PS_DEV === 'emulator') {
+  G.FIREBASE_CONFIG = { apiKey: 'demo', projectId: 'demo-ps', authDomain: 'demo-ps.firebaseapp.com', appId: 'demo',
+    databaseURL: 'http://127.0.0.1:9000?ns=demo-ps-default-rtdb', emulator: true };
+}
+
 /* Ejemplo de cómo debe quedar:
 G.FIREBASE_CONFIG = {
   apiKey: 'AIza...',

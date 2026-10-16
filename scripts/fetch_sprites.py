@@ -4,13 +4,13 @@
 Descarga los sprites estilo Mundo Misterioso de SpriteCollab (normal y shiny)
 a assets/pokemon/ y genera js/data/sprites-meta.js.
 
-    python tools/fetch_sprites.py            # todos los que existan (1-1025)
-    python tools/fetch_sprites.py 1 151      # sólo un rango de la Pokédex
+    python scripts/fetch_sprites.py            # todos los que existan (1-1025)
+    python scripts/fetch_sprites.py 1 151      # sólo un rango de la Pokédex
 
-Se puede interrumpir y relanzar: lo ya bajado se reutiliza (tools/cache/).
+Se puede interrumpir y relanzar: lo ya bajado se reutiliza (.cache/).
 
 Fuente: https://github.com/PMDCollab/SpriteCollab  (CC BY-NC 4.0)
-Créditos: python tools/fetch_credits.py
+Créditos: python scripts/fetch_credits.py
 
 Formato de SpriteCollab:
   sprite/{dex}/            sprite normal
@@ -37,9 +37,9 @@ from PIL import Image
 RAW = 'https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master'
 BASE = RAW + '/sprite'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT_ASSETS = os.path.join(ROOT, 'assets', 'pokemon')
-OUT_META = os.path.join(ROOT, 'js', 'data', 'sprites-meta.js')
-CACHE = os.path.join(ROOT, 'tools', 'cache')
+OUT_ASSETS = os.path.join(ROOT, 'public', 'assets', 'pokemon')
+OUT_META = os.path.join(ROOT, 'src', 'js', 'data', 'sprites-meta.js')
+CACHE = os.path.join(ROOT, '.cache')
 
 WANT = ['Idle', 'Walk', 'Attack', 'Shoot', 'Charge', 'Hurt', 'Faint']
 FALLBACK = {
@@ -256,7 +256,7 @@ def main():
 
     lines = [
         '/* ============ sprites-meta.js — GENERADO, no editar a mano ============',
-        ' * Lo produce tools/fetch_sprites.py a partir de los AnimData.xml de',
+        ' * Lo produce scripts/fetch_sprites.py a partir de los AnimData.xml de',
         ' * SpriteCollab. Va en un .js y no en un .json porque fetch() está',
         ' * bloqueado en file:// y el juego se abre con doble clic.',
         ' *',

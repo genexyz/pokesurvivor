@@ -1,9 +1,9 @@
 # Iconos de la app (PWA, favicon, iPhone) en pixel art: Poké Ball sobre azul marino.
-#   python tools/make_icons.py   -> assets/icons/*.png
+#   python scripts/make_icons.py   -> public/assets/icons/*.png
 import os
 from PIL import Image, ImageDraw
 
-OUT = os.path.join(os.path.dirname(__file__), '..', 'assets', 'icons')
+OUT = os.path.join(os.path.dirname(__file__), '..', 'public', 'assets', 'icons')
 os.makedirs(OUT, exist_ok=True)
 
 NAVY, NAVY2, K = (10, 20, 48), (26, 49, 112), (27, 21, 40)
@@ -59,6 +59,6 @@ def icon(size, maskable=False):
 for size in (512, 192, 180, 144, 96, 48, 32):
     icon(size).save(os.path.join(OUT, f'icon-{size}.png'))
 icon(512, True).save(os.path.join(OUT, 'icon-maskable-512.png'))
-# favicon.ico en la raíz de la web: lo primero que piden Google y los navegadores.
+# favicon.ico en la raíz de la web (public/): lo primero que piden Google y los navegadores.
 icon(48).save(os.path.join(OUT, '..', '..', 'favicon.ico'), sizes=[(16, 16), (32, 32), (48, 48)])
 print('ok', os.listdir(OUT))

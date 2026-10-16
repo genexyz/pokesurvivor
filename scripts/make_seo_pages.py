@@ -1,5 +1,5 @@
 # Páginas para buscadores, en español y en inglés.
-#   node tools/export_data.js && python tools/make_seo_pages.py
+#   npm run build  (node scripts/build.js && node scripts/export_data.js && python scripts/make_seo_pages.py)  ->  dist/
 # Son páginas de texto de verdad (el juego es un canvas que Google no puede leer)
 # hechas con los datos del propio juego, y enlazan al juego. Genera:
 #   es: guia/ pokedex/ legendarios/ shinies/ tipos/ movimientos/ objetos/ logros/ novedades/
@@ -8,12 +8,13 @@
 import json, os, re, datetime, html
 
 ROOT = os.path.join(os.path.dirname(__file__), '..')
+DIST = os.path.join(ROOT, 'dist')
 SITE = 'https://pokesurvivor.com/'
 TODAY = datetime.date.today().isoformat()
-D = json.load(open(os.path.join(ROOT, 'tools', 'cache', 'gamedata.json'), encoding='utf-8'))
+D = json.load(open(os.path.join(ROOT, '.cache', 'gamedata.json'), encoding='utf-8'))
 DEX = D['dex']; BY = {p['dex']: p for p in DEX}
 META = {}
-for m in re.finditer(r'^\s*(\d+): (\{.*\}),?\s*$', open(os.path.join(ROOT, 'js/data/sprites-meta.js'), encoding='utf-8').read(), re.M):
+for m in re.finditer(r'^\s*(\d+): (\{.*\}),?\s*$', open(os.path.join(ROOT, 'src', 'js', 'data', 'sprites-meta.js'), encoding='utf-8').read(), re.M):
     try: META[int(m.group(1))] = json.loads(m.group(2))
     except Exception: pass
 esc = html.escape
@@ -131,7 +132,7 @@ def page(pid, lang, title, desc, body, ld=None):
 '''
 
 def write(pid, lang, html_):
-    p = os.path.join(ROOT, PATH[lang][pid], 'index.html')
+    p = os.path.join(DIST, PATH[lang][pid], 'index.html')
     os.makedirs(os.path.dirname(p), exist_ok=True)
     open(p, 'w', encoding='utf-8').write(html_)
 
@@ -564,16 +565,16 @@ you can make a <b>voluntary donation</b>. <b>All the money goes to the servers a
 
 # ================= el juego en inglés (/en/) =================
 def game_en():
-    # Parte de dev.html (con lo de SEO) y usa el mismo app.min.js que index.html,
-    # así sale bien aunque index.html se haya generado con --sin-seo.
-    dev = open(os.path.join(ROOT, 'dev.html'), encoding='utf-8').read()
-    idx = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
+    # Parte de src/index.html (con lo de SEO) y usa el mismo app.min.js que dist/index.html,
+    # así sale bien aunque dist/index.html se haya generado con --sin-seo.
+    dev = open(os.path.join(ROOT, 'src', 'index.html'), encoding='utf-8').read()
+    idx = open(os.path.join(DIST, 'index.html'), encoding='utf-8').read()
     app = re.search(r'<script defer src="js/app\.min\.js\?v=[^"]+"></script>', idx).group(0)
     a, b = dev.index('<!-- scripts:begin -->'), dev.index('<!-- scripts:end -->') + len('<!-- scripts:end -->')
     src = dev[:a] + app + dev[b:]
     src = re.sub(r'<!-- seo:(begin|end) -->\n?', '', src)
     src = re.sub(r'<meta name="robots" content="noindex">\s*', '', src)
-    src = re.sub(r'<!-- dev\.html: página fuente[^>]*-->\n?', '', src)
+    src = re.sub(r'<!-- src/index\.html: página fuente[^>]*-->\n?', '', src)
     s = src.replace('<html lang="es">', '<html lang="en">')
     s = s.replace('<head>\n<meta charset="utf-8">', '<head>\n<meta charset="utf-8">\n<base href="../">', 1)
     rep = [
@@ -600,8 +601,8 @@ def game_en():
     s = s.replace('"description": "Fan game gratuito de supervivencia (bullet heaven, estilo Survivor.io) con Pokémon: elige compañero, sobrevive a hordas, sube de nivel, evoluciona tus ataques, enfréntate a legendarios en grietas y juega en cooperativo con hasta 4 amigos."',
                   '"description": "A free Pokémon survival fan game (bullet heaven, Survivor.io style): pick a partner, survive the hordes, level up, evolve your moves, fight legendaries in rifts and play co-op with up to 4 friends."')
     s = s.replace('"inLanguage": "es"', '"inLanguage": ["es", "en"]')
-    os.makedirs(os.path.join(ROOT, 'en'), exist_ok=True)
-    open(os.path.join(ROOT, 'en', 'index.html'), 'w', encoding='utf-8').write(s)
+    os.makedirs(os.path.join(DIST, 'en'), exist_ok=True)
+    open(os.path.join(DIST, 'en', 'index.html'), 'w', encoding='utf-8').write(s)
 
 # ================= 404, robots y sitemap =================
 def extra():
@@ -612,8 +613,8 @@ def extra():
 <p class="lead" lang="en">This page doesn't exist. But the hordes are still waiting…</p>
 <p class="cta"><a class="btn" href="/">Volver al juego</a> <a class="btn ghost" href="/en/">Play in English</a></p></article></main></body></html>
 '''
-    open(os.path.join(ROOT, '404.html'), 'w', encoding='utf-8').write(nf)
-    open(os.path.join(ROOT, 'robots.txt'), 'w', encoding='utf-8').write(f'# PokéSurvivor\nUser-agent: *\nAllow: /\nDisallow: /tools/\nDisallow: /docs/\nDisallow: /dev.html\n\nSitemap: {SITE}sitemap.xml\n')
+    open(os.path.join(DIST, '404.html'), 'w', encoding='utf-8').write(nf)
+    open(os.path.join(DIST, 'robots.txt'), 'w', encoding='utf-8').write(f'# PokéSurvivor\nUser-agent: *\nAllow: /\n\nSitemap: {SITE}sitemap.xml\n')
     PRI = {'home': '1.0', 'guide': '0.8', 'pokedex': '0.7', 'legends': '0.7', 'moves': '0.6', 'types': '0.6', 'shinies': '0.6', 'achievements': '0.5', 'items': '0.5', 'news': '0.5', 'support': '0.4'}
     urls = []
     for pid in PAGES:
@@ -621,7 +622,7 @@ def extra():
             alts = ''.join(f'<xhtml:link rel="alternate" hreflang="{l}" href="{SITE}{PATH[l][pid]}"/>' for l in ('es', 'en'))
             alts += f'<xhtml:link rel="alternate" hreflang="x-default" href="{SITE}{PATH["es"][pid]}"/>'
             urls.append(f'  <url><loc>{SITE}{PATH[lang][pid]}</loc><lastmod>{TODAY}</lastmod><priority>{PRI[pid]}</priority>{alts}</url>\n')
-    open(os.path.join(ROOT, 'sitemap.xml'), 'w', encoding='utf-8').write(
+    open(os.path.join(DIST, 'sitemap.xml'), 'w', encoding='utf-8').write(
         '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n' + ''.join(urls) + '</urlset>\n')
 
 for lang in ('es', 'en'):

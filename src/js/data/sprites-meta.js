@@ -1,12 +1,12 @@
 /* ============ sprites-meta.js — GENERADO, no editar a mano ============
- * Lo produce tools/fetch_sprites.py a partir de los AnimData.xml de
+ * Lo produce scripts/fetch_sprites.py a partir de los AnimData.xml de
  * SpriteCollab. Va en un .js y no en un .json porque fetch() está
  * bloqueado en file:// y el juego se abre con doble clic.
  *
  * Por Pokémon:    s ShadowSize · a animaciones · sh=1 si hay shiny
  *                 sa geometría shiny que difiera de la normal (raro)
  *                 sm animaciones que le faltan al shiny
- *                 hv=1 si flota en su sprite (tools/hover_flags.py):
+ *                 hv=1 si flota en su sprite (scripts/hover_flags.py):
  *                 pasa por encima de rocas y agua
  * Por animación:  w,h fotograma · n fotogramas · r filas
  *                 d duración de cada fotograma (1/60 s)

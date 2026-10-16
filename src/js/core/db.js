@@ -426,6 +426,8 @@ G.DB = (() => {
 
   async function initCloud() {
     const cfg = G.FIREBASE_CONFIG;
+    // npm run dev: sin nube, para no tocar las cuentas de verdad (scripts/dev-server.js).
+    if (window.PS_DEV === 'local') { localReason = 'dev'; return false; }
     if (!/^https?:$/.test(location.protocol)) { localReason = 'file'; return false; }
     if (cfg && !cfg.emulator && !HOSTS.includes(location.hostname)) { localReason = 'host'; return false; }
     if (!cfg || !cfg.apiKey || !cfg.projectId) { localReason = 'config'; return false; }

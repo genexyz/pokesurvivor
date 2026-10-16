@@ -218,6 +218,7 @@ G.I18n.add({
   'Cargando…': 'Loading…', 'Guía': 'Guide', 'Aviso legal y privacidad': 'Legal notice & privacy',
   'Tu partida se guarda en la nube: entra desde cualquier ordenador. Como invitado no se guarda.': 'Your game is saved in the cloud: log in from any computer. Guest progress is not saved.',
   'Abierto desde un archivo: la partida sólo se guarda en este navegador. Para guardar en la nube, juega en la versión publicada.': 'Opened from a file: your game is only saved in this browser. To save in the cloud, play the online version.',
+  'Modo desarrollo: la partida sólo se guarda en este navegador.': 'Development mode: your game is only saved in this browser.',
   'No se pudo conectar con la nube: la partida sólo se guarda en este navegador.': 'Couldn\'t connect to the cloud: your game is only saved in this browser.',
   'Nube sin configurar: la partida sólo se guarda en este navegador.': 'Cloud not configured: your game is only saved in this browser.',
   'Este navegador no deja guardar datos: juega como invitado.': 'This browser won\'t let us save data: play as a guest.',

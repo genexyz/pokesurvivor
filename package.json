@@ -1,0 +1,32 @@
+{
+  "name": "pokesurvivor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PokéSurvivor · Mundo Misterioso: bullet-heaven con Pokémon (HTML + Canvas 2D, sin framework).",
+  "license": "SEE LICENSE IN LICENSE",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node scripts/dev-server.js",
+    "dev:emulator": "node scripts/dev-server.js --emulator",
+    "build": "node scripts/build.js && npm run build:pages",
+    "build:force": "node scripts/build.js --forzar && npm run build:pages",
+    "build:debug": "node scripts/build.js --expose && npm run build:pages",
+    "build:pages": "node scripts/export_data.js && node scripts/py.js scripts/make_seo_pages.py",
+    "start": "node scripts/dev-server.js --dist",
+    "clean": "node -e \"for (const d of ['dist', '.cache']) require('fs').rmSync(d, { recursive: true, force: true })\"",
+    "data:pokedex": "node scripts/py.js scripts/fetch_pokedex.py",
+    "data:sprites": "node scripts/py.js scripts/fetch_sprites.py",
+    "data:credits": "node scripts/py.js scripts/fetch_credits.py",
+    "data:hover": "node scripts/py.js scripts/hover_flags.py",
+    "data:icons": "node scripts/py.js scripts/make_icons.py",
+    "data:font": "node scripts/py.js scripts/make_font.py",
+    "docker:build": "docker build -t pokesurvivor .",
+    "docker:run": "docker run --rm -p 8080:80 pokesurvivor"
+  },
+  "devDependencies": {
+    "javascript-obfuscator": "4.1.1",
+    "terser": "^5.31.0"
+  }
+}

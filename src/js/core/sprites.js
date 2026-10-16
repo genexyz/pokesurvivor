@@ -1,6 +1,6 @@
 /* ============ sprites.js — sprites estilo Mundo Misterioso (locales) ============
  * Hojas de SpriteCollab en assets/pokemon/{dex}/{Anim}.png, geometría en
- * G.SPRITE_META (js/data/sprites-meta.js, generado por tools/fetch_sprites.py).
+ * G.SPRITE_META (js/data/sprites-meta.js, generado por scripts/fetch_sprites.py).
  *
  *   columnas = fotogramas · filas = 8 direcciones
  *   0 Down · 1 DownRight · 2 Right · 3 UpRight · 4 Up · 5 UpLeft · 6 Left · 7 DownLeft
@@ -16,7 +16,7 @@ G.Sprites = (() => {
 
   function meta(dex) { return G.SPRITE_META[dex] || null; }
 
-  /** ¿Flota en su sprite? (tools/hover_flags.py) Pasa por encima de rocas y agua. */
+  /** ¿Flota en su sprite? (scripts/hover_flags.py) Pasa por encima de rocas y agua. */
   function hovers(dex) { const m = meta(dex); return !!(m && m.hv); }
 
   /**

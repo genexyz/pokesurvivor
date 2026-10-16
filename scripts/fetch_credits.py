@@ -3,7 +3,7 @@
 """
 Genera CREDITS.md con los artistas de cada sprite descargado.
 
-    python tools/fetch_credits.py
+    python scripts/fetch_credits.py
 
 Cada carpeta de SpriteCollab tiene un credits.txt (sin cabecera) con lineas
     fecha <TAB> autor <TAB> ...
@@ -17,7 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 RAW = 'https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ASSETS = os.path.join(ROOT, 'assets', 'pokemon')
+ASSETS = os.path.join(ROOT, 'public', 'assets', 'pokemon')
 OUT = os.path.join(ROOT, 'CREDITS.md')
 
 

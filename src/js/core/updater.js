@@ -1,5 +1,5 @@
 /* ============ updater.js — actualizaciones automáticas ============
- * Al publicar una versión nueva (node tools/build.js escribe version.json con
+ * Al publicar una versión nueva (npm run build escribe version.json con
  * la huella de js/app.min.js), todos los jugadores la reciben sin perder nada:
  *
  *   - Cada 5 min (y al volver a la pestaña) se mira version.json (lo sirve
@@ -14,12 +14,12 @@
  *   - Antes de recargar se espera a que la partida guardada suba a la nube
  *     (como mucho unos segundos; si no, queda en este navegador y se sube al
  *     entrar).
- *   - Versión OBLIGATORIA (node tools/build.js --forzar escribe force:true en
+ *   - Versión OBLIGATORIA (npm run build --forzar escribe force:true en
  *     version.json): quien esté en partida ve un aviso de 10 s y la partida
  *     se termina como al abandonarla (se guardan monedas, tickets, récords y
  *     ranking), sube a la nube y se recarga. Sólo la entienden los jugadores
  *     que ya tengan este updater.js (desde el 15-10-2026).
- * Sólo funciona en la web publicada (con app.min.js); en dev.html o con
+ * Sólo funciona en la web publicada (con app.min.js); en npm run dev (src/index.html) o con
  * doble clic (file://) no hace nada.
  */
 G.Updater = (() => {

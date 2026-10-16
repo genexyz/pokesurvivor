@@ -8,7 +8,7 @@ redondeados. Este script saca dos versiones fijas de la fuente variable
 estrechado por la cintura... Las esquinas siguen recortadas como en el resto
 de letras para que no desentonen.
 
-    python tools/make_font.py   ->  assets/fonts/PixelifyPS-400.ttf y -700.ttf
+    python scripts/make_font.py   ->  public/assets/fonts/PixelifyPS-400.ttf y -700.ttf
 
 Necesita fontTools (pip install fonttools). La fuente cambia de nombre
 ("Pixelify PS"), como pide la licencia OFL para versiones modificadas.
@@ -19,8 +19,8 @@ from fontTools.varLib import instancer
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
-SRC = os.path.join(ROOT, 'assets', 'fonts', 'PixelifySans.ttf')
-OUT = os.path.join(ROOT, 'assets', 'fonts', 'PixelifyPS-{}.ttf')
+SRC = os.path.join(ROOT, 'public', 'assets', 'fonts', 'PixelifySans.ttf')
+OUT = os.path.join(ROOT, 'public', 'assets', 'fonts', 'PixelifyPS-{}.ttf')
 FAMILY = 'Pixelify PS'
 
 # 5 columnas x 7 filas, de arriba abajo. '#' = píxel.

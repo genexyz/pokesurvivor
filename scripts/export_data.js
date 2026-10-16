@@ -1,5 +1,5 @@
 /* Exporta los datos del juego a JSON para generar las páginas web (make_seo_pages.py).
- *   node tools/export_data.js  ->  tools/cache/gamedata.json
+ *   node scripts/export_data.js  ->  .cache/gamedata.json
  * Carga los mismos archivos que el juego en un contexto aislado (sin navegador). */
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const ROOT = path.join(__dirname, '..');
@@ -15,7 +15,7 @@ const sandbox = {
 };
 sandbox.window = sandbox;
 vm.createContext(sandbox);
-const load = f => vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), sandbox, { filename: f });
+const load = f => vm.runInContext(fs.readFileSync(path.join(ROOT, 'src', f), 'utf8'), sandbox, { filename: f });
 const EN = {};
 for (const f of ['js/core/util.js', 'js/core/i18n.js']) load(f);
 // Captura el diccionario inglés (clave en español).
@@ -47,8 +47,8 @@ const out = {
   funding: { kofi: G.Funding.kofi, sponsors: G.Funding.sponsors, costs: G.Funding.costs },
   en: EN
 };
-fs.mkdirSync(path.join(__dirname, 'cache'), { recursive: true });
-fs.writeFileSync(path.join(__dirname, 'cache', 'gamedata.json'), JSON.stringify(out));
+fs.mkdirSync(path.join(ROOT, '.cache'), { recursive: true });
+fs.writeFileSync(path.join(ROOT, '.cache', 'gamedata.json'), JSON.stringify(out));
 console.log('ok:', out.dex.length, 'Pokémon,', out.moves.length, 'movimientos,', out.items.length, 'objetos,', out.achievements.length, 'logros,',
   Object.keys(out.arenas).length, 'arenas,', Object.keys(out.en).length, 'traducciones');
 

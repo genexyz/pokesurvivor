@@ -4,7 +4,7 @@
 Baja una sola vez los datos de PokeAPI y los deja en js/data/pokedex.js.
 A partir de ahi el juego no toca internet: todo es local.
 
-    python tools/fetch_pokedex.py
+    python scripts/fetch_pokedex.py
 
 Trae nombre en espanol, tipos, stats base y altura, y de ahi deriva los stats
 del juego y la rareza para el gacha.
@@ -18,7 +18,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 API = 'https://pokeapi.co/api/v2'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, 'js', 'data', 'pokedex.js')
+OUT = os.path.join(ROOT, 'src', 'js', 'data', 'pokedex.js')
 
 STARTERS = {1, 4, 7, 152, 155, 158, 252, 255, 258, 387, 390, 393, 495, 498, 501,
             650, 653, 656, 722, 725, 728, 810, 813, 816, 906, 909, 912, 54, 79}
@@ -124,7 +124,7 @@ def main():
 
     lines = [
         '/* ============ pokedex.js — GENERADO, no editar a mano ============',
-        ' * Lo produce tools/fetch_pokedex.py. Los datos se bajaron una vez de',
+        ' * Lo produce scripts/fetch_pokedex.py. Los datos se bajaron una vez de',
         ' * PokeAPI y viven aqui: el juego no hace ninguna peticion a internet.',
         ' *',
         ' * hp/spd/atk son stats de juego derivados de los stats base.',

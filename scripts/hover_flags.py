@@ -4,7 +4,7 @@
 Marca qué Pokémon FLOTAN de verdad en su sprite (y por tanto pueden pasar por
 encima de rocas y agua) y cuáles caminan aunque sean de tipo Volador.
 
-    python tools/hover_flags.py
+    python scripts/hover_flags.py
 
 Mira el primer fotograma de Idle (mirando abajo) de cada Pokémon: si el pixel
 opaco más bajo queda claramente por encima del ancla del suelo (la sombra),
@@ -18,8 +18,8 @@ import re
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-META = os.path.join(ROOT, 'js', 'data', 'sprites-meta.js')
-ASSETS = os.path.join(ROOT, 'assets', 'pokemon')
+META = os.path.join(ROOT, 'src', 'js', 'data', 'sprites-meta.js')
+ASSETS = os.path.join(ROOT, 'public', 'assets', 'pokemon')
 GAP = 1          # píxeles de arte entre los pies y el suelo (los que caminan dan <= -0,5)
 
 LINE = re.compile(r'^(\s*)(\d+): (\{.*\}),\s*$')
@@ -61,7 +61,7 @@ def main():
     if ' *                 hv=1 si flota' not in text:
         text = text.replace(' *                 sm animaciones que le faltan al shiny',
                             ' *                 sm animaciones que le faltan al shiny\n'
-                            ' *                 hv=1 si flota en su sprite (tools/hover_flags.py):\n'
+                            ' *                 hv=1 si flota en su sprite (scripts/hover_flags.py):\n'
                             ' *                 pasa por encima de rocas y agua')
     with io.open(META, 'w', encoding='utf-8', newline='\n') as f:
         f.write(text)

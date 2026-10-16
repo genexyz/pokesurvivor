@@ -7,7 +7,7 @@
                 'Rift', 'Weather', 'Progress', 'Hazards', 'Social', 'Net', 'Coop', 'Ranking', 'Icons', 'UI', 'HUD',
                 'MenuUI', 'RunUI', 'SettingsUI', 'Funding', 'SupportUI', 'Game', 'Flow'];
   function broken() {
-    // (En la versión publicada G no está en window: va encerrado, ver tools/build.js.)
+    // (En la versión publicada G no está en window: va encerrado, ver scripts/build.js.)
     const miss = NEED.filter(k => typeof G !== 'object' || !G[k]);
     if (!miss.length) return false;
     const el = document.getElementById('boot');
@@ -46,7 +46,8 @@
   else boot();
 
   // Instalable como app (PWA). Sólo con http(s): abierto con doble clic (file://) no hace falta.
-  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  // Con npm run dev no: guardaría en caché el código mientras se programa.
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.PS_DEV) {
     addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(e => console.warn('[PWA]', e.message)));
   }
 })();
