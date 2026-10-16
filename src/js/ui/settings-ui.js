@@ -7,7 +7,6 @@ G.SettingsUI = (() => {
   const $ = G.UI.$;
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const VERSION = '1.2 · 2026-10-09';
-  const REPO = 'https://github.com/JPTER78/pokesurvivor';
   let tab = 'sound';
 
   function init() {
@@ -172,8 +171,6 @@ G.SettingsUI = (() => {
                  : ''
              }
              <button class="btn small" data-legal>Legal notice &amp; privacy</button>
-             <a class="btn small" href="${G.I18n.page('contact/')}" target="_blank" rel="noopener">Contact</a>
-             <a class="btn small" href="${REPO}" target="_blank" rel="noopener">Code (GitHub)</a>
            </div>`;
     }
     wire(box);

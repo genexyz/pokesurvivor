@@ -101,24 +101,6 @@ G.RunUI = (() => {
     G.UI.hide('scr-levelup');
   }
 
-  /**
-   * Support message (Ko-fi) at the end: after a record or every 10 games,
-   * never on the first one and at most once a day. Closed with the X.
-   */
-  function askSupport(r) {
-    if (!G.Funding || !G.Funding.url) return false;
-    const runs = (G.DB.save && G.DB.save.stats && G.DB.save.stats.runs) || 0;
-    if (runs < 2 || !(r.record || runs % 10 === 0)) return false;
-    const today = new Date().toISOString().slice(0, 10);
-    try {
-      if (localStorage.getItem('ps.ask') === today) return false;
-      localStorage.setItem('ps.ask', today);
-    } catch (e) {
-      return false;
-    }
-    return true;
-  }
-
   function showOver(r, onBack) {
     $('over-title').textContent = r.dead ? 'You fell…' : 'Run over';
     $('over-stats').innerHTML = `
@@ -144,18 +126,7 @@ G.RunUI = (() => {
         <div class="caught-row" id="over-caught"></div></div>`
           : ''
       }
-      ${r.record ? '<div style="grid-column:1/-1;text-align:center" class="gold">New time record!</div>' : ''}
-      ${
-        askSupport(r)
-          ? `<div class="support-ask" id="over-ask" style="grid-column:1/-1">
-        <button class="x" type="button" aria-label="Close">×</button>
-        <p>Enjoying PokéSurvivor? I make it on my own and the servers cost money. If you'd like, you can help keep it online.</p>
-        <a class="btn small gold" href="${G.Funding.url}" target="_blank" rel="noopener">${G.Icons.html('heart', 14)} Support on Ko-fi</a>
-      </div>`
-          : ''
-      }`;
-    const ask = $('over-ask');
-    if (ask) ask.querySelector('.x').onclick = () => ask.remove();
+      ${r.record ? '<div style="grid-column:1/-1;text-align:center" class="gold">New time record!</div>' : ''}`;
     $('btn-again').onclick = onBack;
     if (r.caught && r.caught.length) {
       const row = $('over-caught');

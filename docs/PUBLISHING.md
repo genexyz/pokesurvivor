@@ -9,9 +9,10 @@ Postgres runs on the same Coolify and co-op only uses Google's free STUN.
 
 ## 1. Create the application in Coolify (once)
 
-0. **Postgres:** in the same project, **+ New → Database → PostgreSQL**. Copy its
-   internal URL (`postgres://...`): it is the `DATABASE_URL` below. Turn on its
-   scheduled backups (Backups) if you like.
+0. **Postgres (18):** in the same project, **+ New → Database → PostgreSQL** (version 18,
+   the same as `docker-compose.dev.yml`). Copy its **internal** URL (`postgres://...`):
+   it is the app's `DATABASE_URL` below. Turn on its scheduled backups (Backups) if you like.
+   To reach it from your computer, see section 3.
 1. **Projects → (your project) → + New → Public/Private Repository** and pick this
    repository, branch `main`.
 2. **Build Pack: Dockerfile** (uses the `Dockerfile` at the root).
@@ -19,19 +20,19 @@ Postgres runs on the same Coolify and co-op only uses Google's free STUN.
 4. **Domains:** `https://survivor.preciostcg.com`. Coolify (Traefik) gets the
    HTTPS certificate on its own (and lets the `/ws` WebSocket through with no extra setup).
    In the preciostcg.com DNS, an `A` record `survivor` pointing to the server's IP.
-   4b. **Environment Variables** (see `.env.example`):
-   - `DATABASE_URL`: the one from the Postgres in step 0
+5. **Environment Variables** (see `.env.example`):
+   - `DATABASE_URL`: the **internal** URL of the Postgres in step 0
    - `BETTER_AUTH_URL=https://survivor.preciostcg.com`
    - `BETTER_AUTH_SECRET`: a new one, `openssl rand -base64 32`
    - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`: the same as precios-tcg
    - `ADMIN_EMAILS`: your Google email (for leaderboard moderation)
-     4c. **Google Cloud Console → APIs & Services → Credentials →** the precios-tcg
-     OAuth client: add the origin `https://survivor.preciostcg.com` and the redirect
-     URI `https://survivor.preciostcg.com/api/auth/callback/google` (and, for
-     local testing, `http://localhost:3000/api/auth/callback/google`).
-     Google's "Choose an account" screen shows that client's app name.
-5. Turn on **Auto Deploy** (GitHub webhook) so every `git push` publishes.
-6. **Deploy**.
+6. **Google Cloud Console → APIs & Services → Credentials →** the precios-tcg
+   OAuth client: add the origin `https://survivor.preciostcg.com` and the redirect
+   URI `https://survivor.preciostcg.com/api/auth/callback/google` (and, for
+   local testing, `http://localhost:3000/api/auth/callback/google`).
+   Google's "Choose an account" screen shows that client's app name.
+7. Turn on **Auto Deploy** (GitHub webhook) so every `git push` publishes.
+8. **Deploy**.
 
 The image runs `npm ci`, `npm run build` (Node + Python inside the container) and
 starts `node server/index.mjs` on port 80. On startup, the server creates or
@@ -66,6 +67,17 @@ cp .env.example .env   # and fill in BETTER_AUTH_SECRET and the Google keys
 npm run db:up          # Postgres in Docker (docker-compose.dev.yml)
 npm run dev            # http://localhost:3000, with cloud; without DATABASE_URL it runs in local mode
 ```
+
+**Or against the Coolify Postgres** (instead of `db:up`):
+
+1. In the database's settings, leave **Port mappings** empty, type a free **Public port**
+   (e.g. `5434`; each public database needs its own), save, then set **Access** to
+   **Public through TCP proxy** and restart it.
+2. Hetzner firewall: an inbound TCP rule for that port, **only from your IP**
+   (SSL is off, so don't open it to everyone; update the rule if your IP changes).
+3. In `.env`, `DATABASE_URL` = the **Postgres URL (public)** (server IP + public port).
+
+Careful: that is the real players' database.
 
 The image: `npm run docker:build` and `npm run docker:run` (http://localhost:8080;
 its `DATABASE_URL` must be reachable from inside the container, e.g.

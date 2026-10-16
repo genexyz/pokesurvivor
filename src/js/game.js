@@ -1155,7 +1155,6 @@ G.Flow = {
     G.GoalsUI.init();
     G.ProfileUI.init();
     G.SettingsUI.init();
-    G.SupportUI.init();
     G.NewsUI.init();
     G.Updater.init();
     // Your name at the top right opens your profile.

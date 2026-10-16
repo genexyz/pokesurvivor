@@ -2,8 +2,8 @@
 #   npm run build  (node scripts/build.js && node scripts/export_data.js && python scripts/make_seo_pages.py)  ->  dist/
 # They are real text pages (the game is a canvas nobody can read) made from the
 # game's own data, and they link to the game. Generates:
-#   en: guide/ pokedex/ legendaries/ shinies/ types/ moves/ items/ achievements/ news/ support/ (+ contact/ from public/)
-#   es: es/ (sets Spanish and opens the game) es/guide/ es/pokedex/ ... es/news/ es/support/ es/contact/
+#   en: guide/ pokedex/ legendaries/ shinies/ types/ moves/ items/ achievements/ news/
+#   es: es/ (sets Spanish and opens the game) es/guide/ es/pokedex/ ... es/news/
 #   404.html, robots.txt
 # Search indexing is DISABLED: every page has <meta name="robots" content="noindex, nofollow">,
 # robots.txt disallows everything, and there is no sitemap, hreflang, canonical or JSON-LD.
@@ -49,16 +49,16 @@ def tbadge(t, lang): return f'<i class="ty" style="background:{TC.get(t, "#888")
 LEG = set(D['legends'])
 
 # ---------------- routes ----------------
-PAGES = ['home', 'guide', 'pokedex', 'legends', 'shinies', 'types', 'moves', 'items', 'achievements', 'news', 'support', 'contact']
+PAGES = ['home', 'guide', 'pokedex', 'legends', 'shinies', 'types', 'moves', 'items', 'achievements', 'news']
 SLUG = {'home': '', 'guide': 'guide/', 'pokedex': 'pokedex/', 'legends': 'legendaries/', 'shinies': 'shinies/', 'types': 'types/',
-        'moves': 'moves/', 'items': 'items/', 'achievements': 'achievements/', 'news': 'news/', 'support': 'support/', 'contact': 'contact/'}
+        'moves': 'moves/', 'items': 'items/', 'achievements': 'achievements/', 'news': 'news/'}
 PATH = {'en': dict(SLUG), 'es': {k: 'es/' + v for k, v in SLUG.items()}}
 NAV = {'en': [('guide', 'Guide'), ('pokedex', 'Pokédex'), ('legends', 'Legendaries'), ('moves', 'Moves'), ('types', 'Types')],
        'es': [('guide', 'Guía'), ('pokedex', 'Pokédex'), ('legends', 'Legendarios'), ('moves', 'Movimientos'), ('types', 'Tipos')]}
 FOOT = {'en': [('guide', 'Guide'), ('pokedex', 'Pokédex'), ('legends', 'Legendaries & arenas'), ('shinies', 'Shinies'), ('types', 'Type chart'),
-               ('moves', 'Moves'), ('items', 'Items'), ('achievements', 'Achievements'), ('news', 'News'), ('support', 'Support the project'), ('contact', 'Contact')],
+               ('moves', 'Moves'), ('items', 'Items'), ('achievements', 'Achievements'), ('news', 'News')],
         'es': [('guide', 'Guía'), ('pokedex', 'Pokédex'), ('legends', 'Legendarios y arenas'), ('shinies', 'Shinies'), ('types', 'Tabla de tipos'),
-               ('moves', 'Movimientos'), ('items', 'Objetos'), ('achievements', 'Logros'), ('news', 'Novedades'), ('support', 'Apoyar el proyecto'), ('contact', 'Contacto')]}
+               ('moves', 'Movimientos'), ('items', 'Objetos'), ('achievements', 'Logros'), ('news', 'Novedades')]}
 ROBOTS = '<meta name="robots" content="noindex, nofollow">'
 
 def rel(frm, to):
@@ -74,17 +74,13 @@ def page(pid, lang, title, desc, body):
     foot = ' · '.join(f'<a href="{rel(me, PATH[lang][p])}">{esc(t)}</a>' for p, t in FOOT[lang])
     play = L(lang, 'Play free', 'Jugar gratis')
     switch = f'<a class="lang" lang="{other}" href="{rel(me, PATH[other][pid])}">{"Español" if lang == "en" else "English"}</a>'
-    legal = ('PokéSurvivor is a <b>free, non-profit</b> fan game with no ads or purchases (only voluntary donations for the servers). It is not affiliated with Nintendo, Creatures, GAME FREAK '
+    legal = ('PokéSurvivor is a <b>free, non-profit</b> fan game with no ads or purchases. It is not affiliated with Nintendo, Creatures, GAME FREAK '
              'or The Pokémon Company; Pokémon and its characters are owned by their respective owners. Sprites from PMD SpriteCollab (CC BY-NC 4.0) '
-             '· data from PokéAPI · original music and sounds. It has no official cryptocurrency or token: any using its name '
-             'belongs to third parties and we take no responsibility for purchases or investments. '
-             '<b>The only official website is survivor.preciostcg.com</b> and the game is and always will be free: if anyone asks you to pay, it isn\'t us. '
+             '· data from PokéAPI · original music and sounds. '
              'Code under PolyForm Noncommercial 1.0.0 (MIT up to 14-10-2026).') if lang == 'en' else (
-             'PokéSurvivor es un juego de fans <b>gratuito y sin ánimo de lucro</b>, sin anuncios ni compras (sólo donaciones voluntarias para los servidores). No está afiliado a Nintendo, Creatures, '
+             'PokéSurvivor es un juego de fans <b>gratuito y sin ánimo de lucro</b>, sin anuncios ni compras. No está afiliado a Nintendo, Creatures, '
              'GAME FREAK ni The Pokémon Company; Pokémon y sus personajes son propiedad de sus respectivos dueños. Sprites de PMD SpriteCollab '
-             '(CC BY-NC 4.0) · datos de PokéAPI · música y sonidos originales. No tiene ninguna criptomoneda ni token oficial: '
-             'cualquiera que use su nombre es de terceros y no nos hacemos cargo de compras ni inversiones. '
-             '<b>La única web oficial es survivor.preciostcg.com</b> y el juego es y será gratis: si alguien te pide pagar, no somos nosotros. '
+             '(CC BY-NC 4.0) · datos de PokéAPI · música y sonidos originales. '
              'Código bajo PolyForm Noncommercial 1.0.0 (hasta el 14-10-2026, MIT).')
     return f'''<!doctype html>
 <html lang="{lang}">
@@ -120,7 +116,6 @@ def page(pid, lang, title, desc, body):
 <footer>
   <p>{foot}</p>
   <p>{legal}</p>
-  <p><a href="https://github.com/JPTER78/pokesurvivor">GitHub</a></p>
 </footer>
 </body>
 </html>
@@ -146,7 +141,7 @@ def cta(pid, lang, text):
 # ================= guide =================
 FAQ = {
  'en': [
-  ('Is PokéSurvivor free?', 'Yes, completely. It\'s a non-profit fan game with no ads or purchases. If you like, you can support it with a voluntary donation, which only pays for the servers and gives no advantages.'),
+  ('Is PokéSurvivor free?', 'Yes, completely. It\'s a non-profit fan game with no ads or purchases.'),
   ('Do I need to download anything?', 'No. You play in your browser on PC, tablet or phone. If you like, you can install it as an app with “Add to Home Screen”.'),
   ('Can I play on my phone?', 'Yes, in landscape. Put your finger anywhere on the screen and drag to move (the joystick appears where you touch), tap a move to switch to it and the top-right button to pause.'),
   ('Is it in English?', 'Yes: the game shows up in English or Spanish depending on your browser language, and you can change it in Settings.'),
@@ -157,7 +152,7 @@ FAQ = {
   ('Is my progress saved?', 'With a Google account your game is saved in the cloud and you can continue on any device. Guests can play right away, but nothing is saved.'),
   ('Is this an official Pokémon game?', 'No. It\'s a free, non-profit fan project, unrelated to Nintendo, GAME FREAK or The Pokémon Company.')],
  'es': [
-  ('¿PokéSurvivor es gratis?', 'Sí, totalmente. Es un juego de fans sin ánimo de lucro: no tiene anuncios ni compras. Si quieres, puedes apoyarlo con una donación voluntaria, que se usa sólo para los servidores y no da ventajas.'),
+  ('¿PokéSurvivor es gratis?', 'Sí, totalmente. Es un juego de fans sin ánimo de lucro: no tiene anuncios ni compras.'),
   ('¿Hay que descargar algo?', 'No. Se juega en el navegador, en PC, tablet o móvil. Si quieres, puedes instalarlo como app con «Añadir a pantalla de inicio».'),
   ('¿Se puede jugar en el móvil?', 'Sí, en horizontal. Pon el dedo en cualquier parte de la pantalla y arrastra para moverte (el joystick aparece donde tocas), toca un ataque para cambiarlo y el botón de arriba a la derecha para pausar.'),
   ('¿Está en inglés?', 'Sí: el juego sale en español o en inglés según el idioma de tu navegador, y se puede cambiar en Ajustes.'),
@@ -508,48 +503,6 @@ def news(lang):
     body = f'<div class="doc"><h1>{h1}</h1>{items}{cta(pid, lang, L(lang, "Play free", "Jugar gratis"))}</div>'
     write(pid, lang, page(pid, lang, title, desc, body))
 
-# ================= support the project =================
-def support(lang):
-    pid = 'support'
-    F = D['funding']
-    val = lambda v: (f'€{v}/month' if lang == 'en' else f'{v} €/mes') if isinstance(v, (int, float)) else esc(L(lang, v))
-    rows = ''.join(f'<tr><td>{esc(L(lang, c))}</td><td class="num">{val(v)}</td></tr>' for c, v in F['costs'])
-    kofi = f'https://ko-fi.com/{F["kofi"]}' if F['kofi'] else ''
-    spons = f'https://github.com/sponsors/{F["sponsors"]}' if F['sponsors'] else ''
-    if lang == 'en':
-        h1 = 'Support PokéSurvivor'
-        btns = ''.join(x for x in [f'<a class="btn" href="{kofi}" rel="noopener">Donate on Ko-fi</a>' if kofi else '',
-                                   f'<a class="btn ghost" href="{spons}" rel="noopener">GitHub Sponsors</a>' if spons else ''])
-        body = f"""<article class="doc"><h1>{h1}</h1>
-<p class="lead">PokéSurvivor is and will stay <b>free</b>: no ads, no purchases and no pay-to-win. If you enjoy it and want to help keep it online,
-you can make a <b>voluntary donation</b>. <b>All the money goes to the servers and the domain</b>; anything left over is saved for the following months.</p>
-<p>Donating gives no advantage in the game: everyone plays on equal terms.</p>
-<h2>What it costs to run</h2>
-<table class="list"><tbody>{rows}</tbody></table>
-<p>The servers store saves and accounts, the leaderboards and group games: the more people play, the more they cost.</p>
-<h2>How to support</h2>
-<p>{btns or 'You\'ll be able to donate from here very soon.'}</p>
-<p>Sharing the game with your friends, recommending it and reporting bugs helps a lot too, and it\'s free.</p>
-{cta(pid, lang, 'Back to the game')}</article>"""
-        title, desc = 'Support PokéSurvivor: donations for the servers', 'PokéSurvivor is free and ad-free. Voluntary donations only pay for the servers and the domain.'
-    else:
-        h1 = 'Apoyar PokéSurvivor'
-        btns = ''.join(x for x in [f'<a class="btn" href="{kofi}" rel="noopener">Donar en Ko-fi</a>' if kofi else '',
-                                   f'<a class="btn ghost" href="{spons}" rel="noopener">GitHub Sponsors</a>' if spons else ''])
-        body = f"""<article class="doc"><h1>{h1}</h1>
-<p class="lead">PokéSurvivor es y será <b>gratis</b>: sin anuncios, sin compras y sin ventajas de pago. Si te gusta y quieres ayudar a que siga en línea,
-puedes hacer una <b>donación voluntaria</b>. <b>Todo el dinero se usa para los servidores y el dominio</b>; lo que sobre se guarda para los meses siguientes.</p>
-<p>Donar no da ninguna ventaja dentro del juego: todos los jugadores juegan igual.</p>
-<h2>Qué cuesta mantenerlo</h2>
-<table class="list"><tbody>{rows}</tbody></table>
-<p>Los servidores guardan las partidas y las cuentas, el ranking y las partidas en grupo: cuanta más gente juega, más cuestan.</p>
-<h2>Cómo apoyar</h2>
-<p>{btns or 'Muy pronto podrás donar desde aquí.'}</p>
-<p>También ayuda mucho, y gratis: compartir el juego con tus amigos, recomendarlo y avisar de fallos.</p>
-{cta(pid, lang, 'Volver al juego')}</article>"""
-        title, desc = 'Apoyar PokéSurvivor: donaciones para los servidores', 'PokéSurvivor es gratis y sin anuncios. Las donaciones voluntarias se usan sólo para los servidores y el dominio.'
-    write(pid, lang, page(pid, lang, title, desc, body))
-
 # ================= the game in Spanish (es/) =================
 def game_es():
     # The game is a single page (English source, translated at runtime). es/ just
@@ -575,17 +528,6 @@ def game_es():
     os.makedirs(os.path.join(DIST, 'es'), exist_ok=True)
     open(os.path.join(DIST, 'es', 'index.html'), 'w', encoding='utf-8').write(s)
 
-# ================= contact (es/contact/) =================
-def contact_es():
-    # contact/ comes from public/contact/ (bilingual, it picks the language by itself and
-    # forces Spanish under /es/). es/contact/ is the same page one folder deeper.
-    src = os.path.join(DIST, 'contact', 'index.html')
-    if not os.path.exists(src): return
-    s = open(src, encoding='utf-8').read().replace('"../', '"../../')
-    s = s.replace('href="../../"', 'href="../"').replace('<html lang="en">', '<html lang="es">', 1)
-    os.makedirs(os.path.join(DIST, 'es', 'contact'), exist_ok=True)
-    open(os.path.join(DIST, 'es', 'contact', 'index.html'), 'w', encoding='utf-8').write(s)
-
 # ================= 404 and robots =================
 def extra():
     nf = f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -602,6 +544,6 @@ def extra():
     if os.path.exists(old): os.remove(old)
 
 for lang in ('en', 'es'):
-    guide(lang); pokedex(lang); legends(lang); shinies(lang); types_page(lang); moves_page(lang); items_page(lang); ach_page(lang); news(lang); support(lang)
-game_es(); contact_es(); extra()
-print('ok:', 2 * (len(PAGES) - 2), 'pages + es/ (Spanish game redirect), es/contact/, 404, robots.txt (noindex)')
+    guide(lang); pokedex(lang); legends(lang); shinies(lang); types_page(lang); moves_page(lang); items_page(lang); ach_page(lang); news(lang)
+game_es(); extra()
+print('ok:', 2 * (len(PAGES) - 1), 'pages + es/ (Spanish game redirect), 404, robots.txt (noindex)')

@@ -69,8 +69,7 @@ for (const f of [
   'js/data/types.js',
   'js/data/items.js',
   'js/data/achievements.js',
-  'js/world/tiles.js',
-  'js/data/funding.js'
+  'js/world/tiles.js'
 ]) {
   try {
     load(f);
@@ -119,7 +118,6 @@ const out = {
       .filter(([k]) => k !== 'judgment')
       .map(([k, v]) => [k, v.name])
   ),
-  funding: { kofi: G.Funding.kofi, sponsors: G.Funding.sponsors, costs: G.Funding.costs },
   es: ES
 };
 fs.mkdirSync(path.join(ROOT, '.cache'), { recursive: true });

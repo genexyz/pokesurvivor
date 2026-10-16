@@ -60,9 +60,7 @@ const OLD_PAGES = {
   movimientos: 'moves',
   objetos: 'items',
   logros: 'achievements',
-  novedades: 'news',
-  apoyar: 'support',
-  contacto: 'contact'
+  novedades: 'news'
 };
 
 function renamed(p) {

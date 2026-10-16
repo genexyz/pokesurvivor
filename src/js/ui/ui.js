@@ -155,16 +155,10 @@ G.UI = (() => {
 
   // ---------------- legal notice ----------------
 
-  const CONTACT = 'jpieratorregrosa@gmail.com';
-  const REPO = 'https://github.com/JPTER78/pokesurvivor';
   let legalBack = null;
 
   function openLegal() {
     legalBack = SCREENS.find(s => isOpen(s)) || null;
-    $('legal-mail').textContent = CONTACT;
-    $('legal-mail').href = 'mailto:' + CONTACT + '?subject=Pok%C3%A9Survivor';
-    $('legal-repo').textContent = REPO.replace('https://', '');
-    $('legal-repo').href = REPO;
     const canDelete = G.DB.loggedIn && !G.DB.guest;
     $('legal-delete').disabled = !canDelete;
     $('legal-del-msg').textContent = canDelete ? '' : 'Log in to be able to delete your account.';

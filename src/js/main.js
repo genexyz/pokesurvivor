@@ -40,8 +40,6 @@
     'MenuUI',
     'RunUI',
     'SettingsUI',
-    'Funding',
-    'SupportUI',
     'Game',
     'Flow'
   ];

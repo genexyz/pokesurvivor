@@ -23,7 +23,7 @@ purpose**. Do not "fix" this unless the owner asks for it.
 still generate the informative pages in `dist/` for players who follow links from the game:
 
 - English at the root: `guide/`, `pokedex/`, `legendaries/`, `types/`, `moves/`,
-  `items/`, `achievements/`, `news/`, `support/`, `contact/`.
+  `items/`, `achievements/`, `news/`.
 - Spanish under `/es/` with the same slugs (`/es/guide/`, `/es/pokedex/`...).
 - The old Spanish URLs (`/guia/`, `/legendarios/`...) and the old `/en/` URLs
   answer with a 301 redirect to the new ones.

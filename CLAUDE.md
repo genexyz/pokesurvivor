@@ -36,7 +36,7 @@ do NOT go there.
 ## Servers
 
 - Everything on Coolify, no paid services: the website at **https://survivor.preciostcg.com** and its server
-  (`server/`: Node + Coolify's Postgres, `DATABASE_URL`). Firebase was removed on 2026-10-16.
+  (`server/`: Node + Coolify's Postgres 18, `DATABASE_URL`). Firebase was removed on 2026-10-16.
 - Accounts: Google ONLY (better-auth, `server/auth.mjs`), using the precios-tcg OAuth client.
   No username and password. Environment variables in `.env.example`.
 - Co-op: lobbies, invitations, online friends and WebRTC signaling go through the

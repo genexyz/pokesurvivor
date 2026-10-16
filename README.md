@@ -17,7 +17,7 @@ dependencies, and the game itself runs **entirely locally**: no internet needed 
 
 ## Playing
 
-You need [Node.js](https://nodejs.org) 22 or later:
+You need [Node.js](https://nodejs.org) 22 or later (`.nvmrc` pins 22, the version the Docker image deploys with; run `nvm use`):
 
 ```
 npm install
@@ -151,7 +151,7 @@ public/                 copied as-is to dist/
   assets/pokemon/{dex}/ PMD sprite sheets* (Idle, Walk, Attack, Shoot, Charge, Hurt, Faint); s/ = shiny
   assets/icons/         app icons*
   assets/fonts/         Pixelify Sans (OFL) and its version with redrawn digits*
-  contact/  favicon.ico  manifest.webmanifest  sw.js
+  favicon.ico  manifest.webmanifest  sw.js
 scripts/                build and the scripts that regenerate the files marked with *
 server/                 server (website, Google accounts, saves, leaderboard, co-op lobbies and signaling)
 docs/                   publishing, SEO, domain, GDD

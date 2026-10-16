@@ -1,8 +1,10 @@
-# Postgres for local testing: npm run db:up
+# Local Postgres for testing (same major version as Coolify: 18): npm run db:up
 # and in .env: DATABASE_URL=postgres://pokesurvivor:pokesurvivor@localhost:5432/pokesurvivor
+# (Postgres 18 images keep their data under /var/lib/postgresql/18/...: the volume
+#  is mounted at /var/lib/postgresql, not at .../data as in older versions.)
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: pokesurvivor
       POSTGRES_PASSWORD: pokesurvivor
@@ -10,6 +12,6 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata18:/var/lib/postgresql
 volumes:
-  pgdata:
+  pgdata18:

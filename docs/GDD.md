@@ -426,7 +426,7 @@ plucked guitar, bass, pad, lead and drums, with reverb). Zero audio files.
 - **Settings** (PC and mobile): sound; graphics (quality Auto/High/Medium/Low,
   damage numbers, less shake and flashing, FPS, fullscreen);
   controls (joystick size, keys); account (fixed nickname, cloud, sign
-  out, delete); about (version, credits, legal notice, contact).
+  out, delete); about (version, credits, legal notice).
 - **Automatic quality**: lowers effects if the game runs under 45 FPS.
 - **Installable as an app** (PWA: icon, fullscreen, opens offline).
 - Fixes: the extra orb of orbit moves when upgrading them; sound
