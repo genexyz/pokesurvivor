@@ -1,16 +1,16 @@
-/* ============ types.js — tabla de tipos ============
- * La de los juegos (6.ª gen. en adelante), pero SUAVIZADA para un survivor,
- * donde sólo llevas un ataque activo y no puedes cambiar de Pokémon:
+/* ============ types.js — type chart ============
+ * The one from the games (Gen 6 onwards), but SOFTENED for a survivor,
+ * where you only have one active attack and cannot switch Pokémon:
  *
- *   juegos   ×2      ×0,5    ×0 (inmune)
- *   aquí     ×1,6    ×0,6    ×0,3
+ *   games    ×2      ×0.5    ×0 (immune)
+ *   here     ×1.6    ×0.6    ×0.3
  *
- * Con dos tipos se multiplican (×1,6 · ×1,6 = ×2,56), con tope en [×0,3, ×2,4].
- * Se usa en los dos sentidos: tus ataques contra los enemigos y los de los
- * enemigos contra ti (su tipo principal, o el de su disparo).
+ * With two types they multiply (×1.6 · ×1.6 = ×2.56), capped to [×0.3, ×2.4].
+ * Used both ways: your attacks against enemies and the enemies' attacks
+ * against you (their main type, or the type of their shot).
  */
 G.Types = (() => {
-  // atacante -> { defensor: multiplicador de los juegos } (los ×1 no se apuntan)
+  // attacker -> { defender: multiplier from the games } (×1 entries are omitted)
   const CHART = {
     normal: { rock: 0.5, ghost: 0, steel: 0.5 },
     fire: { fire: 0.5, water: 0.5, grass: 2, ice: 2, bug: 2, rock: 0.5, dragon: 0.5, steel: 2 },
@@ -35,7 +35,7 @@ G.Types = (() => {
   const MIN = 0.3,
     MAX = 2.4;
 
-  /** Multiplicador de un ataque de tipo `atk` contra un Pokémon de tipos `def`. */
+  /** Multiplier of an `atk`-type attack against a Pokémon with types `def`. */
   function mult(atk, def) {
     const row = CHART[atk];
     if (!row || !def) return 1;
@@ -44,7 +44,7 @@ G.Types = (() => {
     return G.U.clamp(m, MIN, MAX);
   }
 
-  /** 'super' | 'weak' | null, para enseñar el aviso. */
+  /** 'super' | 'weak' | null, to show the hint. */
   function label(m) {
     return m > 1.05 ? 'super' : m < 0.95 ? 'weak' : null;
   }

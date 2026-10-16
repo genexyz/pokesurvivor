@@ -1,17 +1,17 @@
-/* ============ tiles.js — pixel art del mundo, pintado en código ============
- * Todo se pinta a resolución de ARTE (16 px por tile) escribiendo en un
- * ImageData, y luego se dibuja escalado ×G.Sprites.PX sin suavizado. Así los
- * tiles comparten tamaño de píxel con los sprites de Mundo Misterioso.
+/* ============ tiles.js — world pixel art, painted in code ============
+ * Everything is painted at ART resolution (16 px per tile) by writing into an
+ * ImageData, then drawn scaled ×G.Sprites.PX without smoothing. That way the
+ * tiles share the pixel size of the Mystery Dungeon sprites.
  *
- * Autotiling: cada tile mira a sus 8 vecinos al pintarse (bordes de pared,
- * cara frontal, esquinas redondeadas, espuma de la orilla...).
+ * Autotiling: each tile looks at its 8 neighbours when painted (wall edges,
+ * front face, rounded corners, shoreline foam...).
  */
 G.Tiles = (() => {
-  const T = 16; // píxeles de arte por tile
+  const T = 16; // art pixels per tile
 
   const BIOMES = [
     {
-      name: 'Bosque Umbrío',
+      name: 'Shady Forest',
       liquid: 'water',
       floor: ['#3e7a39', '#44813d', '#397134'],
       dirt: ['#7d6742', '#735e3b', '#86704a'],
@@ -34,7 +34,7 @@ G.Tiles = (() => {
       grass: ['#2f6b2c', '#4c9a3f', '#7cc45a']
     },
     {
-      name: 'Cueva Cristal',
+      name: 'Crystal Cave',
       liquid: 'water',
       floor: ['#4d5778', '#535e81', '#47506f'],
       dirt: ['#3c4462', '#424a69', '#37405b'],
@@ -57,7 +57,7 @@ G.Tiles = (() => {
       grass: ['#3d5c8a', '#5a86c0', '#8ab8ee']
     },
     {
-      name: 'Volcán Ceniza',
+      name: 'Ash Volcano',
       liquid: 'lava',
       floor: ['#5b4537', '#644c3c', '#533f32'],
       dirt: ['#403530', '#473b34', '#392f2b'],
@@ -80,22 +80,22 @@ G.Tiles = (() => {
       grass: ['#6b4a2a', '#94693a', '#c4914e']
     }
   ];
-  const NORMAL = 3; // biomas que se van turnando en una run
-  const ARENA = 3; // a partir de aquí, las arenas de la grieta (una por tipo)
+  const NORMAL = 3; // biomes that take turns during a run
+  const ARENA = 3; // from here on, the rift arenas (one per type)
 
-  // ---------------- arenas de la grieta ----------------
+  // ---------------- rift arenas ----------------
   /*
-   * Cada tipo tiene su arena: paleta, terreno y clima.
-   *   liquid   charcos: water (frena) · swamp (frena más) · lava (quema) ·
-   *            poison (envenena) · spark (descarga) · ice (resbala)
-   *   pools    cuánto terreno es charco (0 = ninguno)
-   *   pillars  probabilidad de una columna 2×2 (cobertura) por bloque
-   *   props    densidad de árboles / rocas / hierba
-   *   weather  clima que trae (ver systems/weather.js) o null
+   * Each type has its own arena: palette, terrain and weather.
+   *   liquid   pools: water (slows) · swamp (slows more) · lava (burns) ·
+   *            poison (poisons) · spark (shocks) · ice (slippery)
+   *   pools    how much terrain is pool (0 = none)
+   *   pillars  chance of a 2×2 pillar (cover) per block
+   *   props    density of trees / rocks / grass
+   *   weather  weather it brings (see systems/weather.js) or null
    */
   const ARENA_THEMES = {
     normal: {
-      name: 'Pradera Eterna',
+      name: 'Eternal Meadow',
       floor: '#6f8a4f',
       wall: '#8a7f6a',
       liquid: 'water',
@@ -112,7 +112,7 @@ G.Tiles = (() => {
       weather: null
     },
     fire: {
-      name: 'Volcán Ígneo',
+      name: 'Igneous Volcano',
       floor: '#5b3a2e',
       wall: '#3a2826',
       liquid: 'lava',
@@ -130,7 +130,7 @@ G.Tiles = (() => {
       weather: 'sun'
     },
     water: {
-      name: 'Gruta Marina',
+      name: 'Sea Grotto',
       floor: '#3c6a80',
       wall: '#2a4660',
       liquid: 'water',
@@ -148,7 +148,7 @@ G.Tiles = (() => {
       weather: 'rain'
     },
     grass: {
-      name: 'Selva Esmeralda',
+      name: 'Emerald Jungle',
       floor: '#3a7a32',
       wall: '#4a6a36',
       liquid: 'swamp',
@@ -166,7 +166,7 @@ G.Tiles = (() => {
       weather: null
     },
     electric: {
-      name: 'Central Voltio',
+      name: 'Volt Plant',
       floor: '#4a4840',
       wall: '#3a3a48',
       liquid: 'spark',
@@ -184,7 +184,7 @@ G.Tiles = (() => {
       weather: 'rain'
     },
     ice: {
-      name: 'Glaciar Eterno',
+      name: 'Eternal Glacier',
       floor: '#b8cfe0',
       wall: '#7f9fc0',
       liquid: 'ice',
@@ -202,7 +202,7 @@ G.Tiles = (() => {
       weather: 'snow'
     },
     fighting: {
-      name: 'Dojo Ancestral',
+      name: 'Ancient Dojo',
       floor: '#8a6a46',
       wall: '#5e4232',
       liquid: 'water',
@@ -219,7 +219,7 @@ G.Tiles = (() => {
       weather: null
     },
     poison: {
-      name: 'Ciénaga Tóxica',
+      name: 'Toxic Swamp',
       floor: '#46384f',
       wall: '#33263f',
       liquid: 'poison',
@@ -237,7 +237,7 @@ G.Tiles = (() => {
       weather: null
     },
     ground: {
-      name: 'Desierto Rojo',
+      name: 'Red Desert',
       floor: '#b08a52',
       wall: '#8a5e34',
       liquid: 'swamp',
@@ -255,7 +255,7 @@ G.Tiles = (() => {
       weather: 'sand'
     },
     flying: {
-      name: 'Pico Celeste',
+      name: 'Sky Peak',
       floor: '#9fb8d8',
       wall: '#dfe8f4',
       liquid: 'water',
@@ -272,7 +272,7 @@ G.Tiles = (() => {
       weather: null
     },
     psychic: {
-      name: 'Templo Mental',
+      name: 'Mind Temple',
       floor: '#5e4470',
       wall: '#3e2a55',
       liquid: 'water',
@@ -289,7 +289,7 @@ G.Tiles = (() => {
       weather: null
     },
     bug: {
-      name: 'Bosque Colmena',
+      name: 'Hive Forest',
       floor: '#5a6a2a',
       wall: '#5e4a26',
       liquid: 'swamp',
@@ -307,7 +307,7 @@ G.Tiles = (() => {
       weather: null
     },
     rock: {
-      name: 'Cantera Antigua',
+      name: 'Ancient Quarry',
       floor: '#7a6a58',
       wall: '#55473a',
       liquid: 'water',
@@ -324,7 +324,7 @@ G.Tiles = (() => {
       weather: 'sand'
     },
     ghost: {
-      name: 'Cementerio Sombrío',
+      name: 'Gloomy Graveyard',
       floor: '#383447',
       wall: '#24202e',
       liquid: 'water',
@@ -341,7 +341,7 @@ G.Tiles = (() => {
       weather: 'fog'
     },
     dragon: {
-      name: 'Santuario Dragón',
+      name: 'Dragon Sanctuary',
       floor: '#363a5e',
       wall: '#24264a',
       liquid: 'lava',
@@ -359,7 +359,7 @@ G.Tiles = (() => {
       weather: null
     },
     dark: {
-      name: 'Callejón Oscuro',
+      name: 'Dark Alley',
       floor: '#2c282e',
       wall: '#1c181f',
       liquid: 'water',
@@ -376,7 +376,7 @@ G.Tiles = (() => {
       weather: null
     },
     steel: {
-      name: 'Fortaleza de Acero',
+      name: 'Steel Fortress',
       floor: '#6d7888',
       wall: '#465060',
       liquid: 'water',
@@ -393,7 +393,7 @@ G.Tiles = (() => {
       weather: null
     },
     fairy: {
-      name: 'Bosque Encantado',
+      name: 'Enchanted Forest',
       floor: '#4f7f5a',
       wall: '#7a5a8a',
       liquid: 'water',
@@ -410,10 +410,10 @@ G.Tiles = (() => {
       props: { tree: 0.05, grass: 0.1 },
       weather: null
     },
-    // La arena de Arceus al minuto 30 (systems/judgment.js): ceniza, ruinas y
-    // árboles muertos, con un claro donde aterriza (clear). No es de ninguna grieta.
+    // Arceus's arena at minute 30 (systems/judgment.js): ash, ruins and
+    // dead trees, with a clearing where it lands (clear). Not part of any rift.
     judgment: {
-      name: 'Ruinas del Juicio',
+      name: 'Ruins of Judgment',
       floor: '#4a4240',
       wall: '#2e2829',
       liquid: 'lava',
@@ -434,19 +434,19 @@ G.Tiles = (() => {
   };
   const ARENA_TYPES = Object.keys(ARENA_THEMES);
 
-  /** Aclara (k>0) u oscurece (k<0) un color. */
+  /** Lightens (k>0) or darkens (k<0) a color. */
   function shade(hex, k) {
     const c = rgb(hex).map(v => Math.round(k >= 0 ? v + (255 - v) * k : v * (1 + k)));
     return '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
   }
 
-  /** Paleta completa de bioma a partir de los pocos colores de una arena. */
+  /** Full biome palette from an arena's few colors. */
   function arenaBiome(th) {
     const f = th.floor,
       w = th.wall,
       L = th.liq;
     return {
-      name: 'Grieta · ' + th.name,
+      name: 'Rift · ' + th.name,
       liquid: th.liquid,
       floor: [f, shade(f, 0.05), shade(f, -0.06)],
       dirt: [shade(f, -0.16), shade(f, -0.12), shade(f, -0.2)],
@@ -472,18 +472,18 @@ G.Tiles = (() => {
   for (const t of ARENA_TYPES) BIOMES.push(arenaBiome(ARENA_THEMES[t]));
   BIOMES[ARENA + ARENA_TYPES.indexOf('judgment')].name = ARENA_THEMES.judgment.name;
 
-  // ---------------- utilidades de color / píxel ----------------
+  // ---------------- color / pixel utilities ----------------
 
   function rgb(hex) {
     const n = parseInt(hex.slice(1), 16);
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   }
-  // Empaquetado ABGR (little-endian) para escribir de golpe en un Uint32Array.
+  // ABGR packing (little-endian) to write straight into a Uint32Array.
   function pack(hex, a = 255) {
     const [r, g, b] = rgb(hex);
     return ((a << 24) | (b << 16) | (g << 8) | r) >>> 0;
   }
-  /** Mezcla dos colores hex y devuelve el empaquetado. */
+  /** Mixes two hex colors and returns the packed value. */
   function mixPack(h1, h2, t) {
     const a = rgb(h1),
       b = rgb(h2);
@@ -491,7 +491,7 @@ G.Tiles = (() => {
     return ((255 << 24) | (c[2] << 16) | (c[1] << 8) | c[0]) >>> 0;
   }
 
-  /** Lienzo de píxeles: set(x,y,color) y canvas() al final. */
+  /** Pixel canvas: set(x,y,color) and canvas() at the end. */
   function Pix(w, h) {
     const cv = document.createElement('canvas');
     cv.width = w;
@@ -517,17 +517,17 @@ G.Tiles = (() => {
 
   const H = (x, y, s) => G.U.hash(x, y, s);
 
-  // ---------------- chunk de suelo ----------------
+  // ---------------- ground chunk ----------------
 
   /**
-   * Pinta un chunk de n×n tiles. `at(tx,ty)` devuelve el tipo de terreno
-   * global ('floor' | 'wall' | 'liquid'), así el autotiling ve más allá del
-   * borde del chunk.
+   * Paints an n×n tile chunk. `at(tx,ty)` returns the global terrain type
+   * ('floor' | 'wall' | 'liquid'), so autotiling can see past the
+   * chunk edge.
    */
   /**
-   * Máscara de tierra del chunk a resolución de píxel (más una fila por
-   * arriba para detectar bordes). El ruido se evalúa cada 4 px y se interpola:
-   * ~30 veces menos llamadas que evaluarlo píxel a píxel.
+   * The chunk's dirt mask at pixel resolution (plus one extra row
+   * above to detect edges). Noise is evaluated every 4 px and interpolated:
+   * ~30 times fewer calls than evaluating it pixel by pixel.
    */
   function dirtMask(gx0, gy0, W, field, seed) {
     const S = 4,
@@ -552,7 +552,7 @@ G.Tiles = (() => {
         mask[(y + 1) * W + x] = val > 0.64 ? 1 : 0;
       }
     }
-    // dirtAt(x, y) en coordenadas locales del chunk (y puede ser -1).
+    // dirtAt(x, y) in chunk-local coordinates (y may be -1).
     return (x, y) => mask[(y + 1) * W + x] === 1;
   }
 
@@ -576,7 +576,7 @@ G.Tiles = (() => {
           oy = j * T;
         const kind = at(tx, ty);
 
-        // 1) Suelo bajo todo (las esquinas redondeadas de las paredes lo dejan ver).
+        // 1) Ground under everything (rounded wall corners let it show).
         paintFloor(P, C, ox, oy, tx, ty, dirtAt, at);
 
         if (kind === 'wall') paintWall(P, C, ox, oy, tx, ty, at);
@@ -593,24 +593,24 @@ G.Tiles = (() => {
         const gx = tx * T + x,
           gy = ty * T + y;
         const lx = ox + x,
-          ly = oy + y; // coordenadas locales del chunk
+          ly = oy + y; // chunk-local coordinates
         const dirt = dirtAt(lx, ly);
         if (dirt) dirtCount++;
         const pal = dirt ? C.dirt : C.floor;
-        // Tono por ruido suave + tramado por píxel.
+        // Tone from smooth noise + per-pixel dithering.
         const band = H(gx >> 3, gy >> 3, 11) * 0.7 + H(gx, gy, 12) * 0.5;
         let col = pal[Math.min(pal.length - 1, Math.floor((band * pal.length) / 1.2))];
         const r = H(gx, gy, 13);
         if (r < 0.035) col = C.speck;
         else if (r > 0.985) col = C.light;
-        // Borde de la tierra: labio oscuro arriba, hierba que la invade abajo.
+        // Dirt edge: dark lip on top, grass creeping in below.
         if (dirt && !dirtAt(lx, ly - 1)) col = C.speck;
         else if (!dirt && dirtAt(lx, ly - 1) && r < 0.5) col = C.light;
         P.set(ox + x, oy + y, col);
       }
     }
     const dirt = dirtCount > (T * T) / 2;
-    // Sombra de contacto bajo las paredes que hay justo al norte.
+    // Contact shadow under walls directly to the north.
     if (at(tx, ty - 1) === 'wall') {
       for (let x = 0; x < T; x++) {
         P.set(ox + x, oy, C.wallFaceDark);
@@ -618,7 +618,7 @@ G.Tiles = (() => {
       }
     }
 
-    // Detalles: matojo, piedrecita o flor.
+    // Details: tuft, pebble or flower.
     const d = H(tx, ty, 14);
     const dx = ox + 3 + Math.floor(H(tx, ty, 15) * 10),
       dy = oy + 4 + Math.floor(H(tx, ty, 16) * 9);
@@ -632,14 +632,14 @@ G.Tiles = (() => {
       return;
     }
     if (d < 0.18) {
-      // matojo
+      // tuft
       P.set(dx, dy, C.light);
       P.set(dx - 1, dy - 1, C.light);
       P.set(dx + 1, dy - 1, C.light);
       P.set(dx, dy - 2, C.light);
       P.set(dx, dy + 1, C.speck);
     } else if (d < 0.26) {
-      // flor
+      // flower
       const fc = C.flowers[Math.floor(H(tx, ty, 17) * C.flowers.length)];
       P.set(dx, dy - 1, fc);
       P.set(dx - 1, dy, fc);
@@ -647,7 +647,7 @@ G.Tiles = (() => {
       P.set(dx, dy + 1, fc);
       P.set(dx, dy, C.light);
     } else if (d < 0.32) {
-      // piedrecita
+      // pebble
       P.set(dx, dy, C.light);
       P.set(dx + 1, dy, C.light);
       P.set(dx, dy + 1, C.speck);
@@ -661,11 +661,11 @@ G.Tiles = (() => {
       s = W(tx, ty + 1),
       w = W(tx - 1, ty),
       e = W(tx + 1, ty);
-    const FACE = s ? 0 : 6; // filas de cara frontal visibles
+    const FACE = s ? 0 : 6; // visible front-face rows
 
     for (let y = 0; y < T; y++) {
       for (let x = 0; x < T; x++) {
-        // Esquinas redondeadas exteriores: dejan ver el suelo.
+        // Rounded outer corners: let the ground show.
         if (!n && !w && x + y < 3) continue;
         if (!n && !e && T - 1 - x + y < 3) continue;
         if (!s && !w && x + (T - 1 - y) < 2) continue;
@@ -675,17 +675,17 @@ G.Tiles = (() => {
           gy = ty * T + y;
         let col;
         if (y >= T - FACE) {
-          // Cara frontal: vetas verticales y base oscura.
+          // Front face: vertical streaks and dark base.
           const fy = y - (T - FACE);
           col = C.wallFace[(x + (H(gx, 0, 21) < 0.5 ? 0 : 1)) % 3 === 0 ? 1 : 0];
           if (fy === 0) col = C.wallEdge;
           else if (y === T - 1) col = C.wallFaceDark;
           else if (H(gx, gy, 22) < 0.08) col = C.wallFaceDark;
         } else {
-          // Cara superior con tramado.
+          // Dithered top face.
           col = C.wallTop[Math.floor(H(gx >> 1, gy >> 1, 23) * 2.2 + H(gx, gy, 24) * 0.8) % C.wallTop.length];
           if (H(gx, gy, 25) < 0.05) col = C.wallLight;
-          // Bordes: luz al norte, contorno oscuro a los lados.
+          // Edges: light to the north, dark outline on the sides.
           if (!n && y === 0) col = C.wallEdge;
           else if (!n && y === 1) col = C.wallLight;
           if (!w && x === 0) col = C.wallEdge;
@@ -710,13 +710,13 @@ G.Tiles = (() => {
 
     for (let y = 0; y < T; y++) {
       for (let x = 0; x < T; x++) {
-        // Esquinas exteriores redondeadas: dejan ver el suelo de debajo.
+        // Rounded outer corners: let the ground beneath show.
         if (!n && !w && x + y < 3) continue;
         if (!n && !e && T - 1 - x + y < 3) continue;
         if (!s && !w && x + (T - 1 - y) < 3) continue;
         if (!s && !e && T - 1 - x + (T - 1 - y) < 3) continue;
 
-        // Distancia a la orilla dentro del tile (incluye esquinas interiores).
+        // Distance to the shore within the tile (includes inner corners).
         let d = Math.min(n ? BIG : y, s ? BIG : T - 1 - y, w ? BIG : x, e ? BIG : T - 1 - x);
         if (n && w && !nw) d = Math.min(d, Math.hypot(x, y) - 0.5);
         if (n && e && !ne) d = Math.min(d, Math.hypot(T - 1 - x, y) - 0.5);
@@ -728,16 +728,16 @@ G.Tiles = (() => {
         const r = H(gx, gy, 31);
         let col;
         if (d < 1)
-          col = C.shore; // labio de tierra
+          col = C.shore; // dirt lip
         else if (d < 2)
-          col = C.foam; // espuma
+          col = C.foam; // foam
         else if (d < 4)
-          col = C.liqLight; // agua somera
+          col = C.liqLight; // shallow water
         else if (d < 6) col = r < 0.5 ? C.liq : C.liqLight;
         else col = d < 8 && r < 0.5 ? C.liq : C.liqDeep;
         if (d >= 6 && d < BIG && r < 0.08) col = C.liq;
 
-        // Olas sueltas: rayitas horizontales de 3 px, pocas.
+        // Scattered ripples: a few 3 px horizontal dashes.
         if (d >= 3 && H(gx >> 2, gy, 33) < 0.045 && (gx & 3) !== 3) col = C.liqLight;
         if (d >= 3 && H(gx, gy, 34) < 0.004) col = C.foam;
         P.set(ox + x, oy + y, col);
@@ -745,9 +745,9 @@ G.Tiles = (() => {
     }
   }
 
-  // ---------------- sprites de objetos del escenario ----------------
+  // ---------------- scenery object sprites ----------------
 
-  const propCache = new Map(); // "bioma/tipo/variante" -> canvas
+  const propCache = new Map(); // "biome/type/variant" -> canvas
 
   function propSprite(bi, type, variant = 0) {
     const k = bi + '/' + type + '/' + variant;
@@ -771,7 +771,7 @@ G.Tiles = (() => {
   }
 
   function outline(P, col) {
-    // Contorno de 1 px alrededor de todo lo opaco.
+    // 1 px outline around everything opaque.
     const marks = [];
     for (let y = 0; y < P.h; y++)
       for (let x = 0; x < P.w; x++) {
@@ -814,7 +814,7 @@ G.Tiles = (() => {
       ];
       for (const [bx, by, br] of blobs) {
         disc(P, bx, by, br, (x, y, d) => {
-          // Luz desde arriba a la izquierda.
+          // Light from the top left.
           const lit = ((x - bx) * -0.6 + (y - by) * -0.8) / br;
           const idx = lit > 0.45 ? 3 : lit > 0.05 ? 2 : lit > -0.45 ? 1 : 0;
           return H(x, y, 41) < 0.12 && idx > 0 ? L[idx - 1] : L[idx];
@@ -870,7 +870,7 @@ G.Tiles = (() => {
       const P = Pix(22, 17);
       const R = B.rock.map(h => pack(h));
       const shine = pack('#ffffff');
-      // Peñasco achatado: elipse más ancha que alta, base plana.
+      // Squat boulder: ellipse wider than tall, flat base.
       for (let y = 2; y <= 15; y++)
         for (let x = 1; x <= 20; x++) {
           const nx = (x - 10.5) / 9.5,
@@ -882,7 +882,7 @@ G.Tiles = (() => {
           if (y >= 14) c = R[0];
           P.set(x, y, c);
         }
-      // Brillo y textura.
+      // Shine and texture.
       [
         [6, 5],
         [7, 5],
@@ -896,7 +896,7 @@ G.Tiles = (() => {
         [16, 11],
         [11, 7]
       ].forEach(([x, y]) => P.set(x, y, R[0]));
-      // Grietas en la variante dañada.
+      // Cracks on the damaged variant.
       if (variant === 1) {
         const dark = pack('#1b1d22');
         [
@@ -916,18 +916,18 @@ G.Tiles = (() => {
     },
 
     grass(B, variant) {
-      // Matojo de hojas en abanico: cada hoja es una curva que se inclina
-      // hacia fuera, con la base oscura y la punta clara. La variante 1 es el
-      // fotograma "mecido por el viento".
+      // Fan-shaped tuft of blades: each blade is a curve leaning
+      // outward, with a dark base and a light tip. Variant 1 is the
+      // "swaying in the wind" frame.
       const P = Pix(20, 17);
       const Gc = B.grass.map(h => pack(h));
       const dark = pack(B.speck);
       const sway = variant === 1 ? 1.2 : 0;
       const blades = 11;
-      // Primero las de atrás (más oscuras), luego las de delante.
+      // Back ones first (darker), then the front ones.
       for (let pass = 0; pass < 2; pass++) {
         for (let b = pass; b < blades; b += 2) {
-          const t = b / (blades - 1); // 0 izquierda .. 1 derecha
+          const t = b / (blades - 1); // 0 left .. 1 right
           const x0 = 3 + t * 13 + (H(b, 7, 52) - 0.5) * 2;
           const hgt = 8 + Math.floor(H(b, 3, 51) * 6) + (Math.abs(t - 0.5) < 0.25 ? 3 : 0);
           const lean = (t - 0.5) * 7 + sway * (0.6 + H(b, 1, 53));
@@ -946,9 +946,9 @@ G.Tiles = (() => {
       return P.canvas();
     },
 
-    // ---------- objetos interactivos ----------
+    // ---------- interactive objects ----------
 
-    /** Altar de poder. variante = efecto*2 + (usado ? 1 : 0). */
+    /** Power altar. variant = effect*2 + (used ? 1 : 0). */
     altar(B, variant) {
       const P = Pix(18, 27);
       const R = B.rock.map(h => pack(h));
@@ -961,11 +961,11 @@ G.Tiles = (() => {
         ['#ffd23f', '#c08a10', '#fff3b0']
       ][eff];
       const O = (used ? ['#6b7380', '#4a505c', '#9aa2ae'] : ORB).map(h => pack(h));
-      // Escalones, columna y losa.
+      // Steps, column and slab.
       for (let y = 21; y <= 25; y++) for (let x = 1; x <= 16; x++) P.set(x, y, R[y === 21 ? 2 : y >= 24 ? 0 : 1]);
       for (let y = 12; y <= 20; y++) for (let x = 5; x <= 12; x++) P.set(x, y, R[x === 5 ? 2 : x >= 11 ? 0 : 1]);
       for (let y = 10; y <= 11; y++) for (let x = 3; x <= 14; x++) P.set(x, y, R[y === 10 ? 2 : 1]);
-      // Runas de su color en la columna.
+      // Runes in its color on the column.
       [
         [7, 14],
         [8, 15],
@@ -974,7 +974,7 @@ G.Tiles = (() => {
         [7, 18],
         [10, 18]
       ].forEach(([x, y]) => P.set(x, y, O[1]));
-      // Orbe.
+      // Orb.
       disc(P, 8.5, 5.5, 4.2, (x, y, d) => {
         const lit = (8.5 - x) * 0.5 + (5.5 - y) * 0.7;
         return lit > 1.6 ? O[2] : d > 0.75 ? O[1] : O[0];
@@ -983,7 +983,7 @@ G.Tiles = (() => {
       return P.canvas();
     },
 
-    /** Manantial curativo. variante 1 = agotado. */
+    /** Healing spring. variant 1 = dried up. */
     spring(B, variant) {
       const P = Pix(34, 16);
       const R = B.rock.map(h => pack(h));
@@ -1013,7 +1013,7 @@ G.Tiles = (() => {
       return P.canvas();
     },
 
-    /** Cofre grande con candado. */
+    /** Big locked chest. */
     bigchest() {
       const P = Pix(24, 20);
       const wood = pack('#6b3a1e'),
@@ -1032,7 +1032,7 @@ G.Tiles = (() => {
           if (y === 2 && x > 1 && x < 22) c = iron;
           P.set(x, y, c);
         }
-      // Candado.
+      // Padlock.
       for (let x = 10; x <= 13; x++) {
         P.set(x, 5, iron);
       }
@@ -1049,7 +1049,7 @@ G.Tiles = (() => {
       return P.canvas();
     },
 
-    /** Trampa de Mundo Misterioso. variante: 0 veneno · 1 pegajosa · 2 explosiva. */
+    /** Mystery Dungeon trap. variant: 0 poison · 1 sticky · 2 explosive. */
     trap(B, variant) {
       const P = Pix(14, 14);
       const COL = [
@@ -1067,7 +1067,7 @@ G.Tiles = (() => {
           P.set(x, y, edge ? c : (x + y) % 2 ? base : baseL);
         }
       const sym = [
-        // veneno: calavera de puntos
+        // poison: dotted skull
         [
           [5, 4],
           [6, 4],
@@ -1088,7 +1088,7 @@ G.Tiles = (() => {
           [5, 9],
           [8, 9]
         ],
-        // pegajosa: gotas
+        // sticky: drops
         [
           [4, 4],
           [4, 5],
@@ -1105,7 +1105,7 @@ G.Tiles = (() => {
           [7, 10],
           [6, 11]
         ],
-        // explosiva: mina
+        // explosive: mine
         [
           [6, 3],
           [7, 3],
@@ -1134,7 +1134,7 @@ G.Tiles = (() => {
       return P.canvas();
     },
 
-    /** Grieta hacia la arena del legendario. variante = fotograma 0..3. */
+    /** Rift to the legendary's arena. variant = frame 0..3. */
     rift(B, variant) {
       const P = Pix(30, 46);
       const glow = pack('#7b3cff'),
@@ -1153,7 +1153,7 @@ G.Tiles = (() => {
           else if (ax <= 1.15 || H(px, y, 93 + variant) < 0.3) P.set(px, y, glow);
         }
       }
-      // Chispas en el centro.
+      // Sparks in the centre.
       for (let i = 0; i < 6; i++) P.set(13 + Math.floor(H(i, variant, 94) * 5), 8 + Math.floor(H(i, variant, 95) * 30), white);
       return P.canvas();
     },
@@ -1194,7 +1194,7 @@ G.Tiles = (() => {
     paintChunk,
     propSprite,
     clearProps,
-    /** Índice de bioma de la arena de un tipo. */
+    /** Biome index of a type's arena. */
     arenaBiome: type => ARENA + Math.max(0, ARENA_TYPES.indexOf(type))
   };
 })();

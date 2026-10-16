@@ -1,7 +1,7 @@
-# Vídeos de demostración (pesan mucho; se pueden subir aparte)
+# Demo videos (very large; can be uploaded separately)
 videos/
 
-# Cachés de los scripts de descarga
+# Download script caches
 .cache/
 
 # Build (npm run build)
@@ -13,13 +13,13 @@ __pycache__/
 *.log
 node_modules/
 
-# Sistema
+# OS files
 Thumbs.db
 desktop.ini
 .DS_Store
 
-# Contactos privados (emails de terceros): nunca al repositorio público
+# Private contacts (third-party emails): never in the public repository
 docs/CONTACTOS_CREADORES.md
 
-# Claves locales (ver .env.example)
+# Local secrets (see .env.example)
 .env

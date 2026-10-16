@@ -1,18 +1,18 @@
-/* ============ game.js — flujo del juego y bucle principal ============
+/* ============ game.js — game flow and main loop ============
  *
- *   login ──> test de personalidad ──> menú ──> run ──> resumen ──> menú
- *                (sólo la 1ª vez)          │
- *                                          ├─ Pokémon (colección)
- *                                          ├─ Mejoras
+ *   login ──> personality test ──────> menu ──> run ──> summary ──> menu
+ *                (first time only)         │
+ *                                          ├─ Pokémon (collection)
+ *                                          ├─ Upgrades
  *                                          └─ Gacha
  *
- * Estados del bucle: 'ui' (menús, con el mundo de fondo), 'playing',
+ * Loop states: 'ui' (menus, with the world in the background), 'playing',
  * 'levelup', 'paused', 'over'.
  *
- * Cooperativo (G.Coop.active): el anfitrión lleva enemigos, objetos y
- * experiencia; cada uno su Pokémon. La pausa no para el juego, las cartas de
- * nivel esperan a que elijan todos y un compañero caído se levanta si otro
- * se queda a su lado. Ver net/coop.js.
+ * Co-op (G.Coop.active): the host runs enemies, items and experience;
+ * each player runs their own Pokémon. Pause doesn't stop the game, level
+ * cards wait until everyone has picked, and a fallen teammate gets back up
+ * if another one stays beside them. See net/coop.js.
  */
 G.Game = (() => {
   let cv,
@@ -25,7 +25,7 @@ G.Game = (() => {
     last = 0,
     pendingLevels = 0;
   let pl = null;
-  let caught = []; // shinies conseguidos en esta run
+  let caught = []; // shinies caught in this run
   let biome = -1;
 
   const st = {
@@ -34,7 +34,7 @@ G.Game = (() => {
     }
   };
 
-  // ---------------- arranque ----------------
+  // ---------------- boot ----------------
 
   function init() {
     cv = document.getElementById('game');
@@ -42,7 +42,7 @@ G.Game = (() => {
     resize();
     addEventListener('resize', resize);
     G.Touch.init(cv);
-    // En móvil: al cambiar de app o girarlo en vertical, la partida se pausa.
+    // On mobile: switching apps or turning it to portrait pauses the run.
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) autoPause();
     });
@@ -56,8 +56,8 @@ G.Game = (() => {
   }
 
   function resize() {
-    // Resolución interna como mucho ×1,5: en pantallas ×2 dibujar el doble de
-    // píxeles era de lo que más costaba, y con el pixel art no se nota.
+    // Internal resolution at most ×1.5: on ×2 screens drawing twice the
+    // pixels was one of the most expensive things, and with pixel art it doesn't show.
     dpr = Math.min(1.5, window.devicePixelRatio || 1);
     w = cv.clientWidth;
     h = cv.clientHeight;
@@ -67,7 +67,7 @@ G.Game = (() => {
     checkOrientation();
   }
 
-  /** Móvil en vertical: aviso de girarlo (y pausa). */
+  /** Mobile in portrait: prompt to rotate it (and pause). */
   function checkOrientation() {
     const portrait = G.Touch.active && innerHeight > innerWidth;
     const el = document.getElementById('rotate');
@@ -78,7 +78,7 @@ G.Game = (() => {
     if (portrait) autoPause();
   }
 
-  /** Pausa sola (sólo en solitario: en grupo los demás siguen). */
+  /** Auto-pause (solo only: in a group the others keep playing). */
   function autoPause() {
     G.Touch.reset();
     if (state === 'playing' && !G.Coop.active) {
@@ -87,11 +87,11 @@ G.Game = (() => {
     }
   }
 
-  /** Pausa/continúa (tecla Esc o P, o el botón de pausa del móvil). */
-  let holdBy = []; // grupo: quién está eligiendo fusión (todo parado)
+  /** Pause/resume (Esc or P key, or the mobile pause button). */
+  let holdBy = []; // group: who is choosing a fusion (everything stopped)
 
   function togglePause() {
-    // En grupo la pausa no para el juego (los demás siguen jugando).
+    // In a group, pause doesn't stop the game (the others keep playing).
     if (G.Coop.active) {
       if (state !== 'playing') return;
       if (G.UI.isOpen('scr-pause')) G.UI.hide('scr-pause');
@@ -113,7 +113,7 @@ G.Game = (() => {
 
   // ---------------- run ----------------
 
-  /** @param coop  { seed, host, members } para una partida en grupo */
+  /** @param coop  { seed, host, members } for a group run */
   function startRun(coop = null) {
     holdBy = [];
     awayBy = null;
@@ -146,15 +146,15 @@ G.Game = (() => {
     pl = new G.Player(mon, perks, !!save.partnerShiny && G.DB.ownsShiny(mon.dex));
     banked = { t1: 0, t10: 0 };
     caught = [];
-    // Atajos: movimientos con hueco fijo (save.pbind[dex] = [id del 1, id del 2, ...]),
-    // antes de aprender nada: addMove ya los coloca.
+    // Shortcuts: moves with a fixed slot (save.pbind[dex] = [id of 1, id of 2, ...]),
+    // before learning anything: addMove already places them.
     ((save.pbind && save.pbind[mon.dex]) || []).forEach((id, i) => {
       if (id) pl.bind[id] = i;
     });
     pl.addMove(G.startMoveOf(mon.dex));
-    // Mejora "Veto": movimientos que no quieres que te salgan.
+    // "Veto" upgrade: moves you don't want to be offered.
     pl.banned = new Set(((save.pban && save.pban[mon.dex]) || []).slice(0, perks.bans));
-    // Mejora "Repertorio": un segundo movimiento de ataque al azar.
+    // "Repertoire" upgrade: a second random attack move.
     if (perks.startMoves >= 2) {
       const pool = G.Moves.poolFor(mon).filter(id => !pl.hasMove(id) && !pl.banned.has(id) && G.Moves.BY_ID[id].kind !== 'buff');
       if (pool.length) pl.addMove(G.U.pick(pool));
@@ -168,10 +168,10 @@ G.Game = (() => {
     G.Camera.x = pl.x;
     G.Camera.y = pl.y;
     G.Camera.shake = 0;
-    // Hojas de sprites locales: el compañero y los primeros enemigos.
+    // Local sprite sheets: the partner and the first enemies.
     G.Sprites.preload([mon.dex], 8000, pl.shiny);
     G.Audio.music(G.BIOME_MUSIC[0]);
-    // Para el ranking: el servidor apunta cuándo empieza la partida (anti-trampas).
+    // For the leaderboard: the server records when the run starts (anti-cheat).
     if (!coop || G.Coop.isHost) G.Ranking.runStarted(coop ? 'g' : 's');
     deathT = 0;
 
@@ -183,19 +183,19 @@ G.Game = (() => {
     endRun(false);
   }
 
-  /** Todos los jugadores de la partida (tú primero). */
+  /** Every player in the run (you first). */
   function everyone() {
     return G.Coop.active ? G.Coop.players() : [pl];
   }
 
-  /** Experiencia que hace falta para el siguiente nivel (cofres con candado). */
+  /** Experience needed for the next level (locked chests). */
   function levelXp() {
     if (!pl) return 20;
     const k = (G.Coop.active ? G.Coop.xpFactor() : 1) * (pl.xpMul || 1);
     return Math.ceil((pl.xpNext - pl.xp + 1) / k);
   }
 
-  // Destello de pantalla completa (viaje a la grieta).
+  // Full-screen flash (trip to the rift).
   let flashT = 0,
     flashDur = 1,
     flashCol = '#fff';
@@ -222,11 +222,11 @@ G.Game = (() => {
     return { t: time, ki: pl.kills, bo: pl.bosses, co: pl.coins, lv: pl.level, t1: pl.t1, t10: pl.t10 };
   }
 
-  /** Lo que el cooperativo necesita del juego. */
+  /** What co-op needs from the game. */
   /**
-   * Los tickets recogidos se guardan en cuanto los coges (como los shinies):
-   * antes sólo al acabar, y si la pestaña se cerraba de golpe se perdían.
-   * `banked` = los de esta partida que ya están en la partida guardada.
+   * Collected tickets are saved as soon as you pick them up (like shinies):
+   * before, only at the end, and if the tab was closed suddenly they were lost.
+   * `banked` = the ones from this run that are already in the save.
    */
   let banked = { t1: 0, t10: 0 };
   function bankTickets(save_ = true) {
@@ -245,7 +245,7 @@ G.Game = (() => {
   const coopApi = {
     team: teamState,
     summary,
-    // Invitado: el anfitrión manda el reloj y lo del equipo.
+    // Guest: the host sends the clock and the team stats.
     syncTeam(t) {
       if (Math.abs(t.time - time) > 0.4) time = t.time;
       if (t.level > pl.level) G.Audio.sfx('xp');
@@ -261,7 +261,7 @@ G.Game = (() => {
       bankTickets();
     },
     levelStart(level) {
-      // (Si tenías abierta la elección de objeto, vuelve al terminar: afterLevelUp.)
+      // (If you had the item choice open, it comes back afterwards: afterLevelUp.)
       if (state === 'choice' && openItem && G.Coop.active) G.Coop.holdEnd();
       state = 'levelup';
       G.UI.hide('scr-pause');
@@ -287,7 +287,7 @@ G.Game = (() => {
         afterLevelUp();
       }
     },
-    /** ¿Estás eligiendo algo que para la partida (objeto o vínculo)? */
+    /** Are you choosing something that pauses the run (item or bond)? */
     choosing() {
       return state === 'choice';
     },
@@ -308,7 +308,7 @@ G.Game = (() => {
           t10: d.t10 || pl.t10
         });
       if (d && d.t) time = d.t;
-      if (d && d.why === 'host') G.UI.toast('El anfitrión ha terminado la partida', 3200);
+      if (d && d.why === 'host') G.UI.toast('The host has ended the game', 3200);
       endRun(!(d && d.why === 'host'));
     },
     lost(msg) {
@@ -319,23 +319,23 @@ G.Game = (() => {
       offerItem(id);
     },
     mateLeft() {},
-    /** Grupo: quién está eligiendo fusión. Mientras haya alguien, todo parado. */
+    /** Group: who is choosing a fusion. While anyone is, everything is stopped. */
     hold(names) {
       holdBy = names || [];
       const mine = G.UI.isOpen('scr-bond');
       if (holdBy.length) {
         if (state === 'playing') state = 'held';
-        if (pl && pl.bonds > 0) offerBond(true); // si tú también tienes vínculo, eliges a la vez
-        const others = holdBy.filter(n => n !== (G.Social.me && G.Social.me.name) && n !== 'Tú');
+        if (pl && pl.bonds > 0) offerBond(true); // if you have a bond too, you choose at the same time
+        const others = holdBy.filter(n => n !== (G.Social.me && G.Social.me.name) && n !== 'You');
         if (!mine && others.length)
-          G.Spawner.say('Pausa: ' + others.join(', ') + ' ' + (others.length > 1 ? 'están eligiendo…' : 'está eligiendo…'), 999, true);
-        else if (!others.length) G.Spawner.say(awayBy ? awayText() : '', awayBy ? 999 : 0, true); // sólo tú: sin aviso viejo
+          G.Spawner.say(others.length > 1 ? `Paused: ${others.join(', ')} are choosing…` : `Paused: ${others[0]} is choosing…`, 999, true);
+        else if (!others.length) G.Spawner.say(awayBy ? awayText() : '', awayBy ? 999 : 0, true); // only you: no stale notice
       } else {
         if (state === 'held' && !awayBy) state = 'playing';
         G.Spawner.say(awayBy ? awayText() : '', awayBy ? 999 : 0, true);
       }
     },
-    /** Grupo (invitado): el anfitrión se ha ido de la pestaña o no responde: todo parado. */
+    /** Group (guest): the host has left the tab or isn't responding: everything stopped. */
     away(name) {
       awayBy = name || null;
       if (awayBy) {
@@ -348,9 +348,9 @@ G.Game = (() => {
     }
   };
   let awayBy = null;
-  const awayText = () => 'Pausa: esperando a ' + awayBy + ' (anfitrión)…';
+  const awayText = () => `Paused: waiting for ${awayBy} (host)…`;
 
-  /** Has llevado a casa a un Pokémon perdido y se une a ti (events.js). */
+  /** You brought a lost Pokémon home and it joins you (events.js). */
   G.onRescue = (dex, name) => {
     if (!G.DB.save || !pl) return;
     const isNew = !G.DB.owns(dex);
@@ -358,11 +358,11 @@ G.Game = (() => {
       G.DB.grant(dex, 'rescue');
       G.DB.commit(true);
     } else pl.coins += 150;
-    G.Spawner.say(isNew ? '¡' + name + ' se une a tu equipo!' : '¡' + name + ' te da las gracias! (+150 monedas, ya lo tenías)', 4);
+    G.Spawner.say(isNew ? `${name} joins your team!` : `${name} thanks you! (+150 coins, you already had it)`, 4);
     G.Audio.sfx('shinyGet');
   };
 
-  /** Un shiny salvaje cae: te lo quedas (y la versión normal si no la tenías). */
+  /** A wild shiny falls: you keep it (and the normal version if you didn't have it). */
   G.onShinyCaught = e => {
     if (!G.DB.save || !pl) return;
     if (G.Coop.isHost) G.Coop.shinyCaught(e);
@@ -370,14 +370,14 @@ G.Game = (() => {
     G.DB.save.stats.shinies++;
     G.DB.commit(true);
     caught.push({ dex: e.dex, isNew });
-    G.Spawner.say(isNew ? '¡Has conseguido a ' + e.name + ' shiny!' : '¡Otro ' + e.name + ' shiny! (+300 monedas)', 4);
+    G.Spawner.say(isNew ? `You got a shiny ${e.name}!` : `Another shiny ${e.name}! (+300 coins)`, 4);
     if (!isNew) pl.coins += 300;
     G.Audio.sfx('shinyGet');
   };
 
   function endRun(dead = true) {
     if (state === 'over' || !pl) return;
-    const coop = !!pl.uid; // sólo las partidas en grupo le ponen uid
+    const coop = !!pl.uid; // only group runs give it a uid
     const wasHost = !!pl.coopHost;
     const team = coop ? G.Coop.members.slice() : [];
     if (G.Coop.active) G.Coop.end();
@@ -388,12 +388,12 @@ G.Game = (() => {
     const save = G.DB.save;
     const mul = pl.coinMul;
     const parts = {
-      tiempo: Math.floor(time / 5),
-      derrotados: Math.floor(pl.kills * 0.25),
-      jefes: pl.bosses * 80,
-      recogidas: pl.coins
+      time: Math.floor(time / 5),
+      defeated: Math.floor(pl.kills * 0.25),
+      bosses: pl.bosses * 80,
+      collected: pl.coins
     };
-    const coins = Math.round((parts.tiempo + parts.derrotados + parts.jefes + parts.recogidas) * mul);
+    const coins = Math.round((parts.time + parts.defeated + parts.bosses + parts.collected) * mul);
     const record = time > save.stats.bestTime;
 
     save.coins += coins;
@@ -409,14 +409,14 @@ G.Game = (() => {
     G.Judgment.reset();
     G.Progress.event('runEnd', { time, level: pl.level, coins: pl.coins, types: pl.mon.types, group: coop });
     G.Progress.checkAch();
-    // A la nube al acabar la partida (como mucho cada 30 min); si la marca entra
-    // en un top (hoy, semana o mes), enseguida (abajo, tras subirla al ranking).
+    // To the cloud when the run ends (at most every 30 min); if the score makes
+    // a top list (today, week or month), right away (below, after submitting it to the leaderboard).
     G.DB.commit('run');
     if (G.Social.me) G.Social.publishProfile();
 
-    // Ranking: en solitario cada uno lo suyo; en grupo lo sube el anfitrión.
+    // Leaderboard: solo, each player submits their own; in a group the host submits it.
     const mark = { t: Math.floor(time), lv: pl.level, kills: pl.kills };
-    // Si la partida se ha tocado (ver clean()), no sube al ranking (sin avisar); lo demás, sí.
+    // If the run was tampered with (see clean()), it isn't submitted to the leaderboard (silently); everything else is.
     const ok = clean();
     const sent =
       ok && !coop
@@ -448,8 +448,8 @@ G.Game = (() => {
         breakdown:
           Object.entries(parts)
             .filter(([, v]) => v)
-            .map(([k, v]) => `${k} ${v}`)
-            .join(' · ') + (mul > 1 ? ` · ×${mul.toFixed(2)} Fortuna` : '')
+            .map(([k, v]) => G.I18n.f(k + ' {x}', v))
+            .join(' · ') + (mul > 1 ? ' ' + G.I18n.f('· ×{x} Fortune', mul.toFixed(2)) : '')
       },
       () => {
         pl = null;
@@ -459,13 +459,13 @@ G.Game = (() => {
   }
 
   /*
-   * ¿Partida limpia? Sólo cosas que ningún jugador legal puede hacer, con
-   * márgenes enormes (el sistema del 10-10 daba falsos positivos):
-   *   - el reloj de la partida va más deprisa que el real (trucos de velocidad)
-   *   - funciones de tu Pokémon sustituidas (así se hace uno invencible)
-   *   - vida, ataque, velocidad o recarga muy por encima de lo posible
-   *   - se han usado las funciones de pruebas (saltar el reloj...)
-   * Si algo salta, esa partida no sube al ranking (sin avisar) y nada más.
+   * Clean run? Only things no legitimate player can do, with
+   * huge margins (the 10-10 system gave false positives):
+   *   - the run clock runs faster than real time (speed hacks)
+   *   - your Pokémon's functions replaced (that's how you make yourself invincible)
+   *   - HP, attack, speed or cooldown far beyond what's possible
+   *   - the testing functions were used (skipping the clock...)
+   * If anything trips, that run isn't submitted to the leaderboard (silently), nothing more.
    */
   let runReal = 0,
     tampered = false;
@@ -478,18 +478,18 @@ G.Game = (() => {
     return true;
   }
 
-  // ---------------- subida de nivel ----------------
+  // ---------------- level up ----------------
 
   function maybeLevelUp() {
     if (pendingLevels <= 0 || state !== 'playing') return;
     if (G.Coop.active) {
-      // En grupo, las cartas salen a la vez para todos y se espera a que elijan.
+      // In a group, the cards show up for everyone at once and wait until they pick.
       if (G.Coop.players().every(p => p.dead)) return;
       pendingLevels--;
       G.Coop.levelStart(pl.level);
       return;
     }
-    // Nunca abras cartas con el Pokémon caído (morir y recoger XP en el mismo frame).
+    // Never open cards with the Pokémon fainted (dying and picking up XP on the same frame).
     if (pl.dead) return;
     pendingLevels--;
     state = 'levelup';
@@ -501,24 +501,24 @@ G.Game = (() => {
     });
   }
 
-  // ---------------- vínculos ----------------
+  // ---------------- bonds ----------------
 
   /**
-   * Vínculo de un legendario: eliges qué movimientos se fusionan.
-   * Si ahora no se puede (no hay dos sueltos), se guarda hasta que aprendas
-   * otro movimiento. Se mira en cada fotograma: si otra pantalla la tapa (cartas
-   * de nivel en grupo, pausa), vuelve a salir al cerrarla.
-   * @param quiet  no avisar si todavía no se puede
+   * Legendary bond: you choose which moves get fused.
+   * If it isn't possible right now (no two free moves), it is kept until you learn
+   * another move. Checked every frame: if another screen covers it (level
+   * cards in a group, pause), it shows up again when that one closes.
+   * @param quiet  don't announce it if it isn't possible yet
    */
   function offerBond(quiet = false) {
     if (!pl || pl.bonds <= 0 || pl.dead || (state !== 'playing' && state !== 'held') || G.Rift.inArena) return;
     if (['scr-bond', 'scr-pause', 'scr-item', 'scr-levelup'].some(G.UI.isOpen)) return;
     const opt = pl.bondOptions();
     if (!opt) {
-      if (!quiet) G.Spawner.say('Guardas el vínculo: aprende otro movimiento para usarlo', 3, true);
+      if (!quiet) G.Spawner.say('Bond saved: learn another move to use it', 3, true);
       return;
     }
-    // Se para el juego; en grupo, para todos hasta que cada uno elige (G.Coop.holdStart).
+    // The game stops; in a group, for everyone until each one has chosen (G.Coop.holdStart).
     state = 'choice';
     if (G.Coop.active) G.Coop.holdStart();
     G.Audio.sfx('levelup');
@@ -527,13 +527,13 @@ G.Game = (() => {
       G.Audio.sfx('legend');
       G.FX.ring(pl.x, pl.y, 8, 130, '#ff8ad8', 0.8, 6);
       G.FX.burst(pl.x, pl.y - pl.bodyH * 0.5, '#ffb3e6', 40, 240);
-      G.Spawner.say('¡Vínculo! ' + group.length + ' movimientos a la vez', 2.6, true);
+      G.Spawner.say(`Bond! ${group.length} moves at once`, 2.6, true);
       if (state === 'choice') state = holdBy.length ? 'held' : 'playing';
       if (G.Coop.active) G.Coop.holdEnd();
     });
   }
 
-  // ---------------- recogida ----------------
+  // ---------------- pickups ----------------
 
   const PICK_SFX = {
     xp: 'xp',
@@ -548,14 +548,14 @@ G.Game = (() => {
   };
 
   /*
-   * Cooperativo: la elección de objeto y las cartas de nivel no pueden taparse.
-   * Si llega un objeto con las cartas abiertas, espera a que elijas carta; y si
-   * las cartas llegan con la elección de objeto abierta, ésta vuelve a salir al
-   * terminar. (Antes una cerraba la otra, nadie podía terminar de elegir y la
-   * partida se quedaba parada para todos.)
+   * Co-op: the item choice and the level cards must not cover each other.
+   * If an item arrives while the cards are open, it waits until you pick a card; and if
+   * the cards arrive while the item choice is open, that one comes back once you're
+   * done. (Before, one closed the other, nobody could finish choosing and the
+   * run stayed stuck for everyone.)
    */
-  let openItem = null; // { cur, next, take } elección de objeto sin terminar
-  const laterItems = []; // objetos recogidos con las cartas de nivel abiertas
+  let openItem = null; // { cur, next, take } unfinished item choice
+  const laterItems = []; // items picked up while the level cards were open
   function afterLevelUp() {
     if (state !== 'playing' && state !== 'held') return;
     if (openItem && !G.UI.isOpen('scr-item')) {
@@ -570,19 +570,19 @@ G.Game = (() => {
     if (laterItems.length) offerItem(laterItems.shift());
   }
 
-  /** Has cogido un objeto: si no llevas ninguno te lo pones; si no, eliges. */
+  /** You picked up an item: if you hold none you equip it; otherwise you choose. */
   function offerItem(id) {
     if (!pl || !G.Items.BY[id]) return;
     if (state === 'levelup' || G.UI.isOpen('scr-levelup')) {
       laterItems.push(id);
       return;
     }
-    let mine = false; // esta elección es la que ha parado el juego
+    let mine = false; // this choice is the one that stopped the game
     const take = got => {
       openItem = null;
       if (got !== pl.item) {
         pl.equip(got);
-        G.Spawner.say('¡Llevas ' + G.Items.BY[got].name + '!', 2.6, true);
+        G.Spawner.say(`You're holding ${G.Items.BY[got].name}!`, 2.6, true);
         G.Progress.event('item', { id: got });
       }
       if (!mine) {
@@ -598,11 +598,11 @@ G.Game = (() => {
       return;
     }
     if (pl.item === id) {
-      G.Spawner.say('Ya llevas ' + G.Items.BY[id].name, 2, true);
+      G.Spawner.say(`You already hold ${G.Items.BY[id].name}`, 2, true);
       return;
     }
-    // Se para el juego mientras eliges; en grupo, para todos (como con las
-    // fusiones). Antes en grupo seguía y te pegaban mientras elegías.
+    // The game stops while you choose; in a group, for everyone (as with
+    // fusions). Before, in a group it kept going and you got hit while choosing.
     if (state === 'playing' || state === 'held') {
       mine = true;
       state = 'choice';
@@ -619,11 +619,11 @@ G.Game = (() => {
     G.RunUI.showItemChoice(pl.item, id, take);
   }
 
-  /** @param who  quien lo ha cogido (en cooperativo puede ser un compañero) */
+  /** @param who  who picked it up (in co-op it can be a teammate) */
   function onCollect(p, who = pl) {
     const mine = who === pl;
     if (G.Coop.active && !G.Coop.isHost) {
-      // Copia de un objeto del anfitrión: el efecto lo decide él.
+      // Copy of a host item: the host decides the effect.
       if (mine) G.Audio.sfx(PICK_SFX[p.kind]);
       return;
     }
@@ -649,7 +649,7 @@ G.Game = (() => {
       G.FX.dmgText(
         who.x,
         who.y - who.bodyH - 8,
-        p.kind === 'ticket' ? '+1 ticket' : '¡Ticket ×10!',
+        p.kind === 'ticket' ? '+1 ticket' : 'Ticket ×10!',
         p.kind === 'ticket' ? '#ffd23f' : '#d9a6ff',
         true
       );
@@ -677,14 +677,14 @@ G.Game = (() => {
     }
   }
 
-  // ---------------- teclado ----------------
+  // ---------------- keyboard ----------------
 
   function handleKeys() {
     if (G.SettingsUI.isOpen) {
       if (G.Input.tap('escape')) G.SettingsUI.close();
       return;
     }
-    // La Sentencia de Arceus: Espacio, Intro o Esc saltan la animación (si se puede).
+    // Arceus's Judgment: Space, Enter or Esc skip the animation (when allowed).
     if (G.Judgment.cinematic && state === 'playing') {
       if (['space', 'enter', 'escape'].some(k => G.Input.tap(k))) G.Judgment.skip();
       return;
@@ -709,7 +709,7 @@ G.Game = (() => {
       return;
     }
     if (state === 'ui') {
-      // Esc en una subpantalla del menú vuelve al menú.
+      // Esc on a menu sub-screen goes back to the menu.
       if (
         G.Input.tap('escape') &&
         !G.UI.isOpen('scr-profile') &&
@@ -731,7 +731,7 @@ G.Game = (() => {
     if (G.Input.tap('keye') || G.Input.tap('tab')) pl.cycle(1);
   }
 
-  // ---------------- bucle ----------------
+  // ---------------- loop ----------------
 
   let deathT = 0;
 
@@ -740,12 +740,12 @@ G.Game = (() => {
   let fpsShown = 60,
     fpsAcc = 0,
     fpsN = 0;
-  // El siguiente fotograma se pide ANTES de nada: si algo falla a mitad, el
-  // juego sigue (antes se quedaba congelado para siempre y había que recargar;
-  // así se perdió una partida enorme al abrirse una grieta).
-  // Si falla fotograma tras fotograma (el juego ya no avanza ni se ve), la
-  // partida se da por terminada a los ~3 s y se guarda: tiempo, derrotados,
-  // récords y ranking. Mejor eso que una pantalla negra y perderlo todo.
+  // The next frame is requested BEFORE anything else: if something fails midway, the
+  // game keeps going (before, it froze forever and you had to reload;
+  // a huge run was lost that way when a rift opened).
+  // If it fails frame after frame (the game no longer advances or shows), the
+  // run is ended after ~3 s and saved: time, defeated,
+  // records and leaderboard. Better that than a black screen and losing everything.
   let loopErrs = 0,
     errRun = 0;
   function loop(ts) {
@@ -754,15 +754,15 @@ G.Game = (() => {
       frame(ts);
       errRun = 0;
     } catch (e) {
-      if (loopErrs++ < 5) console.error('[Game] fallo en un fotograma:', e);
+      if (loopErrs++ < 5) console.error('[Game] frame error:', e);
       G.Input.endFrame();
       if (++errRun === 180 && pl && state !== 'ui' && state !== 'over') {
         try {
           G.UI.hideAll();
           quitRun();
-          G.UI.toast('El juego ha fallado: tu partida se ha guardado hasta aquí', 5000);
+          G.UI.toast('The game crashed: your run has been saved up to this point', 5000);
         } catch (e2) {
-          console.error('[Game] no se pudo cerrar la partida:', e2);
+          console.error('[Game] could not end the run:', e2);
         }
       }
     }
@@ -789,7 +789,7 @@ G.Game = (() => {
       G.FX.update(dt * 0.25);
       pl.anim.update(dt * 0.25);
     }
-    // La red se atiende siempre (también con las cartas de nivel abiertas).
+    // The network is always serviced (also with the level cards open).
     if (G.Coop.active && pl && state !== 'ui' && state !== 'over') G.Coop.tick(dt);
 
     if (pl && state !== 'ui') render();
@@ -802,7 +802,7 @@ G.Game = (() => {
   function update(dt) {
     const coop = G.Coop.active;
     if (flashT > 0) flashT -= dt;
-    // La Sentencia de Arceus: mientras dura la animación, todo lo demás se para.
+    // Arceus's Judgment: while the animation plays, everything else stops.
     if (G.Judgment.cinematic) {
       G.Judgment.cineTick(dt);
       pl.anim.update(dt);
@@ -812,8 +812,8 @@ G.Game = (() => {
       G.Audio.music(G.Judgment.music);
       return;
     }
-    // Tras caer, deja que se vea la animación de Faint antes del resumen.
-    // (En la arena de la grieta no: allí caer sólo te echa de vuelta.)
+    // After fainting, let the Faint animation play before the summary.
+    // (Not in the rift arena: there fainting just sends you back.)
     if (pl.dead && !coop && !G.Rift.inArena) {
       deathT += dt;
       pl.update(dt);
@@ -883,14 +883,14 @@ G.Game = (() => {
     if (G.Coop.isHost) checkAllDown(dt);
   }
 
-  /** Caído en grupo: un compañero a tu lado te va levantando. */
+  /** Fainted in a group: a teammate next to you gradually revives you. */
   function reviveTick(dt) {
     const helper = G.Coop.puppets().some(p => !p.dead && G.U.dist2(p.x, p.y, pl.x, pl.y) < 56 * 56);
     pl.reviveT = helper ? (pl.reviveT || 0) + dt : Math.max(0, (pl.reviveT || 0) - dt * 0.5);
     if (pl.reviveT >= G.Player.REVIVE_TIME) pl.revive(0.5);
   }
 
-  /** Anfitrión: si caéis todos, se acaba (tras ver caer al último). */
+  /** Host: if everyone faints, it ends (after showing the last one fall). */
   function checkAllDown(dt) {
     if (G.Rift.inArena || !G.Coop.players().every(p => p.dead)) {
       deathT = 0;
@@ -904,7 +904,7 @@ G.Game = (() => {
     }
   }
 
-  // ---------------- dibujo ----------------
+  // ---------------- drawing ----------------
 
   function drawScene(cam, extra) {
     const t = performance.now() / 1000;
@@ -914,9 +914,9 @@ G.Game = (() => {
     G.Combat.drawGroundFields(ctx);
     G.Pickups.draw(ctx);
 
-    // Todo lo que tiene "pies" se ordena por Y: objetos, enemigos, jugador.
+    // Everything with "feet" is sorted by Y: props, enemies, player.
     const items = [];
-    // Los planos (manantiales, trampas) siempre debajo de todo lo demás.
+    // Flat ones (springs, traps) always below everything else.
     for (const p of G.World.visibleProps(cam)) items.push({ y: p.flat ? p.y - 4000 : p.y, prop: p });
     for (const e of G.EnemyMgr.drawables(cam)) items.push({ y: e.y, ent: e });
     for (const e of extra) items.push({ y: e.y, ent: e });
@@ -949,7 +949,7 @@ G.Game = (() => {
 
     G.Weather.draw(ctx, w, h, frameDt);
     G.World.drawVignette(ctx, w, h);
-    // Niebla: la viñeta se cierra un poco (sin tapar el centro).
+    // Fog: the vignette closes in a bit (without covering the center).
     const fog = G.Weather.vignette;
     if (fog > 0) {
       const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.32, w / 2, h / 2, Math.max(w, h) * 0.62);
@@ -971,7 +971,7 @@ G.Game = (() => {
     }
     if (flashT > 0) {
       ctx.save();
-      // "Menos destellos": el fogonazo de pantalla se queda en un tercio.
+      // "Fewer flashes": the screen flash is reduced to a third.
       ctx.globalAlpha = Math.min(1, (flashT / flashDur) * 1.4) * (G.Settings.get('calm') ? 0.3 : 1);
       ctx.fillStyle = flashCol;
       ctx.fillRect(0, 0, w, h);
@@ -979,11 +979,11 @@ G.Game = (() => {
     }
   }
 
-  // ---------------- fondo de los menús ----------------
+  // ---------------- menu background ----------------
 
   /**
-   * El mundo de verdad, con Pokémon salvajes paseando y la cámara a la deriva.
-   * Así el menú enseña desde el primer segundo cómo se ve el juego.
+   * The real world, with wild Pokémon wandering and the camera drifting.
+   * That way the menu shows what the game looks like from the very first second.
    */
   const Backdrop = (() => {
     let wanderers = [],
@@ -1031,7 +1031,7 @@ G.Game = (() => {
     function step(dt) {
       t += dt;
       G.World.update(dt, G.Camera);
-      // Deriva lenta de la cámara.
+      // Slow camera drift.
       G.Camera.x += Math.cos(t * 0.05) * 14 * dt;
       G.Camera.y += Math.sin(t * 0.037) * 10 * dt;
       G.Camera.follow(G.Camera.x, G.Camera.y, dt);
@@ -1046,7 +1046,7 @@ G.Game = (() => {
       for (const wd of wanderers) {
         wd.t -= dt;
         if (wd.t <= 0) {
-          // Pasea, se para o "ataca" al aire de vez en cuando.
+          // Wanders, stops, or "attacks" the air now and then.
           wd.t = G.U.rand(1, 3.5);
           const r = Math.random();
           if (r < 0.55) {
@@ -1066,7 +1066,7 @@ G.Game = (() => {
         if (moving) wd.anim.dir = G.Sprites.dirFromAngle(Math.atan2(wd.vy, wd.vx));
         wd.anim.loop(moving ? 'Walk' : 'Idle');
         wd.anim.update(dt);
-        // Si se queda fuera de cámara, reaparece dentro.
+        // If it ends up off camera, it reappears inside.
         if (!G.Camera.sees(wd.x, wd.y, 120)) Object.assign(wd, spawn(wd.dex, false));
       }
     }
@@ -1084,7 +1084,7 @@ G.Game = (() => {
       G.World.drawVignette(ctx, w, h);
     }
 
-    /** Al volver de una run, recupera el mundo del menú. */
+    /** When coming back from a run, restores the menu world. */
     function restore() {
       G.World.reset(4242);
       G.World.setBiome(bi, true);
@@ -1106,22 +1106,22 @@ G.Game = (() => {
     levelXp,
     flash,
     offerBond,
-    /** Para pruebas: salta el reloj de la run. */
+    /** For testing: skips the run clock. */
     debugTime(t) {
       tampered = true;
       time = t;
     },
-    /** Para grabar vídeos: cámara lenta (0,5 = mitad de velocidad). */
+    /** For recording videos: slow motion (0.5 = half speed). */
     debugSpeed(k) {
       if (k > 1) tampered = true;
       speedK = k;
     },
     togglePause,
-    /** Abandona la partida en curso (p. ej. al cerrar sesión desde Ajustes). */
+    /** Abandons the current run (e.g. when logging out from Settings). */
     quit() {
       if (state !== 'ui' && state !== 'over') quitRun();
     },
-    /** Para grabar vídeos: abre las cartas de subir de nivel. */
+    /** For recording videos: opens the level-up cards. */
     debugLevelUp() {
       tampered = true;
       pl.level++;
@@ -1141,7 +1141,7 @@ G.Game = (() => {
   };
 })();
 
-/* ============ Flow — transiciones entre pantallas ============ */
+/* ============ Flow — screen transitions ============ */
 G.Flow = {
   boot() {
     G.UI.initChrome();
@@ -1158,14 +1158,14 @@ G.Flow = {
     G.SupportUI.init();
     G.NewsUI.init();
     G.Updater.init();
-    // Tu nombre arriba a la derecha abre tu perfil.
+    // Your name at the top right opens your profile.
     document.getElementById('user-pill').onclick = () => G.GoalsUI.open('profile');
-    G.Audio.music('village'); // suena tras el primer clic (lo exige el navegador)
+    G.Audio.music('village'); // plays after the first click (the browser requires it)
     G.Game.init();
-    // La base de datos (nube o local) recupera la sesión anterior.
+    // The database (cloud or local) restores the previous session.
     G.DB.ready().then(restored => {
       document.getElementById('boot').classList.add('hidden');
-      // En otra tarea: crear el sonido para comprobarlo cuesta ~60 ms y no debe bloquear la carga.
+      // In another task: creating the audio to check it costs ~60 ms and must not block loading.
       setTimeout(
         () =>
           this.tapToStart(() => {
@@ -1177,9 +1177,9 @@ G.Flow = {
     });
   },
   /**
-   * "Pulsa para empezar": los navegadores no dejan que una web suene hasta
-   * que se toca algo. Con esta pantalla la música empieza en cuanto entras.
-   * (Si el navegador ya deja sonar, no sale.)
+   * "Tap to start": browsers don't let a website play sound until
+   * something is touched. With this screen the music starts as soon as you enter.
+   * (If the browser already allows sound, it doesn't show.)
    */
   tapToStart(then) {
     G.Audio.unlock();
@@ -1216,7 +1216,7 @@ G.Flow = {
     G.Audio.music('village');
     G.MenuUI.open();
   },
-  /** Al cerrar el resumen: a la sala si sigues en una, si no al menú. */
+  /** When closing the summary: to the room if you're still in one, otherwise to the menu. */
   afterRun() {
     if (G.Social.room) {
       if (G.Game.state !== 'ui') G.Game.toUI();
@@ -1228,7 +1228,7 @@ G.Flow = {
   play() {
     G.Game.startRun();
   },
-  /** Empieza la partida en grupo (el anfitrión la manda a todos). */
+  /** Starts the group run (the host sends it to everyone). */
   startCoop(cfg) {
     if (G.Game.state !== 'ui' || !G.Social.room) return;
     G.LobbyUI.close();

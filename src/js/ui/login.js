@@ -1,4 +1,4 @@
-/* ============ login.js — inicio: entrar con Google, o jugar sin cuenta ============ */
+/* ============ login.js — start: sign in with Google, or play without an account ============ */
 G.LoginUI = (() => {
   const $ = G.UI.$;
 
@@ -11,7 +11,7 @@ G.LoginUI = (() => {
       G.DB.playLocal();
       G.Flow.afterLogin();
     };
-    // La página se va a Google y vuelve con la sesión iniciada (G.DB.ready()).
+    // The page goes to Google and comes back signed in (G.DB.ready()).
     $('btn-google').onclick = async () => {
       $('login-err').textContent = '';
       $('btn-google').disabled = true;
@@ -21,26 +21,26 @@ G.LoginUI = (() => {
     };
   }
 
-  /** Explica dónde se guarda la partida según el modo de la base de datos. */
+  /** Explains where the game is saved depending on the database mode. */
   function modeNote() {
-    if (G.DB.mode === 'cloud') return 'Tu partida se guarda en la nube: entra desde cualquier aparato. Como invitado no se guarda.';
+    if (G.DB.mode === 'cloud') return 'Your game is saved in the cloud: sign in from any device. Guest progress is not saved.';
     const why =
       G.DB.localReason === 'dev'
-        ? 'Modo desarrollo: la partida sólo se guarda en este navegador.'
+        ? 'Development mode: your game is only saved in this browser.'
         : G.DB.localReason === 'file'
-          ? 'Abierto desde un archivo: la partida sólo se guarda en este navegador. Para guardar en la nube, juega en la versión publicada.'
+          ? 'Opened from a file: your game is only saved in this browser. To save in the cloud, play the online version.'
           : G.DB.localReason === 'host'
-            ? 'Esta no es la web oficial: la partida sólo se guarda en este navegador. El juego oficial y gratis está en survivor.preciostcg.com.'
+            ? 'This is not the official website: your game is only saved in this browser. The official, free game is at survivor.preciostcg.com.'
             : G.DB.localReason === 'config'
-              ? 'Nube sin configurar: la partida sólo se guarda en este navegador.'
-              : 'No se pudo conectar con la nube: la partida sólo se guarda en este navegador.';
+              ? 'Cloud not configured: your game is only saved in this browser.'
+              : "Couldn't connect to the cloud: your game is only saved in this browser.";
     return why;
   }
 
   function open() {
     G.UI.chrome(false);
     G.UI.show('scr-login');
-    $('login-err').textContent = G.DB.storageOk ? '' : 'Este navegador no deja guardar datos: juega como invitado.';
+    $('login-err').textContent = G.DB.storageOk ? '' : "This browser won't let us save data: play as a guest.";
     $('btn-google').classList.toggle('hidden', G.DB.mode !== 'cloud');
     $('btn-local').classList.toggle('hidden', G.DB.mode === 'cloud');
     $('login-mode').textContent = modeNote();

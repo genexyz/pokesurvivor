@@ -1,23 +1,23 @@
-/* ============ layout-ui.js — colocar los botones (móvil) ============
- * Ajustes > Controles > Colocar los botones: se ven los ataques (con el
- * objeto), la pausa y, si es fijo, el joystick, y se arrastran a donde se
- * quiera. Se guarda el centro de cada cosa en proporción a la pantalla
- * (G.Settings 'pad'); lo que no se mueve se queda en su sitio de siempre.
- * El HUD (hud.js) y el joystick (touch.js) leen esas posiciones.
- * Las medidas copian las del HUD: si cambian allí, cambiarlas aquí.
+/* ============ layout-ui.js — place the buttons (mobile) ============
+ * Settings > Controls > Place the buttons: shows the attacks (with the
+ * item), the pause button and, if fixed, the joystick, and lets you drag them
+ * anywhere. The center of each one is saved relative to the screen
+ * (G.Settings 'pad'); whatever isn't moved stays in its usual place.
+ * The HUD (hud.js) and the joystick (touch.js) read those positions.
+ * The sizes copy the HUD's: if they change there, change them here.
  */
 G.LayoutUI = (() => {
   const S = 54,
     GAP = 9,
     ITEM_GAP = 18,
-    N = 4; // como en hud.js
+    N = 4; // as in hud.js
   const BAR_W = S + ITEM_GAP + N * S + (N - 1) * GAP;
   let el = null,
     pos = null,
     moved = null,
     mode = 'float';
 
-  /** Dónde está cada cosa ahora mismo (centro en px), con lo guardado o lo de siempre. */
+  /** Where each thing is right now (center in px), from the saved layout or the default. */
   function current(k, w, h) {
     const p = G.Touch.spot(k);
     if (k === 'stick') {
@@ -35,7 +35,7 @@ G.LayoutUI = (() => {
     return [w - 52 - Math.min(44, sa.right) + 20, 12 + Math.min(20, sa.top) + 20];
   }
 
-  /** Lo mismo que hace el HUD para que no se salga de la pantalla. */
+  /** Same as the HUD does to keep it on screen. */
   function fit(k, x, y, w, h) {
     if (k === 'bar')
       return [G.U.clamp(x, 6 + BAR_W / 2, Math.max(6 + BAR_W / 2, w - BAR_W / 2 - 6)), G.U.clamp(y, 24 + S / 2, h - S / 2 - 6)];
@@ -50,20 +50,20 @@ G.LayoutUI = (() => {
     el.className = 'scr hidden';
     const slots = Array.from({ length: N }, (_, i) => `<div class="lay-slot${i === 0 ? ' on' : ''}"><i>${i + 1}</i></div>`).join('');
     el.innerHTML = `
-      <div class="lay-thing lay-bar" data-k="bar"><div class="lay-slot item"></div>${slots}<span class="lay-tag">Ataques</span></div>
+      <div class="lay-thing lay-bar" data-k="bar"><div class="lay-slot item"></div>${slots}<span class="lay-tag">Attacks</span></div>
       <div class="lay-thing lay-pause" data-k="pause"><b></b><b></b></div>
       <div class="lay-thing lay-stick" data-k="stick"><div class="knob"></div><span class="lay-tag">Joystick</span></div>
       <div class="box lay-panel">
-        <h3>Arrastra los botones a donde quieras</h3>
-        <p class="lay-turn">Gira el móvil: se juega en horizontal.</p>
+        <h3>Drag the buttons wherever you want</h3>
+        <p class="lay-turn">Turn your phone: the game is played in landscape.</p>
         <div class="chips set-chips" id="lay-mode"><b>Joystick</b>
-          <button class="chip" data-m="float">Flotante</button><button class="chip" data-m="fixed">Fijo</button>
+          <button class="chip" data-m="float">Floating</button><button class="chip" data-m="fixed">Fixed</button>
         </div>
-        <small class="lay-help">Flotante: aparece donde pones el dedo. Fijo: siempre en el mismo sitio.</small>
+        <small class="lay-help">Floating: it appears where you put your finger. Fixed: always in the same place.</small>
         <div class="row wrap lay-btns">
-          <button class="btn small ghost" id="lay-cancel">Cancelar</button>
-          <button class="btn small" id="lay-reset">Restablecer</button>
-          <button class="btn small gold" id="lay-save">Guardar</button>
+          <button class="btn small ghost" id="lay-cancel">Cancel</button>
+          <button class="btn small" id="lay-reset">Reset</button>
+          <button class="btn small gold" id="lay-save">Save</button>
         </div>
       </div>`;
     document.body.appendChild(el);
@@ -109,7 +109,7 @@ G.LayoutUI = (() => {
       try {
         node.setPointerCapture(e.pointerId);
       } catch (err) {
-        /* nada */
+        /* nothing */
       }
     });
     node.addEventListener('pointermove', e => {
@@ -162,7 +162,7 @@ G.LayoutUI = (() => {
     for (const k in pos) if (moved[k]) pad[k] = [+(pos[k][0] / w).toFixed(4), +(pos[k][1] / h).toFixed(4)];
     G.Settings.set('pad', Object.keys(pad).length ? pad : null);
     G.Settings.set('stickMode', mode);
-    G.UI.toast('Botones colocados');
+    G.UI.toast('Buttons placed');
     close();
   }
 

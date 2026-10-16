@@ -1,8 +1,8 @@
-/* ============ PokéSurvivor — interfaz estilo Mundo Misterioso ============
- * Cajas azules con doble borde blanco, como los menús de PMD, y fuente pixel
- * local (Pixelify Sans, OFL).
+/* ============ PokéSurvivor — Mystery Dungeon style interface ============
+ * Blue boxes with a double white border, like the PMD menus, and a local
+ * pixel font (Pixelify Sans, OFL).
  */
-/* Pixelify Sans con los números redibujados para que no se confundan (scripts/make_font.py). */
+/* Pixelify Sans with redrawn digits so they are not confused (scripts/make_font.py). */
 @font-face {
   font-family: 'Pixelify';
   src: url('../assets/fonts/PixelifyPS-400.ttf') format('truetype');
@@ -75,7 +75,7 @@ input {
   font: inherit;
 }
 
-/* ---------- capas de pantalla ---------- */
+/* ---------- screen layers ---------- */
 .scr {
   position: fixed;
   inset: 0;
@@ -89,7 +89,7 @@ input {
 .scr.hidden {
   display: none;
 }
-/* Pantallas que se abren con la barra superior a la vista: empiezan debajo de ella. */
+/* Screens that open with the top bar visible: they start below it. */
 @media (min-height: 521px) {
   #scr-goals,
   #scr-dex,
@@ -124,7 +124,7 @@ input {
   }
 }
 
-/* ---------- caja PMD ---------- */
+/* ---------- PMD box ---------- */
 .box {
   position: relative;
   background: linear-gradient(180deg, var(--box1), var(--box2));
@@ -165,7 +165,7 @@ input {
   text-align: center;
 }
 
-/* ---------- botones ---------- */
+/* ---------- buttons ---------- */
 .btn {
   appearance: none;
   cursor: pointer;
@@ -228,7 +228,7 @@ input {
   flex: 1;
 }
 
-/* Lista de menú con cursor (flecha pixel art), como en PMD */
+/* Menu list with a cursor (pixel art arrow), as in PMD */
 .menu-list {
   display: flex;
   flex-direction: column;
@@ -298,7 +298,7 @@ input {
   display: flex;
 }
 
-/* ---------- formularios ---------- */
+/* ---------- forms ---------- */
 .tabs {
   display: flex;
   gap: 6px;
@@ -349,7 +349,7 @@ label {
   margin-top: 14px;
 }
 
-/* ---------- pantalla de inicio ---------- */
+/* ---------- start screen ---------- */
 .logo {
   text-align: center;
   margin-bottom: 18px;
@@ -372,7 +372,7 @@ label {
   text-transform: uppercase;
 }
 
-/* ---------- test de personalidad ---------- */
+/* ---------- personality test ---------- */
 .test-box {
   width: min(620px, 100%);
 }
@@ -443,7 +443,7 @@ label {
 .stage {
   display: block;
   margin: 8px auto 6px;
-  /* Recuadro estilo PMD: fondo oscuro y borde del color del tipo (--stage-c). */
+  /* PMD-style frame: dark background and a border in the type color (--stage-c). */
   background:
     radial-gradient(ellipse at 50% 88%, rgba(120, 170, 255, 0.22), transparent 60%),
     linear-gradient(180deg, rgba(20, 36, 78, 0.88), rgba(8, 14, 34, 0.92));
@@ -461,7 +461,7 @@ label {
     inset 0 0 0 2px rgba(255, 255, 255, 0.08);
 }
 
-/* ---------- rejilla de Pokémon ---------- */
+/* ---------- Pokémon grid ---------- */
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
@@ -593,7 +593,7 @@ label {
   color: var(--gold);
 }
 
-/* ---------- menú principal ---------- */
+/* ---------- main menu ---------- */
 #scr-menu {
   justify-content: space-between;
   align-items: stretch;
@@ -629,8 +629,8 @@ label {
   width: min(380px, 100%);
   display: flex;
   flex-direction: column;
-  /* Arriba deja sitio a la barra superior; si no cabe todo, se desplaza
-     (los márgenes auto lo centran sin que se salga por arriba). */
+  /* Leaves room for the top bar; if everything doesn't fit, it scrolls
+     (auto margins center it without overflowing at the top). */
   padding: 70px 24px 18px;
   gap: 14px;
   overflow-y: auto;
@@ -642,7 +642,7 @@ label {
 .menu-right > :last-child {
   margin-bottom: auto;
 }
-/* Portátiles con poca altura: menú más compacto y, si hace falta, en dos columnas. */
+/* Short laptops: a more compact menu and, if needed, two columns. */
 @media (max-height: 780px) and (min-height: 521px) {
   .menu-right {
     padding-top: 62px;
@@ -726,7 +726,7 @@ label {
   text-shadow: 1px 1px 0 #000;
 }
 
-/* ---------- mejoras ---------- */
+/* ---------- upgrades ---------- */
 .upg {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -774,7 +774,7 @@ label {
   text-shadow: 3px 3px 0 #2a0f55;
 }
 .banner .feat {
-  /* Debajo del texto, nunca encima: los legendarios a ×2 son grandes. */
+  /* Below the text, never on top: legendaries at ×2 are big. */
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -805,14 +805,14 @@ label {
   align-items: center;
   gap: 18px;
   padding: 14px 10px;
-  /* Si las 10 cartas no caben (móvil en horizontal) se puede desplazar, y
-     "Continuar" se queda siempre a la vista abajo (antes quedaba fuera y no
-     había forma de cerrar sin recargar la página). */
+  /* If the 10 cards don't fit (mobile in landscape) it scrolls, and
+     "Continue" always stays visible at the bottom (it used to fall off-screen
+     and there was no way to close without reloading the page). */
   overflow-y: auto;
   overscroll-behavior: contain;
   background: radial-gradient(circle at 50% 45%, #1b2d63, #03060f 70%);
 }
-/* Centrado vertical que no corta por arriba cuando no cabe. */
+/* Vertical centering that doesn't clip the top when it doesn't fit. */
 #pull-fx::before,
 #pull-fx::after {
   content: '';
@@ -918,7 +918,7 @@ label {
     opacity: 0;
   }
 }
-/* Mensaje de apoyo al acabar una partida (run-ui.js). */
+/* Support message at the end of a run (run-ui.js). */
 .support-ask {
   position: relative;
   margin-top: 4px;
@@ -998,7 +998,7 @@ label {
   }
 }
 
-/* ---------- cartas de nivel ---------- */
+/* ---------- level-up cards ---------- */
 .cards {
   display: flex;
   flex-direction: column;
@@ -1138,7 +1138,7 @@ kbd {
   }
 }
 
-/* ============ iconos pixel art ============ */
+/* ============ pixel art icons ============ */
 img.pix {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
@@ -1173,7 +1173,7 @@ img.pix {
   justify-content: center;
 }
 
-/* ============ pestañas de generación ============ */
+/* ============ generation tabs ============ */
 .gen-tabs {
   display: flex;
   gap: 5px;
@@ -1267,7 +1267,7 @@ img.pix {
   color: #c9f3ff;
 }
 
-/* ============ sonido ============ */
+/* ============ sound ============ */
 .sound-panel {
   position: fixed;
   top: 62px;
@@ -1318,7 +1318,7 @@ input[type='range']::-moz-range-thumb {
   display: flex;
 }
 
-/* ============ nube, aviso legal ============ */
+/* ============ cloud, legal notice ============ */
 .btn.google {
   background: linear-gradient(180deg, #ffffff, #dfe6f2);
   color: #1f2a44;
@@ -1373,7 +1373,7 @@ input[type='range']::-moz-range-thumb {
 }
 #scr-legal {
   z-index: 65;
-} /* por delante de Ajustes y Apoyar (60) */
+} /* in front of Settings and Support (60) */
 .boot {
   position: fixed;
   inset: 0;
@@ -1386,7 +1386,7 @@ input[type='range']::-moz-range-thumb {
   font-size: 18px;
 }
 
-/* ---------- amigos, sala, invitaciones y ranking ---------- */
+/* ---------- friends, room, invitations and leaderboard ---------- */
 .fr-list {
   display: flex;
   flex-direction: column;
@@ -1621,7 +1621,7 @@ input[type='range']::-moz-range-thumb {
   }
 }
 
-/* ---------- tickets y mejoras por Pokémon ---------- */
+/* ---------- tickets and per-Pokémon upgrades ---------- */
 .tickets-line img,
 #tickets-pill img,
 #cost-1 img,
@@ -1643,7 +1643,7 @@ select.field {
   font-family: var(--font);
 }
 
-/* ---------- tragaperras del gacha ---------- */
+/* ---------- gacha slot machine ---------- */
 #slot {
   width: min(528px, 92vw, 66vh);
   height: auto;
@@ -1653,7 +1653,7 @@ select.field {
   animation: pop 0.25s ease-out both;
 }
 
-/* ---------- misiones, logros, perfil y objetos ---------- */
+/* ---------- missions, achievements, profile and items ---------- */
 .goals-body {
   max-height: 62vh;
   overflow-y: auto;
@@ -1880,7 +1880,7 @@ a.plink:hover {
 .card.evo .nm {
   color: var(--gold);
 }
-/* Vínculo (premio de los legendarios): rosa */
+/* Bond (legendary reward): pink */
 .bond-title {
   color: #ff8ad8;
 }
@@ -1913,7 +1913,7 @@ a.plink:hover {
   }
 }
 
-/* ================= móvil y táctil ================= */
+/* ================= mobile and touch ================= */
 html,
 body {
   overscroll-behavior: none;
@@ -1923,8 +1923,8 @@ body {
 body {
   touch-action: manipulation;
 }
-/* iPhone: sin esto, mantener el dedo en el joystick sacaba "Copiar / Seleccionar
-   todo" (Safari sólo hace caso a la versión -webkit- y no lo hereda bien). */
+/* iPhone: without this, holding a finger on the joystick brought up "Copy / Select
+   All" (Safari only honors the -webkit- version and doesn't inherit it well). */
 body,
 body * {
   -webkit-user-select: none;
@@ -1938,7 +1938,7 @@ textarea,
   user-select: text;
   -webkit-touch-callout: default;
 }
-/* Con táctil no tienen sentido las pistas de teclas. */
+/* Key hints make no sense on touch screens. */
 body.touch kbd,
 body.touch .card .key,
 body.touch .kbd-hint {
@@ -1974,11 +1974,11 @@ body.touch .kbd-hint {
   }
 }
 
-/* ---------- ajustes ---------- */
+/* ---------- settings ---------- */
 #scr-settings {
   z-index: 60;
 }
-/* Colocar los botones (layout-ui.js): por delante de Ajustes */
+/* Place the buttons (layout-ui.js): in front of Settings */
 #scr-layout {
   z-index: 66;
   display: block;
@@ -2218,14 +2218,14 @@ a.btn {
   color: var(--ink);
 }
 
-/* ================= pantallas bajas (móvil en horizontal) =================
- * Todo más compacto: la barra superior deja sitio, el menú va en dos
- * columnas y la línea de créditos se esconde (está en Ajustes → Acerca de). */
+/* ================= short screens (mobile in landscape) =================
+ * Everything more compact: the top bar leaves room, the menu uses two
+ * columns and the credits line is hidden (it's in Settings → About). */
 @media (max-height: 520px) {
   .scr {
     padding: 50px 10px 6px;
   }
-  /* Sin barra superior encima: no hace falta dejarle hueco. */
+  /* No top bar above: no need to leave room for it. */
   #scr-login,
   #scr-test,
   #scr-result,
@@ -2380,7 +2380,7 @@ a.btn {
     max-height: calc(100dvh - 12px);
   }
 }
-/* Móviles muy bajos (iPhone SE y similares): sin subtítulos en el menú, para que quepa entero. */
+/* Very short phones (iPhone SE and similar): no menu subtitles, so it all fits. */
 @media (max-height: 400px) {
   .menu-right {
     padding-top: 48px;
@@ -2403,7 +2403,7 @@ a.btn {
   }
 }
 
-/* ---------- pantalla de carga (lo primero que se ve y lo que lee Google) ---------- */
+/* ---------- loading screen (the first thing you see and what Google reads) ---------- */
 .boot-in {
   text-align: center;
   padding: 20px;
@@ -2432,7 +2432,7 @@ a.btn {
 .boot.noscript {
   z-index: 90;
 }
-/* "Pulsa para empezar": encima de todo, se ve el mundo de fondo. */
+/* "Press to start": on top of everything, with the world visible behind. */
 .tapstart {
   position: fixed;
   inset: 0;
@@ -2481,14 +2481,14 @@ a.btn {
   color: #9fd4ff;
 }
 
-/* ---------- apoyar el proyecto ---------- */
+/* ---------- support the project ---------- */
 #scr-support {
   z-index: 60;
 }
 .box.support {
   width: min(560px, 100%);
 }
-/* Mejoras: botones y veto */
+/* Upgrades: buttons and veto */
 .upg-btns {
   display: flex;
   gap: 6px;
@@ -2543,7 +2543,7 @@ a.btn {
   color: #ffd3d8;
   text-decoration: line-through;
 }
-/* Novedades */
+/* What's new */
 .news-btn {
   position: relative;
 }
@@ -2651,10 +2651,10 @@ a.btn {
     display: none;
   }
 }
-/* ============ Pokémon en móvil horizontal ============
- * La lista a la izquierda y la ficha (con "Elegir de compañero") a la derecha,
- * siempre a la vista: antes la ficha quedaba debajo de la lista y había que
- * bajar hasta el borde para encontrar el botón. */
+/* ============ Pokémon on mobile in landscape ============
+ * The list on the left and the detail panel (with "Choose as partner") on the right,
+ * always visible: the panel used to sit below the list and you had to
+ * scroll to the bottom to find the button. */
 @media (max-height: 520px) {
   #scr-dex .box {
     height: 100%;
@@ -2741,7 +2741,7 @@ a.btn {
   #dex-detail .move-icons {
     margin-bottom: 4px;
   }
-  /* El botón de elegir, pegado abajo de la ficha: se ve aunque la ficha no quepa. */
+  /* The choose button, stuck to the bottom of the panel: visible even if the panel doesn't fit. */
   #dex-detail .btn {
     position: sticky;
     bottom: 0;

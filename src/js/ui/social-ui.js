@@ -1,21 +1,21 @@
-/* ============ social-ui.js — apodo, amigos, sala e invitaciones ============ */
+/* ============ social-ui.js — nickname, friends, room and invites ============ */
 (() => {
   const $ = G.UI.$;
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-  /** ¿Se puede usar lo online? Si no, explica por qué. */
+  /** Can online features be used? If not, explains why. */
   function needOnline() {
     if (G.DB.online) return true;
     G.UI.toast(
       G.DB.guest
-        ? 'Crea una cuenta para jugar con amigos y salir en el ranking.'
-        : 'Esto necesita la versión online del juego (con la nube).',
+        ? 'Create an account to play with friends and appear on the leaderboard.'
+        : 'This needs the online version of the game (with the cloud).',
       3200
     );
     return false;
   }
 
-  // ======================= APODO =======================
+  // ======================= NICKNAME =======================
 
   G.NickUI = (() => {
     let then = null,
@@ -34,7 +34,7 @@
           return;
         }
         G.Audio.sfx('confirm');
-        G.UI.toast('Tu apodo es ' + G.Social.me.name);
+        G.UI.toast('Your nickname is ' + G.Social.me.name);
         const cb = then;
         then = null;
         if (cb) cb();
@@ -47,7 +47,7 @@
       };
     }
 
-    /** @param next  qué abrir después de elegirlo */
+    /** @param next  what to open after choosing it */
     function open(next) {
       then = next || null;
       G.UI.show('scr-nick');
@@ -65,7 +65,7 @@
     };
   })();
 
-  /** Abre `fn` si tienes apodo; si no, pide el apodo primero. */
+  /** Opens `fn` if you have a nickname; otherwise asks for one first. */
   function withNick(fn) {
     if (!needOnline()) return;
     if (G.Social.me) {
@@ -78,7 +78,7 @@
     });
   }
 
-  // ======================= AMIGOS =======================
+  // ======================= FRIENDS =======================
 
   G.FriendsUI = (() => {
     function init() {
@@ -111,28 +111,28 @@
       });
     }
 
-    /** "hace 5 min", "hace 2 h", "hace 3 días". */
+    /** "5 min ago", "2 h ago", "3 days ago". */
     function ago(t) {
       const m = Math.max(1, Math.round((G.Social.now() - t) / 60000));
-      if (m < 60) return 'hace ' + m + ' min';
+      if (m < 60) return m + ' min ago';
       const h = Math.round(m / 60);
-      if (h < 48) return 'hace ' + h + ' h';
-      return 'hace ' + Math.round(h / 24) + ' días';
+      if (h < 48) return h + ' h ago';
+      return Math.round(h / 24) + ' days ago';
     }
 
     function stateText(f) {
-      if (f.status === 'in') return 'Quiere ser tu amigo';
-      if (f.status === 'out') return 'Solicitud enviada';
-      if (!f.online) return f.seen ? 'Visto ' + ago(f.seen) : 'Desconectado';
-      return f.play ? 'Jugando' : 'En línea';
+      if (f.status === 'in') return 'Wants to be your friend';
+      if (f.status === 'out') return 'Request sent';
+      if (!f.online) return f.seen ? 'Seen ' + ago(f.seen) : 'Offline';
+      return f.play ? 'Playing' : 'Online';
     }
 
     function render() {
       const room = G.Social.room;
       $('fr-me').innerHTML =
-        'Tu apodo: <b class="gold" translate="no">' +
+        'Your nickname: <b class="gold" translate="no">' +
         esc(G.Social.me ? G.Social.me.name : '') +
-        '</b> · dáselo a tus amigos para que te añadan.';
+        '</b> · give it to your friends so they can add you.';
       $('fr-room').classList.toggle('hidden', !room);
       const list = G.Social.friends.sort((a, b) => {
         const rank = f => (f.status === 'in' ? 0 : f.status === 'ok' ? (f.online ? (f.play ? 2 : 1) : 3) : 4);
@@ -141,7 +141,7 @@
       const box = $('fr-list');
       box.innerHTML = '';
       if (!list.length) {
-        box.innerHTML = '<p class="sub">Aún no tienes amigos añadidos. Escribe arriba el apodo de un amigo.</p>';
+        box.innerHTML = '<p class="sub">You haven\'t added any friends yet. Type a friend\'s nickname above.</p>';
         return;
       }
       for (const f of list) {
@@ -149,7 +149,7 @@
         el.className = 'fr-row';
         const dot = f.status !== 'ok' ? 'pend' : !f.online ? 'off' : f.play ? 'play' : 'on';
         const inRoom = room && room.members.some(m => m.uid === f.uid);
-        el.innerHTML = `<i class="dot ${dot}"></i><b translate="no"><a href="#" class="plink" title="Ver su perfil">${esc(f.name)}</a></b><span class="st">${inRoom ? 'En tu sala' : stateText(f)}</span><span class="grow"></span>`;
+        el.innerHTML = `<i class="dot ${dot}"></i><b translate="no"><a href="#" class="plink" title="View their profile">${esc(f.name)}</a></b><span class="st">${inRoom ? 'In your room' : stateText(f)}</span><span class="grow"></span>`;
         if (f.status === 'ok')
           el.querySelector('.plink').onclick = e => {
             e.preventDefault();
@@ -165,23 +165,23 @@
           return b;
         };
         if (f.status === 'in') {
-          btn('Aceptar', 'gold', async () => {
+          btn('Accept', 'gold', async () => {
             const r = await G.Social.accept(f.uid);
             msg(r.ok ? r.msg : r.error, !r.ok);
           });
-          btn('Rechazar', 'ghost', () => G.Social.remove(f.uid));
+          btn('Decline', 'ghost', () => G.Social.remove(f.uid));
         } else if (f.status === 'out') {
-          btn('Cancelar', 'ghost', () => G.Social.remove(f.uid));
+          btn('Cancel', 'ghost', () => G.Social.remove(f.uid));
         } else {
           if (f.online && !f.play && !inRoom && (!room || room.isHost)) {
-            btn('Invitar', 'gold', async () => {
+            btn('Invite', 'gold', async () => {
               const r = await G.Social.invite(f.uid);
               msg(r.ok ? r.msg : r.error, !r.ok);
               if (r.ok) G.LobbyUI.open();
             });
           }
-          btn('Quitar', 'ghost', () => {
-            if (confirm('¿Quitar a ' + f.name + ' de tus amigos?')) G.Social.remove(f.uid);
+          btn('Remove', 'ghost', () => {
+            if (confirm('Remove ' + f.name + ' from your friends?')) G.Social.remove(f.uid);
           });
         }
         box.appendChild(el);
@@ -191,7 +191,7 @@
     return { init, open, render };
   })();
 
-  // ======================= SALA =======================
+  // ======================= ROOM =======================
 
   G.LobbyUI = (() => {
     let membersKey = '';
@@ -205,7 +205,7 @@
       $('lobby-menu').onclick = () => G.MenuUI.open();
       $('lobby-start').onclick = start;
       $('lobby-start').dataset.sfx = 'confirm';
-      // Conecta / desconecta la red al entrar o salir de una sala.
+      // Connects / disconnects the network when joining or leaving a room.
       G.Social.on(what => {
         const room = G.Social.room;
         if (room) {
@@ -213,7 +213,7 @@
           G.Net.syncMembers(room.members.map(m => m.uid));
         } else if (G.Net.open_) G.Net.close();
         if (what === 'room-closed') {
-          G.UI.toast('La sala se ha cerrado', 2600);
+          G.UI.toast('The room has been closed', 2600);
           if (G.UI.isOpen('scr-lobby')) G.MenuUI.open();
         }
         if (G.UI.isOpen('scr-lobby')) render();
@@ -240,16 +240,16 @@
     }
 
     function connText(m, room) {
-      if (m.uid === room.host) return 'Anfitrión';
-      if (!room.isHost) return m.uid === G.Social.uid ? 'Tú' : 'En la sala';
+      if (m.uid === room.host) return 'Host';
+      if (!room.isHost) return m.uid === G.Social.uid ? 'You' : 'In the room';
       const mode = G.Net.mode(m.uid);
       return mode === 'direct'
-        ? 'Conectado'
+        ? 'Connected'
         : mode === 'relay'
-          ? 'Conectado (por servidor)'
+          ? 'Connected (via server)'
           : mode === 'failed'
-            ? 'No se pudo conectar (reintentando…)'
-            : 'Conectando…';
+            ? 'Could not connect (retrying…)'
+            : 'Connecting…';
     }
 
     function render() {
@@ -257,10 +257,10 @@
       if (!room) return;
       const ms = room.members;
       $('lobby-sub').textContent = room.isHost
-        ? 'Eres el anfitrión. Invita a tus amigos (hasta ' + G.Social.MAX_PLAYERS + ') y empezad cuando estéis.'
-        : 'Estás en la sala de ' + ((ms.find(m => m.uid === room.host) || {}).name || '…') + '. El anfitrión empezará la partida.';
+        ? "You're the host. Invite your friends (up to " + G.Social.MAX_PLAYERS + ") and start when you're ready."
+        : "You're in " + ((ms.find(m => m.uid === room.host) || {}).name || '…') + "'s room. The host will start the game.";
 
-      // Las tarjetas sólo se rehacen si cambian los miembros (los sprites no parpadean).
+      // Cards are only rebuilt when the members change (so the sprites don't flicker).
       const key = ms.map(m => m.uid + ':' + m.dex + ':' + (m.shiny ? 1 : 0)).join('|');
       const box = $('lobby-members');
       if (key !== membersKey) {
@@ -277,7 +277,7 @@
               'beforeend',
               `<b translate="no">${esc(m.name)}</b><small>${esc((G.DEX_BY[m.dex] || {}).name || '')}</small><span class="conn" data-u="${m.uid}"></span>`
             );
-          } else c.innerHTML = '<span>Libre</span>';
+          } else c.innerHTML = '<span>Free</span>';
           box.appendChild(c);
         }
       }
@@ -286,10 +286,10 @@
         if (!m) return;
         const t = connText(m, room);
         el.textContent = t;
-        el.className = 'conn' + (t === 'Conectando…' ? ' wait' : '');
+        el.className = 'conn' + (t === 'Connecting…' ? ' wait' : '');
       });
 
-      // Invitar (sólo el anfitrión y si queda sitio).
+      // Invite (host only, and only if there is room).
       const canInvite = room.isHost && ms.length < G.Social.MAX_PLAYERS;
       $('lobby-inv-title').classList.toggle('hidden', !canInvite);
       const inv = $('lobby-invite');
@@ -297,14 +297,14 @@
       if (canInvite) {
         inv.innerHTML = '';
         const free = G.Social.friends.filter(f => f.status === 'ok' && f.online && !ms.some(m => m.uid === f.uid));
-        if (!free.length) inv.innerHTML = '<p class="sub" style="margin:0">Ningún amigo en línea ahora mismo.</p>';
+        if (!free.length) inv.innerHTML = '<p class="sub" style="margin:0">No friends online right now.</p>';
         for (const f of free) {
           const el = document.createElement('div');
           el.className = 'fr-row';
-          el.innerHTML = `<i class="dot ${f.play ? 'play' : 'on'}"></i><b translate="no">${esc(f.name)}</b><span class="st">${f.play ? 'Jugando' : 'En línea'}</span><span class="grow"></span>`;
+          el.innerHTML = `<i class="dot ${f.play ? 'play' : 'on'}"></i><b translate="no">${esc(f.name)}</b><span class="st">${f.play ? 'Playing' : 'Online'}</span><span class="grow"></span>`;
           const b = document.createElement('button');
           b.className = 'btn small gold';
-          b.textContent = 'Invitar';
+          b.textContent = 'Invite';
           b.onclick = async () => {
             const r = await G.Social.invite(f.uid);
             G.UI.toast(r.ok ? r.msg : r.error);
@@ -319,16 +319,16 @@
       const connecting = ms.some(m => m.uid !== room.host && G.Net.mode(m.uid) === 'connecting');
       const failed = ms.some(m => m.uid !== room.host && G.Net.mode(m.uid) === 'failed');
       btn.disabled = !room.isHost || ms.length < 2 || connecting || failed;
-      btn.textContent = 'Empezar partida (' + ms.length + '/' + G.Social.MAX_PLAYERS + ')';
+      btn.textContent = 'Start game (' + ms.length + '/' + G.Social.MAX_PLAYERS + ')';
       $('lobby-note').textContent = !room.isHost
-        ? 'Cuando el anfitrión empiece, entraréis todos a la vez.'
+        ? "When the host starts, you'll all join at the same time."
         : ms.length < 2
-          ? 'Necesitas al menos un amigo en la sala.'
+          ? 'You need at least one friend in the room.'
           : failed
-            ? 'No se puede conectar con algún amigo: su red (o la tuya) no deja jugar en grupo. Probad con otra wifi o datos móviles; se reintenta solo.'
+            ? "Can't connect to one of your friends: their network (or yours) doesn't allow group play. Try another Wi-Fi or mobile data; it retries automatically."
             : connecting
-              ? 'Conectando con tus amigos…'
-              : 'La partida empieza para todos a la vez.';
+              ? 'Connecting to your friends…'
+              : 'The game starts for everyone at once.';
     }
 
     function start() {
@@ -348,7 +348,7 @@
     return { init, open, close, render };
   })();
 
-  // ======================= INVITACIONES =======================
+  // ======================= INVITES =======================
 
   G.InvitePop = (() => {
     let cur = null;
@@ -379,7 +379,7 @@
       $('invite-pop').classList.add('hidden');
     }
 
-    /** Enseña la invitación más antigua si estás en los menús (no en plena partida). */
+    /** Shows the oldest invite if you are in the menus (not mid-game). */
     function refresh() {
       const room = G.Social.room;
       const list = G.Social.invites.filter(i => !room || i.room !== room.id).sort((a, b) => a.at - b.at);
@@ -390,7 +390,7 @@
       if (cur && cur.from === list[0].from) return;
       cur = list[0];
       $('inv-text').innerHTML =
-        `${G.Icons.html('friends', 22)} <b class="gold" translate="no">${esc(cur.name)}</b> te invita a jugar en su sala`;
+        `${G.Icons.html('friends', 22)} <b class="gold" translate="no">${esc(cur.name)}</b> invites you to play in their room`;
       $('invite-pop').classList.remove('hidden');
       G.Audio.sfx('shiny');
     }

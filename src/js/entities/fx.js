@@ -1,14 +1,14 @@
-/* ============ fx.js — partículas, números de daño y efectos (pixel art) ============
- * Todo lo puramente visual vive aquí. Nada de esto afecta al gameplay.
+/* ============ fx.js — particles, damage numbers and effects (pixel art) ============
+ * Everything purely visual lives here. None of this affects gameplay.
  *
- * Todo se dibuja en la rejilla de píxeles del juego (G.Sprites.PX): las
- * partículas son cuadrados, los anillos son puntos y los golpes y rayos se
- * construyen con bloques y con los sprites de G.VFX, para que los efectos
- * casen con los sprites de Mundo Misterioso.
+ * Everything is drawn on the game's pixel grid (G.Sprites.PX): particles
+ * are squares, rings are dots, and hits and beams are
+ * built from blocks and G.VFX sprites, so the effects
+ * match the Mystery Dungeon sprites.
  */
 G.FX = (() => {
   const PX = G.Sprites.PX;
-  // Topes según la calidad (Ajustes → Gráficos): bajo, medio, alto.
+  // Caps per quality (Settings → Graphics): low, medium, high.
   const CAP_PARTS = [350, 800, 1400],
     CAP_SPRITES = [110, 210, 320],
     CAP_TEXTS = [25, 45, 70],
@@ -32,9 +32,9 @@ G.FX = (() => {
 
   const snap = v => Math.round(v / PX) * PX;
 
-  // ---------------- partículas ----------------
+  // ---------------- particles ----------------
 
-  /** Partícula cuadrada. o: { vx, vy, life, size (en píxeles de arte), grav, drag } */
+  /** Square particle. o: { vx, vy, life, size (in art pixels), grav, drag } */
   function px(x, y, color, o = {}) {
     if (parts.length >= CAP_PARTS[q()]) return;
     parts.push({
@@ -70,7 +70,7 @@ G.FX = (() => {
     }
   }
 
-  /** Sprite de efecto suelto. o: { vx, vy, life, scale, angle, spin, grav, frameRate, fade } */
+  /** Standalone effect sprite. o: { vx, vy, life, scale, angle, spin, grav, frameRate, fade } */
   function sp(shape, pal, x, y, o = {}) {
     if (sprites.length >= CAP_SPRITES[q()]) return;
     sprites.push({
@@ -91,15 +91,15 @@ G.FX = (() => {
     });
   }
 
-  /** Centelleo de shiny (cruz de píxeles que nace y se apaga). */
+  /** Shiny twinkle (pixel cross that appears and fades out). */
   function twinkle(x, y) {
     if (sprites.length >= CAP_SPRITES[q()]) return;
     sprites.push({ twinkle: true, x, y, vx: 0, vy: -8, t: 0, life: G.U.rand(0.45, 0.7) });
   }
 
-  /** Partículas de estela de los proyectiles, según el material. */
+  /** Projectile trail particles, by material. */
   function trail(kind, pal, x, y, vx, vy) {
-    if (Math.random() > DENS[q()]) return; // en calidad baja, menos estela
+    if (Math.random() > DENS[q()]) return; // low quality: less trail
     const P = G.VFX.PAL[pal] || G.VFX.PAL.normal;
     const back = Math.atan2(-vy, -vx);
     const j = () => G.U.rand(-3, 3);
@@ -126,9 +126,9 @@ G.FX = (() => {
   }
 
   function dmgText(x, y, value, color = '#ffffff', big = false) {
-    // Con cientos de golpes por segundo no se leen igual: tope de 70 (los
-    // grandes, como "¡Muy eficaz!" o los de jefe, siempre entran).
-    // Ajustes → "Números de daño": los números se ocultan; los avisos de texto no.
+    // With hundreds of hits per second they can't be read anyway: cap of 70 (big
+    // ones, like "Super effective!" or boss ones, always get in).
+    // Settings → "Damage numbers": numbers get hidden; text notices don't.
     if ((typeof value === 'number' || /^-\d/.test(value)) && !G.Settings.get('dmgNumbers')) return;
     if (texts.length >= CAP_TEXTS[q()]) {
       if (!big) return;
@@ -137,12 +137,12 @@ G.FX = (() => {
     texts.push({ x: x + G.U.rand(-6, 6), y, vy: -46, t: 0, life: big ? 0.95 : 0.62, s: value, color, big });
   }
 
-  /** Anillo de onda (puntos de píxel). */
+  /** Shockwave ring (pixel dots). */
   function ring(x, y, r0, r1, color, life = 0.3, width = 3) {
     rings.push({ x, y, r0, r1, color, life, t: 0, width });
   }
 
-  /** Golpe cuerpo a cuerpo. fx: { pal, melee } (ver G.VFX.forMove). */
+  /** Melee hit. fx: { pal, melee } (see G.VFX.forMove). */
   function slash(x, y, angle, radius, arc, color, fx = {}) {
     const pal = fx.pal || 'normal';
     slashes.push({ x, y, angle, radius, arc, pal, t: 0, life: 0.22 });
@@ -175,14 +175,14 @@ G.FX = (() => {
     }
   }
 
-  /** Rayo recto. fx: { pal, beam } — beam = forma que viaja por él o 'lightning'. */
+  /** Straight beam. fx: { pal, beam } — beam = shape travelling along it, or 'lightning'. */
   function beam(x, y, angle, len, width, color, fx = {}) {
     beams.push({ x, y, angle, len, width, pal: fx.pal || 'normal', shape: fx.beam || null, t: 0, life: 0.2, seed: Math.random() * 100 });
     sp('impact', fx.pal || 'normal', x + Math.cos(angle) * 10, y + Math.sin(angle) * 10, { life: 0.12, scale: 1 });
     sp('impact', fx.pal || 'normal', x + Math.cos(angle) * len, y + Math.sin(angle) * len, { life: 0.18, scale: 1.5 });
   }
 
-  // ---------------- actualización ----------------
+  // ---------------- update ----------------
 
   function update(dt) {
     for (let i = parts.length - 1; i >= 0; i--) {
@@ -229,9 +229,9 @@ G.FX = (() => {
     }
   }
 
-  // ---------------- dibujo ----------------
+  // ---------------- drawing ----------------
 
-  // La transparencia va a escalones (1 · ,66 · ,33) para que no parezca vectorial.
+  // Transparency goes in steps (1 · .66 · .33) so it doesn't look vector-like.
   const step = k => (k > 0.66 ? 1 : k > 0.33 ? 0.66 : 0.33);
 
   function drawBeam(ctx, b) {
@@ -246,7 +246,7 @@ G.FX = (() => {
       now = performance.now() / 1000;
 
     if (b.shape === 'lightning') {
-      // Zigzag que se redibuja cada fotograma.
+      // Zigzag redrawn every frame.
       let py = 0;
       for (let d = 0; d < b.len; d += seg) {
         const ny = d + seg >= b.len ? 0 : snap((G.U.hash(d | 0, (now * 30) | 0, b.seed | 0) - 0.5) * b.width);
@@ -259,7 +259,7 @@ G.FX = (() => {
         py = ny;
       }
     } else {
-      // Cuerpo del rayo a bloques, con el borde vibrando.
+      // Blocky beam body with a vibrating edge.
       for (let d = 0; d < b.len; d += seg) {
         const wob = 0.7 + 0.3 * Math.sin(d * 0.18 + now * 30 + b.seed);
         const hw = Math.max(PX, snap((b.width / 2) * wob * (0.6 + 0.4 * k)));
@@ -272,7 +272,7 @@ G.FX = (() => {
         ctx.fillStyle = P[4];
         ctx.fillRect(d, -PX, seg, PX * 2);
       }
-      // Sprites que viajan por el rayo (llamas, gotas, cristales, ondas).
+      // Sprites travelling along the beam (flames, drops, crystals, waves).
       if (b.shape) {
         const gap = 26,
           off = (now * 420) % gap;
@@ -295,7 +295,7 @@ G.FX = (() => {
     for (let i = 0; i <= n; i++) {
       const u = i / n,
         a = s.angle - half + u * half * 2;
-      const thick = Math.round(Math.sin(Math.PI * u) * 3 * k); // grosor en píxeles de arte
+      const thick = Math.round(Math.sin(Math.PI * u) * 3 * k); // thickness in art pixels
       for (let j = -1; j <= thick; j++) {
         const rr = r - j * PX;
         ctx.fillStyle = j < 0 ? P[1] : j === thick ? P[4] : j > thick / 2 ? P[3] : P[2];
@@ -345,7 +345,7 @@ G.FX = (() => {
       });
     }
 
-    // Números de daño.
+    // Damage numbers.
     for (const t of texts) {
       const k = 1 - t.t / t.life;
       ctx.save();

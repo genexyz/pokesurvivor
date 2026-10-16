@@ -1,18 +1,19 @@
-# PokéSurvivor: imagen para Coolify (o cualquier Docker).
+# PokéSurvivor: image for Coolify (or any Docker host).
 #   docker build -t pokesurvivor .  &&  docker run --rm -p 8080:80 --env-file .env pokesurvivor
-# 1) Construye dist/ (Node + Python para las páginas web).
+# 1) Build dist/ (Node + Python for the web pages).
 FROM node:22-bookworm-slim AS build
 RUN apt-get update && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
-# BUILD_ARGS=--forzar en Coolify (Build Variable) para una actualización obligatoria.
+# BUILD_ARGS=--force on Coolify (Build Variable) for a mandatory update
+# (the old name --forzar still works as an alias).
 ARG BUILD_ARGS=""
 RUN node scripts/build.js $BUILD_ARGS && npm run build:pages
 
-# 2) El servidor (server/): sirve dist/ y la nube (cuentas de Google, partidas,
-#    amigos, ranking y salas del cooperativo) con Postgres (DATABASE_URL).
+# 2) The server (server/): serves dist/ and the cloud (Google accounts, saves,
+#    friends, leaderboard and co-op lobbies) with Postgres (DATABASE_URL).
 FROM node:22-bookworm-slim
 ENV NODE_ENV=production PORT=80
 WORKDIR /app

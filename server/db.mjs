@@ -1,8 +1,8 @@
-/* Postgres: la conexión y las tablas del juego.
- * Las tablas de las cuentas (user, session, account, verification) las crea
- * better-auth (auth.mjs, runMigrations). Las del juego, aquí: se crean al
- * arrancar si no existen (CREATE ... IF NOT EXISTS), así que no hay que hacer
- * nada a mano al publicar.
+/* Postgres: the connection and the game tables.
+ * The account tables (user, session, account, verification) are created by
+ * better-auth (auth.mjs, runMigrations). The game ones are here: they are created
+ * at startup if missing (CREATE ... IF NOT EXISTS), so nothing has to be done
+ * by hand when publishing.
  */
 import pg from 'pg';
 
@@ -14,7 +14,7 @@ if (pool) pool.on('error', e => console.error('[db]', e.message));
 
 export const q = (text, params) => pool.query(text, params);
 
-/** Ejecuta fn(client) dentro de una transacción. */
+/** Runs fn(client) inside a transaction. */
 export async function tx(fn) {
   const c = await pool.connect();
   try {
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS saves (
 );
 CREATE INDEX IF NOT EXISTS saves_ban ON saves (ban) WHERE ban;
 
--- Apodo único y perfil público (favoritos, título, récords, medallas).
+-- Unique nickname and public profile (favourites, title, records, medals).
 CREATE TABLE IF NOT EXISTS profiles (
   uid   text PRIMARY KEY,
   name  text NOT NULL,
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   at    timestamptz NOT NULL DEFAULT now()
 );
 
--- Amistades: a < b; status 'pending' (la envió from_uid) u 'ok'.
+-- Friendships: a < b; status 'pending' (sent by from_uid) or 'ok'.
 CREATE TABLE IF NOT EXISTS friendships (
   a        text NOT NULL,
   b        text NOT NULL,
@@ -60,14 +60,14 @@ CREATE TABLE IF NOT EXISTS friendships (
 );
 CREATE INDEX IF NOT EXISTS friendships_b ON friendships (b);
 
--- Anti-trampas: cuándo empezó la primera partida de la sesión.
+-- Anti-cheat: when the session's first run started.
 CREATE TABLE IF NOT EXISTS run_starts (
   uid        text PRIMARY KEY,
   started_at timestamptz NOT NULL DEFAULT now(),
   mode       text NOT NULL DEFAULT 's'
 );
 
--- Ranking: una marca por tabla y jugador (o equipo).
+-- Leaderboard: one record per board and player (or team).
 CREATE TABLE IF NOT EXISTS lb_entries (
   board text NOT NULL,
   id    text NOT NULL,

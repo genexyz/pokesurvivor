@@ -1,12 +1,12 @@
-/* ============ projectile.js — proyectiles y orbes ============
- * Una sola lista para todo lo que vuela: disparos del jugador, disparos
- * enemigos y los orbes que giran alrededor del Pokémon (los orbes son
- * proyectiles con `orb`, anclados al jugador y que vuelven a golpear cada
- * `rehit` segundos).
+/* ============ projectile.js — projectiles and orbs ============
+ * A single list for everything that flies: player shots, enemy
+ * shots and the orbs circling the Pokémon (orbs are
+ * projectiles with `orb`, anchored to the player, that hit again every
+ * `rehit` seconds).
  *
- * Viven en el plano del SUELO (como los pies de las entidades) y se dibujan
- * elevados G.LIFT unidades con su sombra debajo. Las paredes y los objetos
- * sólidos los paran (ver combat.js).
+ * They live on the GROUND plane (like entities' feet) and are drawn
+ * raised G.LIFT units with their shadow below. Walls and solid
+ * objects stop them (see combat.js).
  */
 G.Projectiles = (() => {
   let list = [];
@@ -19,7 +19,7 @@ G.Projectiles = (() => {
     return list;
   }
 
-  /** Proyectil del jugador. */
+  /** Player projectile. */
   function spawn(o) {
     const p = Object.assign(
       {
@@ -53,7 +53,7 @@ G.Projectiles = (() => {
     return p;
   }
 
-  /** Orbe anclado a un jugador (`owner`): vive mientras el movimiento esté activo. */
+  /** Orb anchored to a player (`owner`): lives while the move is active. */
   function spawnOrb(o) {
     return spawn(
       Object.assign(
@@ -68,7 +68,7 @@ G.Projectiles = (() => {
     );
   }
 
-  /** Borra los orbes de un jugador (o todos) al cambiar de movimiento activo. */
+  /** Removes a player's orbs (or all) when the active move changes. */
   function clearOrbs(owner) {
     list = list.filter(p => !p.orb || (owner && p.owner !== owner));
   }
@@ -79,7 +79,7 @@ G.Projectiles = (() => {
       p.t += dt;
 
       if (p.orb) {
-        // Gira alrededor de su jugador.
+        // Circles its player.
         const o = p.owner || player;
         p.oa += p.ospeed * dt;
         p.x = o.x + Math.cos(p.oa) * p.orad;
@@ -92,8 +92,8 @@ G.Projectiles = (() => {
         continue;
       }
 
-      // Bumerán: a los `boom` segundos se da la vuelta (y puede volver a
-      // golpear a los mismos) y vuelve a su dueño; al llegar, desaparece.
+      // Boomerang: after `boom` seconds it turns around (and can hit the
+      // same ones again) and returns to its owner; on arrival it disappears.
       if (p.boom) {
         const o = p.owner || player;
         if (!p.back && p.t >= p.boom) {
@@ -111,7 +111,7 @@ G.Projectiles = (() => {
         }
       }
 
-      // Teledirigido: curva la velocidad hacia el enemigo más cercano.
+      // Homing: bends velocity towards the nearest enemy.
       if (p.homing > 0 && p.friendly) {
         const tg = nearest(enemies, p.x, p.y, 340);
         if (tg) {
@@ -123,7 +123,7 @@ G.Projectiles = (() => {
       }
 
       p.px = p.x;
-      p.py = p.y; // para la colisión barrida (ver combat.js)
+      p.py = p.y; // for swept collision (see combat.js)
       if (p.vis && p.vis.trail && G.Camera.sees(p.x, p.y, 20)) {
         p.trailT = (p.trailT || 0) - dt;
         if (p.trailT <= 0) {
@@ -134,7 +134,7 @@ G.Projectiles = (() => {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
 
-      // Fuera de la vista con margen generoso -> se descarta.
+      // Out of view with a generous margin -> discarded.
       if (!G.Camera.sees(p.x, p.y, 260)) {
         list.splice(i, 1);
         continue;
@@ -163,14 +163,14 @@ G.Projectiles = (() => {
 
   function draw(ctx) {
     const L = G.LIFT;
-    // Sombras primero, todas juntas.
+    // Shadows first, all together.
     ctx.fillStyle = 'rgba(0,0,0,.25)';
     for (const p of list) {
       ctx.beginPath();
       ctx.ellipse(p.x, p.y, p.r * 0.9, p.r * 0.38, 0, 0, 6.2832);
       ctx.fill();
     }
-    // Los disparos enemigos llevan un aro rojo en el suelo: "esto te hace daño".
+    // Enemy shots carry a red ring on the ground: "this hurts you".
     ctx.fillStyle = 'rgba(255,60,80,.35)';
     for (const p of list) {
       if (p.friendly) continue;

@@ -1,10 +1,10 @@
-/* ============ live.js — conexión en directo con nuestro servidor (WebSocket /ws) ============
- * Amigos, "en línea", invitaciones, salas y la señalización del cooperativo
- * (server/live.mjs). Sólo con cuenta en la nube; se reconecta sola.
+/* ============ live.js — live connection to our server (WebSocket /ws) ============
+ * Friends, "online", invites, rooms and co-op signalling (server/live.mjs).
+ * Only with a cloud account; it reconnects on its own.
  *
- * API:  start() · stop() · call(m, a) -> Promise<respuesta> · send(m, a)
+ * API:  start() · stop() · call(m, a) -> Promise<response> · send(m, a)
  *       on(t, fn) (t: 'open' | 'close' | 'hello' | 'friends' | 'presence' | 'invites' | 'room' | 'sig')
- *       connected · now() (la hora del servidor)
+ *       connected · now() (the server time)
  */
 G.Live = (() => {
   let ws = null,
@@ -62,7 +62,7 @@ G.Live = (() => {
       }
       if (msg.t === 'hello') {
         skew = msg.now - Date.now();
-        // Si el reloj del aparato va bien (menos de 1 min de diferencia), se usa tal cual.
+        // If the device clock is fine (less than 1 min off), use it as is.
         if (Math.abs(skew) < 60000) skew = 0;
         emit('hello', msg);
         emit('open', msg);
@@ -75,16 +75,16 @@ G.Live = (() => {
       ws = null;
       for (const [i, w] of waiting) {
         clearTimeout(w.timer);
-        w.res({ ok: false, error: 'Sin conexión con el servidor.' });
+        w.res({ ok: false, error: 'No connection to the server.' });
         waiting.delete(i);
       }
       emit('close', e);
-      // Cuenta borrada: no se reconecta.
+      // Account deleted: don't reconnect.
       if (e.code !== 4001) retry();
     };
   }
 
-  /** Reintento con espera creciente: 1 s, 2 s, 4 s... hasta 30 s. */
+  /** Retry with a growing delay: 1 s, 2 s, 4 s... up to 30 s. */
   function retry() {
     if (!want) return;
     clearTimeout(retryT);
@@ -107,26 +107,26 @@ G.Live = (() => {
     }
   }
 
-  /** Pide algo al servidor y espera la respuesta ({ ok, error?, ... }). */
+  /** Asks the server for something and waits for the reply ({ ok, error?, ... }). */
   function call(m, a) {
     return new Promise(res => {
-      if (!ws || ws.readyState !== 1) return res({ ok: false, error: 'Sin conexión con el servidor.' });
+      if (!ws || ws.readyState !== 1) return res({ ok: false, error: 'No connection to the server.' });
       const i = ++seq;
       const timer = setTimeout(() => {
         waiting.delete(i);
-        res({ ok: false, error: 'El servidor no contesta.' });
+        res({ ok: false, error: 'The server is not responding.' });
       }, 10000);
       waiting.set(i, { res, timer });
       ws.send(JSON.stringify({ i, m, a: a || {} }));
     });
   }
 
-  /** Manda algo sin esperar respuesta (la señalización). */
+  /** Sends something without waiting for a reply (signalling). */
   function send(m, a) {
     if (ws && ws.readyState === 1) ws.send(JSON.stringify({ m, a: a || {} }));
   }
 
-  // Al volver la conexión del aparato, se reintenta enseguida.
+  // When the device's connection comes back, retry right away.
   addEventListener('online', () => {
     if (want && !ws) {
       tries = 0;

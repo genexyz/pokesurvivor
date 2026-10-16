@@ -1,16 +1,16 @@
-/* /ws: lo que va en directo (WebSocket).
- *   - en línea: estás en línea si tienes el juego abierto (un socket conectado)
- *   - amigos: la lista se manda al conectar y cada vez que cambia
- *   - invitaciones a salas (duran 3 min, sólo entre amigos)
- *   - salas del cooperativo (hasta 4) y la SEÑALIZACIÓN de WebRTC: las
- *     ofertas, respuestas y candidatos que necesitan los navegadores para
- *     conectarse directamente. La partida en sí NO pasa por aquí (net.js).
- * Salas, invitaciones y "en línea" viven en memoria (un solo proceso): si el
- * servidor se reinicia se pierden las salas, pero las partidas en curso
- * siguen (van directas entre navegadores) y los clientes se reconectan solos.
+/* /ws: the live part (WebSocket).
+ *   - online: you're online if you have the game open (a connected socket)
+ *   - friends: the list is sent on connect and every time it changes
+ *   - room invites (last 3 min, friends only)
+ *   - co-op rooms (up to 4) and WebRTC SIGNALLING: the offers, answers and
+ *     candidates browsers need to connect directly. The game itself does NOT
+ *     go through here (net.js).
+ * Rooms, invites and "online" live in memory (a single process): if the
+ * server restarts the rooms are lost, but running games carry on (they go
+ * directly between browsers) and clients reconnect on their own.
  *
- * Mensajes del cliente:  { i?, m, a }  (con i, se contesta { t: 'res', i, ok, ... })
- * Mensajes del servidor: { t: 'hello' | 'friends' | 'presence' | 'invites' | 'room' | 'sig' | 'res', ... }
+ * Client messages:  { i?, m, a }  (with i, the reply is { t: 'res', i, ok, ... })
+ * Server messages: { t: 'hello' | 'friends' | 'presence' | 'invites' | 'room' | 'sig' | 'res', ... }
  */
 import { WebSocketServer } from 'ws';
 import { q } from './db.mjs';
@@ -20,7 +20,7 @@ import { NICK, nickOf } from './api.mjs';
 export const ORIGIN = new URL(BASE_URL).origin;
 const MAX_PLAYERS = 4;
 const INVITE_TTL = 3 * 60 * 1000;
-const GRACE = 15 * 1000; // si se corta la conexión, la plaza en la sala se guarda este rato
+const GRACE = 15 * 1000; // if the connection drops, the room seat is kept for this long
 
 const wss = new WebSocketServer({ noServer: true, maxPayload: 256 * 1024 });
 const socks = new Map(); // uid -> Set<ws>
@@ -29,9 +29,9 @@ const rooms = new Map(); // id -> { id, host, open, members: Map(uid -> { name, 
 const roomOf = new Map(); // uid -> roomId
 const invites = new Map(); // toUid -> Map(fromUid -> { from, name, room, at })
 const grace = new Map(); // uid -> timeout
-const friendCache = new Map(); // uid -> Set de amigos confirmados (sólo de los conectados)
+const friendCache = new Map(); // uid -> Set of confirmed friends (only for connected users)
 
-// ---------------- envío ----------------
+// ---------------- sending ----------------
 
 function sendTo(ws, msg) {
   if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg));
@@ -41,9 +41,9 @@ function sendUser(uid, msg) {
 }
 const online = uid => socks.has(uid);
 
-// ---------------- amigos ----------------
+// ---------------- friends ----------------
 
-/** Los amigos confirmados de alguien. */
+/** Someone's confirmed friends. */
 export async function friendIds(uid) {
   if (friendCache.has(uid)) return [...friendCache.get(uid)];
   const r = await q(`SELECT CASE WHEN a = $1 THEN b ELSE a END AS o FROM friendships WHERE (a = $1 OR b = $1) AND status = 'ok'`, [uid]);
@@ -80,13 +80,13 @@ async function pushFriends(uid) {
   sendUser(uid, { t: 'friends', list: await friendList(uid) });
 }
 
-/** Avisa a los amigos conectados de que ha cambiado tu "en línea" (o tu sala). */
+/** Tells connected friends that your "online" status (or your room) changed. */
 async function pushPresence(uid) {
   try {
     const p = Object.assign({ t: 'presence', uid }, presenceOf(uid));
     for (const f of await friendIds(uid)) if (online(f)) sendUser(f, p);
   } catch (e) {
-    console.error('[live] en línea:', e.message);
+    console.error('[live] presence:', e.message);
   }
 }
 
@@ -94,21 +94,21 @@ const pairOf = (x, y) => (x < y ? [x, y] : [y, x]);
 
 async function friendRequest(uid, a) {
   const me = await nickOf(uid);
-  if (!me) return { ok: false, error: 'Primero elige tu apodo.' };
+  if (!me) return { ok: false, error: 'Choose your nickname first.' };
   const name = String((a && a.name) || '').trim();
-  if (!NICK.test(name)) return { ok: false, error: 'Escribe el apodo exacto de tu amigo.' };
+  if (!NICK.test(name)) return { ok: false, error: "Type your friend's exact nickname." };
   const r = await q('SELECT uid, name FROM profiles WHERE lower = $1', [name.toLowerCase()]);
-  if (!r.rows[0]) return { ok: false, error: 'No hay ningún jugador con ese apodo.' };
+  if (!r.rows[0]) return { ok: false, error: "There's no player with that nickname." };
   const other = r.rows[0].uid;
-  if (other === uid) return { ok: false, error: 'Ese eres tú.' };
+  if (other === uid) return { ok: false, error: "That's you." };
   const [x, y] = pairOf(uid, other);
   const f = (await q('SELECT from_uid, status FROM friendships WHERE a = $1 AND b = $2', [x, y])).rows[0];
-  if (f && f.status === 'ok') return { ok: false, error: 'Ya sois amigos.' };
-  if (f && f.from_uid === uid) return { ok: false, error: 'Ya le enviaste una solicitud.' };
+  if (f && f.status === 'ok') return { ok: false, error: "You're already friends." };
+  if (f && f.from_uid === uid) return { ok: false, error: 'You already sent them a request.' };
   if (f) return friendAccept(uid, { uid: other });
   await q('INSERT INTO friendships (a, b, from_uid) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [x, y, uid]);
   await Promise.all([pushFriends(uid), pushFriends(other)]);
-  return { ok: true, msg: 'Solicitud enviada a ' + r.rows[0].name };
+  return { ok: true, msg: 'Request sent to ' + r.rows[0].name };
 }
 
 async function friendAccept(uid, a) {
@@ -118,9 +118,9 @@ async function friendAccept(uid, a) {
     `UPDATE friendships SET status = 'ok', at = now() WHERE a = $1 AND b = $2 AND status = 'pending' AND from_uid <> $3 RETURNING 1`,
     [x, y, uid]
   );
-  if (!r.rowCount) return { ok: false, error: 'No hay solicitud.' };
+  if (!r.rowCount) return { ok: false, error: "There's no request." };
   await Promise.all([pushFriends(uid), pushFriends(other)]);
-  return { ok: true, msg: 'Ahora eres amigo de ' + ((await nickOf(other)) || '???') };
+  return { ok: true, msg: "You're now friends with " + ((await nickOf(other)) || '???') };
 }
 
 async function friendRemove(uid, a) {
@@ -133,7 +133,7 @@ async function friendRemove(uid, a) {
   return { ok: true };
 }
 
-// ---------------- invitaciones ----------------
+// ---------------- invites ----------------
 
 function invitesOf(uid) {
   const m = invites.get(uid);
@@ -149,7 +149,7 @@ function dropInvite(to, from) {
   const m = invites.get(to);
   if (m && m.delete(from)) pushInvites(to);
 }
-/** Al cerrarse una sala, se retiran sus invitaciones. */
+/** When a room closes, its invites are withdrawn. */
 function dropRoomInvites(roomId) {
   for (const [to, m] of invites)
     for (const [from, v] of m)
@@ -161,20 +161,20 @@ function dropRoomInvites(roomId) {
 
 async function invite(uid, ws, a) {
   const to = String((a && a.to) || '');
-  if (!(await friendIds(uid)).includes(to)) return { ok: false, error: 'Sólo puedes invitar a tus amigos.' };
+  if (!(await friendIds(uid)).includes(to)) return { ok: false, error: 'You can only invite your friends.' };
   let room = rooms.get(roomOf.get(uid));
-  if (room && room.host !== uid) return { ok: false, error: 'Sólo el anfitrión de la sala puede invitar.' };
-  if (room && room.members.size >= MAX_PLAYERS) return { ok: false, error: 'La sala está llena.' };
+  if (room && room.host !== uid) return { ok: false, error: 'Only the room host can invite.' };
+  if (room && room.members.size >= MAX_PLAYERS) return { ok: false, error: 'The room is full.' };
   if (!room) room = await createRoom(uid, ws, a && a.me);
   if (!invites.has(to)) invites.set(to, new Map());
   const name = (await nickOf(uid)) || '???';
   invites.get(to).set(uid, { from: uid, name, room: room.id, at: Date.now() });
   pushInvites(to);
-  setTimeout(() => pushInvites(to), INVITE_TTL + 1000); // caducada: fuera de la lista
-  return { ok: true, msg: 'Invitación enviada a ' + ((await nickOf(to)) || '???'), room: roomState(room) };
+  setTimeout(() => pushInvites(to), INVITE_TTL + 1000); // expired: drop it from the list
+  return { ok: true, msg: 'Invite sent to ' + ((await nickOf(to)) || '???'), room: roomState(room) };
 }
 
-// ---------------- salas ----------------
+// ---------------- rooms ----------------
 
 function newId() {
   const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -227,9 +227,9 @@ async function joinRoom(uid, ws, id, info) {
     room.members.get(uid).ws = ws;
     return { ok: true, room: roomState(room) };
   }
-  if (!room) return { ok: false, error: 'Esa sala ya no existe.' };
-  if (!room.open) return { ok: false, error: 'La partida de esa sala ya ha empezado.' };
-  if (room.members.size >= MAX_PLAYERS) return { ok: false, error: 'La sala está llena (máximo ' + MAX_PLAYERS + ').' };
+  if (!room) return { ok: false, error: 'That room no longer exists.' };
+  if (!room.open) return { ok: false, error: "That room's game has already started." };
+  if (room.members.size >= MAX_PLAYERS) return { ok: false, error: 'The room is full (max ' + MAX_PLAYERS + ').' };
   if (roomOf.has(uid)) leaveRoom(uid);
   room.members.set(uid, await memberOf(uid, ws, info));
   roomOf.set(uid, id);
@@ -238,7 +238,7 @@ async function joinRoom(uid, ws, id, info) {
   return { ok: true, room: roomState(room) };
 }
 
-/** Sales de la sala; si eras el anfitrión, la sala se cierra para todos. */
+/** You leave the room; if you were the host, the room closes for everyone. */
 function leaveRoom(uid) {
   clearTimeout(grace.get(uid));
   grace.delete(uid);
@@ -261,7 +261,7 @@ function leaveRoom(uid) {
   pushPresence(uid);
 }
 
-// ---------------- conexión ----------------
+// ---------------- connection ----------------
 
 const METHODS = {
   'friend.request': (uid, ws, a) => friendRequest(uid, a),
@@ -276,7 +276,7 @@ const METHODS = {
     return { ok: true, room: roomState(await createRoom(uid, ws, a && a.me)) };
   },
   'room.join': (uid, ws, a) => joinRoom(uid, ws, String((a && a.id) || ''), a && a.me),
-  /** Tras reconectarse: ¿sigue la sala? (si no, el cliente la da por cerrada) */
+  /** After reconnecting: does the room still exist? (if not, the client treats it as closed) */
   async 'room.resume'(uid, ws, a) {
     const room = rooms.get(String((a && a.id) || ''));
     if (!room || !room.members.has(uid)) return { ok: false };
@@ -312,14 +312,14 @@ const METHODS = {
     const from = String((a && a.from) || '');
     const inv = invitesOf(uid).find(v => v.from === from);
     dropInvite(uid, from);
-    if (!inv) return { ok: false, error: 'La invitación ha caducado.' };
+    if (!inv) return { ok: false, error: 'The invite has expired.' };
     return joinRoom(uid, ws, inv.room, a && a.me);
   },
   async 'invite.decline'(uid, ws, a) {
     dropInvite(uid, String((a && a.from) || ''));
     return { ok: true };
   },
-  /** Señalización WebRTC: sólo entre miembros de la misma sala. */
+  /** WebRTC signalling: only between members of the same room. */
   async sig(uid, ws, a) {
     const room = rooms.get(roomOf.get(uid));
     const to = room && room.members.get(String((a && a.to) || ''));
@@ -341,7 +341,7 @@ async function onMessage(ws, raw) {
     if (msg.i != null) sendTo(ws, Object.assign({ t: 'res', i: msg.i }, r || { ok: true }));
   } catch (e) {
     console.error('[live]', msg.m, e);
-    if (msg.i != null) sendTo(ws, { t: 'res', i: msg.i, ok: false, error: 'Error del servidor' });
+    if (msg.i != null) sendTo(ws, { t: 'res', i: msg.i, ok: false, error: 'Server error' });
   }
 }
 
@@ -361,7 +361,7 @@ async function onConnect(ws) {
     sendTo(ws, { t: 'invites', list: invitesOf(uid) });
     if (first) pushPresence(uid);
   } catch (e) {
-    console.error('[live] al conectar:', e.message);
+    console.error('[live] on connect:', e.message);
   }
 }
 
@@ -376,7 +376,7 @@ function onClose(ws) {
       friendCache.delete(uid);
     }
   }
-  // Si era la pestaña que estaba en una sala, se le guarda la plaza un rato.
+  // If this was the tab in a room, its seat is kept for a while.
   const room = rooms.get(roomOf.get(uid));
   const m = room && room.members.get(uid);
   if (m && m.ws === ws) {
@@ -393,7 +393,7 @@ function onClose(ws) {
   if (!online(uid)) pushPresence(uid);
 }
 
-/** Cuenta borrada: fuera de salas, invitaciones y listas de sus amigos. */
+/** Account deleted: out of rooms, invites and its friends' lists. */
 export function onAccountDeleted(uid) {
   const friends = friendCache.get(uid) || new Set();
   leaveRoom(uid);
@@ -403,14 +403,14 @@ export function onAccountDeleted(uid) {
   for (const f of friends) pushFriends(f).catch(() => {});
 }
 
-/** Apodo recién elegido: sus amigos (si ya tenía solicitudes) ven el nombre. */
+/** Nickname just chosen: their friends (if there were requests already) see the name. */
 export function onNick(uid) {
   q(`SELECT CASE WHEN a = $1 THEN b ELSE a END AS o FROM friendships WHERE a = $1 OR b = $1`, [uid])
     .then(r => r.rows.forEach(x => pushFriends(x.o).catch(() => {})))
     .catch(() => {});
 }
 
-/** El servidor HTTP pasa aquí las peticiones de subir a WebSocket. */
+/** The HTTP server hands WebSocket upgrade requests over here. */
 export async function handleUpgrade(req, socket, head) {
   const url = new URL(req.url, 'http://x');
   if (url.pathname !== '/ws' || (req.headers.origin && req.headers.origin !== ORIGIN)) {
@@ -429,7 +429,7 @@ export async function handleUpgrade(req, socket, head) {
   });
 }
 
-// Conexiones muertas (móvil sin cobertura...): ping cada 30 s.
+// Dead connections (phone without signal...): ping every 30 s.
 setInterval(() => {
   for (const ws of wss.clients) {
     if (!ws.alive) {

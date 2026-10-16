@@ -1,20 +1,20 @@
-/* ============ i18n.js — idiomas (español / inglés) ============
- * El juego está escrito en español. Si el idioma es inglés, todo texto que
- * se enseña se traduce con el diccionario de js/data/lang-en.js, sin tener que
- * tocar cada pantalla:
- *   - el DOM (menús, cartas, avisos...) con un MutationObserver,
- *   - el canvas (HUD, avisos, números) envolviendo fillText/strokeText,
+/* ============ i18n.js — languages (English / Spanish) ============
+ * The game is written in English. If the language is Spanish, every text that
+ * is shown is translated with the dictionary in js/data/lang-es.js, without
+ * touching each screen:
+ *   - the DOM (menus, cards, notices...) through a MutationObserver,
+ *   - the canvas (HUD, notices, numbers) by wrapping fillText/strokeText,
  *   - confirm()/alert().
  *
- * El diccionario usa el texto español como clave. Tres niveles:
- *   1. frase exacta                    'Volver' -> 'Back'
- *   2. patrón con huecos {x}           '¡Has conseguido a {x} shiny!' -> 'You got a shiny {x}!'
- *                                      (lo que cae en el hueco también se traduce)
- *   3. trozos dentro de un texto más largo, sólo palabras enteras
- * Lo que escriben los jugadores (apodos) va marcado con translate="no".
+ * The dictionary uses the English text as the key. Three levels:
+ *   1. exact phrase                    'Back' -> 'Volver'
+ *   2. pattern with slots {x}          'You got a shiny {x}!' -> '¡Has conseguido a {x} shiny!'
+ *                                      (whatever fills the slot is translated too)
+ *   3. pieces inside a longer text, whole words only
+ * Player-written text (nicknames) is marked with translate="no".
  *
- * Idioma: el elegido en Ajustes; si no, /en/ en la dirección o el del navegador
- * (español si el navegador está en español, inglés en cualquier otro caso).
+ * Language: the one chosen in Settings; otherwise /es/ in the address, or the
+ * browser's (Spanish if the browser is in Spanish, English otherwise).
  */
 G.I18n = (() => {
   const KEY = 'ps.lang';
@@ -22,12 +22,14 @@ G.I18n = (() => {
   try {
     saved = localStorage.getItem(KEY);
   } catch (e) {
-    /* nada */
+    /* nothing */
   }
-  const byPath = /\/en(\/|$)/.test(location.pathname) ? 'en' : null;
-  const nav = ((navigator.languages && navigator.languages[0]) || navigator.language || 'es').toLowerCase();
+  const byPath = /\/es(\/|$)/.test(location.pathname) ? 'es' : null;
+  const nav = ((navigator.languages && navigator.languages[0]) || navigator.language || 'en').toLowerCase();
   const lang = saved === 'es' || saved === 'en' ? saved : byPath || (nav.startsWith('es') ? 'es' : 'en');
   document.documentElement.lang = lang;
+  /** Locale for numbers and dates. */
+  const locale = lang === 'es' ? 'es-ES' : 'en-US';
 
   const exact = new Map(),
     exactLow = new Map();
@@ -39,24 +41,34 @@ G.I18n = (() => {
   const L = '\\p{L}\\p{N}';
   const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-  /** Añade traducciones { 'texto en español': 'English text' }. */
-  function add(dict) {
+  /** Adds translations { 'English text': 'texto en español' }.
+   * exactOnly: only whole texts match (no pieces inside longer texts), for
+   * common single words such as personality traits ('Calm', 'Proud'). */
+  function add(dict, exactOnly = false) {
     const fr = [];
-    for (const [es, en] of Object.entries(dict)) {
-      if (!en || es === en) continue;
-      if (es.includes('{x}')) {
-        const parts = es.split('{x}').map(reEsc);
-        patterns.push({ re: new RegExp('^' + parts.join('(.+?)') + '$', 'u'), reI: new RegExp('^' + parts.join('(.+?)') + '$', 'iu'), en });
+    for (const [src, tr] of Object.entries(dict)) {
+      if (!tr || src === tr) continue;
+      if (src.includes('{x}')) {
+        const parts = src.split('{x}').map(reEsc);
+        const fixed = src.replace(/\{x\}/g, '').length;
+        patterns.push({
+          re: new RegExp('^' + parts.join('(.+?)') + '$', 'u'),
+          reI: new RegExp('^' + parts.join('(.+?)') + '$', 'iu'),
+          tr,
+          fixed
+        });
       } else {
-        exact.set(es, en);
-        exactLow.set(es.toLowerCase(), en);
-        if (es.length >= 4 || /\s/.test(es)) {
-          fr.push(es);
-          fragMap.set(es.toLowerCase(), en);
+        exact.set(src, tr);
+        exactLow.set(src.toLowerCase(), tr);
+        if (!exactOnly && (src.length >= 4 || /\s/.test(src))) {
+          fr.push(src);
+          fragMap.set(src.toLowerCase(), tr);
         }
       }
     }
-    // Una sola expresión con todos los trozos (los más largos primero), sólo palabras enteras.
+    // The most specific patterns first ('A wild shiny {x} appeared!' before 'A wild {x} appeared!').
+    patterns.sort((a, b) => b.fixed - a.fixed);
+    // A single expression with every piece (longest first), whole words only.
     const all = [...fragMap.keys()]
       .sort((a, b) => b.length - a.length)
       .map(reEsc)
@@ -65,14 +77,14 @@ G.I18n = (() => {
     cache.clear();
   }
 
-  function keepCase(src, en) {
-    if (src === src.toUpperCase() && /\p{L}/u.test(src)) return en.toUpperCase();
-    return en;
+  function keepCase(src, tr) {
+    if (src === src.toUpperCase() && /\p{L}/u.test(src)) return tr.toUpperCase();
+    return tr;
   }
 
-  /** Traduce un texto (sin espacios de los lados) al idioma actual. */
+  /** Translates a text into the current language. */
   function t(s) {
-    if (lang === 'es' || !s || typeof s !== 'string') return s;
+    if (lang === 'en' || !s || typeof s !== 'string') return s;
     if (!/\p{L}/u.test(s)) return s;
     const c = cache.get(s);
     if (c !== undefined) return c;
@@ -83,9 +95,9 @@ G.I18n = (() => {
   }
 
   function core(s) {
-    // Respeta los espacios de alrededor (nodos de texto del DOM).
+    // Keeps the surrounding whitespace (DOM text nodes).
     const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(s);
-    // Los textos del HTML pueden ocupar varias líneas: se comparan con los espacios juntos.
+    // HTML texts may span several lines: they are compared with whitespace collapsed.
     const lead = m[1],
       tail = m[3],
       body = m[2].replace(/\s+/g, ' ');
@@ -101,7 +113,7 @@ G.I18n = (() => {
         const mm = (upper ? p.reI : p.re).exec(body);
         if (!mm) continue;
         let i = 1;
-        r = p.en.replace(/\{x\}/g, () => {
+        r = p.tr.replace(/\{x\}/g, () => {
           const g = mm[i++];
           return g === undefined ? '' : core(g);
         });
@@ -115,10 +127,10 @@ G.I18n = (() => {
     return lead + (r === undefined ? body : r) + tail;
   }
 
-  /** Texto con huecos para el código: T('Nivel {x}', 5). */
-  function f(es, ...vals) {
+  /** Text with slots for code: G.I18n.f('Level {x}', 5). */
+  function f(src, ...vals) {
     let i = 0;
-    return t(es).replace(/\{x\}/g, () => vals[i++]);
+    return t(src).replace(/\{x\}/g, () => vals[i++]);
   }
 
   // ---------------- DOM ----------------
@@ -159,14 +171,13 @@ G.I18n = (() => {
     }
   }
 
+  /** Link to a website page ('guide/') in the current language ('es/guide/'). */
+  const page = p => (lang === 'es' ? 'es/' : '') + p;
+
   function startDom() {
-    if (lang === 'es') return;
-    // Los enlaces a las páginas de la web, a su versión en inglés.
-    const EN_LINKS = { 'guia/': 'en/guide/', 'pokedex/': 'en/pokedex/' };
-    document.querySelectorAll('a[href]').forEach(a => {
-      const h = a.getAttribute('href');
-      if (EN_LINKS[h]) a.setAttribute('href', EN_LINKS[h]);
-    });
+    if (lang === 'en') return;
+    // Links to the website pages point to their Spanish version.
+    document.querySelectorAll('a[data-page]').forEach(a => a.setAttribute('href', page(a.getAttribute('href'))));
     walk(document.body);
     new MutationObserver(ms => {
       for (const m of ms) {
@@ -178,8 +189,8 @@ G.I18n = (() => {
     document.title = t(document.title);
   }
 
-  // ---------------- canvas y ventanas del navegador ----------------
-  if (lang !== 'es') {
+  // ---------------- canvas and browser dialogs ----------------
+  if (lang !== 'en') {
     const P = CanvasRenderingContext2D.prototype;
     for (const k of ['fillText', 'strokeText', 'measureText']) {
       const orig = P[k];
@@ -197,11 +208,14 @@ G.I18n = (() => {
     try {
       localStorage.setItem(KEY, l);
     } catch (e) {
-      /* nada */
+      /* nothing */
     }
     location.reload();
   }
 
-  return { lang, add, t, f, set, startDom, walk };
+  /** Spanish entry of an English text, whatever the current language (for save migrations). */
+  const es = s => exact.get(s);
+
+  return { lang, locale, add, t, f, es, page, set, startDom, walk };
 })();
 G.T = G.I18n.t;

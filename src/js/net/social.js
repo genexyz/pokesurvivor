@@ -1,26 +1,26 @@
-/* ============ social.js — apodo, amigos, en línea, invitaciones y salas ============
- * Sólo funciona con cuenta en la nube (G.DB.online). Usa nuestro servidor:
+/* ============ social.js — nickname, friends, online status, invites and rooms ============
+ * Only works with a cloud account (G.DB.online). Uses our server:
  *
- *   /api/nick, /api/profile     apodo único y perfil público (server/api.mjs)
- *   G.Live (WebSocket /ws)      amigos, en línea, invitaciones y salas (server/live.mjs):
- *                               el servidor manda los cambios en cuanto pasan
+ *   /api/nick, /api/profile     unique nickname and public profile (server/api.mjs)
+ *   G.Live (WebSocket /ws)      friends, online status, invites and rooms (server/live.mjs):
+ *                               the server sends changes as soon as they happen
  *
- *   sala = { id, host, isHost, open, members: [{ uid, name, dex, shiny }] }
+ *   room = { id, host, isHost, open, members: [{ uid, name, dex, shiny }] }
  *
- * El resto del juego escucha los cambios con G.Social.on(fn).
+ * The rest of the game listens for changes with G.Social.on(fn).
  */
 G.Social = (() => {
   const VALID = /^[A-Za-z0-9_ñÑáéíóúÁÉÍÓÚ]{3,16}$/;
   const MAX_PLAYERS = 4;
   const INVITE_TTL = 3 * 60 * 1000;
-  // La hora real: la del servidor (corrige el reloj del aparato si va desfasado).
+  // The real time: the server's (corrects the device clock if it's off).
   const now = () => G.Live.now();
 
   let uid = null;
   let me = null; // { uid, name }
   let friends = new Map(); // otherUid -> { uid, name, status: 'ok'|'in'|'out', online, play, room }
   let room = null; // { id, host, isHost, members: [{ uid, name, dex, shiny }], open }
-  let leftId = ''; // la sala de la que acabas de salir (por si llega algo tarde)
+  let leftId = ''; // the room you just left (in case something arrives late)
   const invites = new Map(); // fromUid -> { from, name, room, at }
   const listeners = new Set();
   let started = false,
@@ -36,7 +36,7 @@ G.Social = (() => {
     });
   }
 
-  // ---------------- lo que manda el servidor ----------------
+  // ---------------- what the server sends ----------------
 
   G.Live.on('friends', msg => {
     if (!started) return;
@@ -68,7 +68,7 @@ G.Social = (() => {
     if (msg.room.id === leftId) return;
     setRoom(msg.room);
   });
-  // Tras reconectarse (red del móvil, servidor reiniciado): ¿sigue tu sala?
+  // After reconnecting (mobile network, server restarted): does your room still exist?
   G.Live.on('open', async () => {
     if (!started) return;
     if (playing) G.Live.send('play', { on: true });
@@ -88,15 +88,15 @@ G.Social = (() => {
       host: st.host,
       isHost: st.host === uid,
       open: !!st.open,
-      // El anfitrión siempre primero; el resto por orden de llegada.
+      // The host always first; the rest in order of arrival.
       members: (st.members || []).slice().sort((a, b) => (a.uid === st.host ? -1 : b.uid === st.host ? 1 : (a.at || 0) - (b.at || 0)))
     };
     emit('room');
   }
 
-  // ---------------- arranque ----------------
+  // ---------------- startup ----------------
 
-  /** Tras iniciar sesión. → 'ok' | 'need-nick' | 'off' (sin nube) */
+  /** After signing in. → 'ok' | 'need-nick' | 'off' (no cloud) */
   async function start() {
     if (!G.DB.online) return 'off';
     if (started) return me ? 'ok' : 'need-nick';
@@ -110,15 +110,15 @@ G.Social = (() => {
     return 'ok';
   }
 
-  /** Reserva un apodo único (no se puede cambiar). */
+  /** Reserves a unique nickname (it can't be changed). */
   async function claimNick(name) {
     name = (name || '').trim();
-    if (!VALID.test(name)) return { ok: false, error: 'El apodo debe tener 3-16 letras, números o _.' };
+    if (!VALID.test(name)) return { ok: false, error: 'The nickname must be 3-16 letters, numbers or _.' };
     let r;
     try {
       r = await G.DB.api('api/nick', { method: 'POST', body: { name } });
     } catch (e) {
-      return { ok: false, error: (e && e.message) || 'No se pudo guardar el apodo.' };
+      return { ok: false, error: (e && e.message) || "Couldn't save the nickname." };
     }
     if (!r.ok) return r;
     me = { uid, name: r.name };
@@ -147,19 +147,19 @@ G.Social = (() => {
     }
   }
 
-  /** El "en línea" llega solo del servidor; esto sólo repinta. */
+  /** The "online" status comes from the server on its own; this only repaints. */
   function refreshPresence() {
     emit('presence');
     return Promise.resolve();
   }
 
-  // ---------------- amigos ----------------
+  // ---------------- friends ----------------
 
-  /** Envía una solicitud de amistad (o acepta la que ya te había mandado). */
+  /** Sends a friend request (or accepts the one they had already sent you). */
   async function request(name) {
     name = (name || '').trim();
-    if (!me) return { ok: false, error: 'Primero elige tu apodo.' };
-    if (!VALID.test(name)) return { ok: false, error: 'Escribe el apodo exacto de tu amigo.' };
+    if (!me) return { ok: false, error: 'Choose your nickname first.' };
+    if (!VALID.test(name)) return { ok: false, error: "Type your friend's exact nickname." };
     return G.Live.call('friend.request', { name });
   }
 
@@ -171,7 +171,7 @@ G.Social = (() => {
     return G.Live.call('friend.remove', { uid: other });
   }
 
-  // ---------------- salas ----------------
+  // ---------------- rooms ----------------
 
   function memberInfo() {
     const s = G.DB.save;
@@ -189,7 +189,7 @@ G.Social = (() => {
     if (room && room.id === id) return { ok: true };
     if (room) await leaveRoom();
     const r = await G.Live.call('room.join', { id, me: memberInfo() });
-    if (!r.ok) return { ok: false, error: r.error || 'No se pudo entrar en la sala.' };
+    if (!r.ok) return { ok: false, error: r.error || "Couldn't join the room." };
     setRoom(r.room);
     return { ok: true };
   }
@@ -209,26 +209,26 @@ G.Social = (() => {
     await G.Live.call('room.leave');
   }
 
-  /** El anfitrión cierra la sala a nuevos jugadores al empezar la partida. */
+  /** The host closes the room to new players when the run starts. */
   function setOpen(open) {
     if (room && room.isHost) G.Live.call('room.open', { open: !!open });
   }
 
-  /** Actualiza tu Pokémon en la sala (si cambias de compañero). */
+  /** Updates your Pokémon in the room (if you change partner). */
   function refreshMember() {
     if (room && me) G.Live.call('room.member', memberInfo());
   }
 
-  // ---------------- invitaciones ----------------
+  // ---------------- invites ----------------
 
   async function invite(other) {
     const f = friends.get(other);
-    if (!f || f.status !== 'ok') return { ok: false, error: 'Sólo puedes invitar a tus amigos.' };
-    if (room && room.members.length >= MAX_PLAYERS) return { ok: false, error: 'La sala está llena.' };
-    if (room && !room.isHost) return { ok: false, error: 'Sólo el anfitrión de la sala puede invitar.' };
+    if (!f || f.status !== 'ok') return { ok: false, error: 'You can only invite your friends.' };
+    if (room && room.members.length >= MAX_PLAYERS) return { ok: false, error: 'The room is full.' };
+    if (room && !room.isHost) return { ok: false, error: 'Only the room host can invite.' };
     const r = await G.Live.call('invite', { to: other, me: memberInfo() });
     if (r.room && (!room || room.id === r.room.id)) setRoom(r.room);
-    return r.ok ? { ok: true, msg: r.msg } : { ok: false, error: r.error || 'No se pudo invitar.' };
+    return r.ok ? { ok: true, msg: r.msg } : { ok: false, error: r.error || "Couldn't send the invite." };
   }
 
   async function acceptInvite(from) {
@@ -237,11 +237,11 @@ G.Social = (() => {
     emit('invites');
     if (!inv || now() - inv.at > INVITE_TTL) {
       G.Live.send('invite.decline', { from });
-      return { ok: false, error: 'La invitación ha caducado.' };
+      return { ok: false, error: 'The invite has expired.' };
     }
     if (room) await leaveRoom();
     const r = await G.Live.call('invite.accept', { from, me: memberInfo() });
-    if (!r.ok) return { ok: false, error: r.error || 'No se pudo entrar en la sala.' };
+    if (!r.ok) return { ok: false, error: r.error || "Couldn't join the room." };
     setRoom(r.room);
     return { ok: true };
   }
@@ -252,9 +252,9 @@ G.Social = (() => {
     emit('invites');
   }
 
-  // ---------------- perfil público ----------------
+  // ---------------- public profile ----------------
 
-  /** Lo que se enseña de ti (también para tu vista previa, sin subirlo). */
+  /** What others see of you (also for your own preview, without uploading it). */
   function profileData() {
     const s = G.DB.save,
       st = s.stats,
@@ -286,27 +286,27 @@ G.Social = (() => {
     pubAt = 0,
     pubLast = '';
   /**
-   * Sube tu perfil (con un poco de espera, por si cambias varias cosas
-   * seguidas), pero SÓLO si ha cambiado algo de lo que se ve a primera vista:
-   * récords de tiempo y nivel, legendarios, medallas, título o favoritos.
-   * Los jefes y derrotados (que cambian en cada partida) se suben con lo demás
-   * cuando toca, no por sí solos. Si cambias favoritos o título (force), al momento.
+   * Uploads your profile (after a short wait, in case you change several things
+   * in a row), but ONLY if something visible at first glance has changed:
+   * time and level records, legendaries, medals, title or favourites.
+   * Bosses and defeated counts (which change every run) go up with the rest
+   * when due, not on their own. If you change favourites or title (force), immediately.
    */
   function publishProfile(force = false) {
     if (!me) return;
-    if (!force && Date.now() - pubAt < 2 * 3600 * 1000) return; // como mucho cada 2 h
+    if (!force && Date.now() - pubAt < 2 * 3600 * 1000) return; // at most every 2 h
     clearTimeout(pubT);
     pubT = setTimeout(() => {
       if (!me) return;
       const d = profileData();
-      // Para decidir si se sube (se recuerda entre sesiones): sin jefes ni derrotados.
+      // To decide whether to upload (remembered across sessions): without bosses or defeated counts.
       const key = JSON.stringify(Object.assign({}, d, { best: Object.assign({}, d.best, { kills: 0, bosses: 0 }) }));
       const lsKey = 'ps.pub.' + uid;
       if (!pubLast) {
         try {
           pubLast = localStorage.getItem(lsKey) || '';
         } catch (e) {
-          /* nada */
+          /* nothing */
         }
       }
       if (key === pubLast) return;
@@ -315,30 +315,30 @@ G.Social = (() => {
       try {
         localStorage.setItem(lsKey, key);
       } catch (e) {
-        /* nada */
+        /* nothing */
       }
       G.DB.api('api/profile', { method: 'PUT', body: d }).catch(e => {
         pubLast = '';
-        console.warn('[Social] perfil:', e.code || e.message);
+        console.warn('[Social] profile:', e.code || e.message);
       });
     }, 800);
   }
 
-  /** El perfil público de otro jugador. */
+  /** Another player's public profile. */
   const profCache = new Map();
   async function getProfile(other) {
     if (!started) return null;
-    // El tuyo sale de tu partida (sin leer nada y siempre al día).
+    // Yours comes from your save (no fetching and always up to date).
     if (other === uid && me) return Object.assign(profileData(), { name: me.name });
     const c = profCache.get(other);
-    if (c && Date.now() - c.at < 10 * 60 * 1000) return c.v; // lo leído vale 10 min
+    if (c && Date.now() - c.at < 10 * 60 * 1000) return c.v; // fetched data is valid for 10 min
     const r = await G.DB.api('api/profile/' + encodeURIComponent(other)).catch(() => null);
     const v = r ? r.profile : null;
     profCache.set(other, { at: Date.now(), v });
     return v;
   }
 
-  // Al cerrar sesión o borrar la cuenta.
+  // On logout or account deletion.
   G.DB.onLeave(why => stop(why));
 
   return {
@@ -385,7 +385,7 @@ G.Social = (() => {
     get uid() {
       return uid;
     },
-    /** La hora real (corrige el reloj del aparato si va desfasado). */
+    /** The real time (corrects the device clock if it's off). */
     now,
     VALID,
     MAX_PLAYERS

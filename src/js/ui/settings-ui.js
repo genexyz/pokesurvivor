@@ -1,7 +1,7 @@
-/* ============ settings-ui.js — pantalla de Ajustes (PC y móvil) ============
- * Se abre por encima de lo que haya (menú o pausa) y al cerrar vuelve ahí.
- * Pestañas: Sonido · Gráficos · Controles · Cuenta · Acerca de.
- * Los ajustes son de este dispositivo (G.Settings / G.Audio en el navegador).
+/* ============ settings-ui.js — Settings screen (PC and mobile) ============
+ * Opens on top of whatever is showing (menu or pause) and returns there on close.
+ * Tabs: Sound · Graphics · Controls · Account · About.
+ * Settings belong to this device (G.Settings / G.Audio in the browser).
  */
 G.SettingsUI = (() => {
   const $ = G.UI.$;
@@ -21,7 +21,7 @@ G.SettingsUI = (() => {
     $('btn-settings').innerHTML = G.Icons.html('gear', 20);
     $('btn-settings').onclick = () => open();
     $('btn-pause-settings').onclick = () => open('sound');
-    // Pantalla completa (si el navegador la permite; en iPhone, cómo conseguirla).
+    // Fullscreen (if the browser allows it; on iPhone, how to get it).
     if (canFull() || iosTip()) {
       $('btn-full').classList.remove('hidden');
       $('btn-full').innerHTML = G.Icons.html('full', 20);
@@ -39,15 +39,15 @@ G.SettingsUI = (() => {
   }
   const isOpen = () => !$('scr-settings').classList.contains('hidden');
 
-  // ---------------- pantalla completa ----------------
+  // ---------------- fullscreen ----------------
   function canFull() {
     return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
   }
   function isFull() {
     return !!(document.fullscreenElement || document.webkitFullscreenElement);
   }
-  // iPhone: Safari no deja poner una web a pantalla completa (por eso a veces
-  // no salía la opción). Sí se puede abriéndola desde la pantalla de inicio.
+  // iPhone: Safari does not let a website go fullscreen (that's why the option
+  // sometimes didn't show). It does work when opened from the home screen.
   const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const standalone = () =>
     !!navigator.standalone || (window.matchMedia && matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches);
@@ -55,7 +55,7 @@ G.SettingsUI = (() => {
     return IOS && !canFull() && !standalone();
   }
   const IOS_TIP =
-    'En iPhone, Safari no deja poner las webs a pantalla completa. Pulsa Compartir y luego "Añadir a pantalla de inicio": abriendo el juego desde ese icono se juega a pantalla completa.';
+    'On iPhone, Safari does not let websites go fullscreen. Tap Share and then "Add to Home Screen": opening the game from that icon plays it fullscreen.';
   function toggleFull() {
     if (!canFull()) {
       if (iosTip()) G.UI.toast(IOS_TIP, 9000);
@@ -65,13 +65,13 @@ G.SettingsUI = (() => {
     else {
       const el = document.documentElement;
       const p = (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
-      // En móvil, además se intenta fijar la pantalla en horizontal.
+      // On mobile, also try to lock the screen in landscape.
       if (p && p.then)
         p.then(() => {
           try {
             screen.orientation.lock('landscape').catch(() => {});
           } catch (e) {
-            /* nada */
+            /* nothing */
           }
         }).catch(() => {});
     }
@@ -80,14 +80,14 @@ G.SettingsUI = (() => {
     }, 300);
   }
 
-  // ---------------- piezas ----------------
+  // ---------------- pieces ----------------
   function section(title, sub) {
     return `<h3 class="set-h">${esc(title)}</h3>${sub ? `<p class="sub">${sub}</p>` : ''}`;
   }
   function toggle(key, label, desc) {
     const on = !!G.Settings.get(key);
     return `<div class="set-row"><div class="grow"><b>${esc(label)}</b><small>${esc(desc)}</small></div>
-      <button class="btn small switch ${on ? 'gold' : ''}" data-k="${key}">${on ? 'Sí' : 'No'}</button></div>`;
+      <button class="btn small switch ${on ? 'gold' : ''}" data-k="${key}">${on ? 'Yes' : 'No'}</button></div>`;
   }
   function choice(key, opts) {
     const cur = G.Settings.get(key);
@@ -99,81 +99,81 @@ G.SettingsUI = (() => {
     const box = $('set-body');
     box.scrollTop = 0;
     if (tab === 'sound') {
-      box.innerHTML = section('Sonido') + '<div id="set-sound" class="sound-inline"></div>';
+      box.innerHTML = section('Sound') + '<div id="set-sound" class="sound-inline"></div>';
       G.UI.soundControls($('set-sound'));
     } else if (tab === 'gfx') {
-      const auto = ['baja', 'media', 'alta'][G.Settings.autoLevel];
+      const auto = ['low', 'medium', 'high'][G.Settings.autoLevel];
       box.innerHTML =
-        section('Idioma', 'El juego se recarga al cambiarlo.') +
+        section('Language', 'The game reloads when you change it.') +
         `<div class="chips set-chips" translate="no">${[
-          ['es', 'Español'],
-          ['en', 'English']
+          ['en', 'English'],
+          ['es', 'Español']
         ]
           .map(([v, l]) => `<button class="chip ${G.I18n.lang === v ? 'on' : ''}" data-lang="${v}">${l}</button>`)
           .join('')}</div>` +
         section(
-          'Calidad',
-          'Cuántos efectos y partículas se dibujan. <b>Auto</b> la baja sola si el juego va a tirones (ahora: ' + auto + ').'
+          'Quality',
+          'How many effects and particles are drawn. <b>Auto</b> lowers it automatically if the game stutters (now: ' + auto + ').'
         ) +
         choice('quality', [
           ['auto', 'Auto'],
-          ['high', 'Alta'],
-          ['mid', 'Media'],
-          ['low', 'Baja']
+          ['high', 'High'],
+          ['mid', 'Medium'],
+          ['low', 'Low']
         ]) +
-        section('Pantalla') +
-        toggle('dmgNumbers', 'Números de daño', 'Los números que salen al golpear y al recibir daño.') +
-        toggle('calm', 'Menos sacudidas y destellos', 'La cámara tiembla menos y los fogonazos son suaves.') +
-        toggle('fps', 'Mostrar FPS', 'Fotogramas por segundo, en la esquina de abajo.') +
+        section('Display') +
+        toggle('dmgNumbers', 'Damage numbers', 'The numbers that pop up when you hit or get hit.') +
+        toggle('calm', 'Less shaking and flashing', 'The camera shakes less and flashes are softer.') +
+        toggle('fps', 'Show FPS', 'Frames per second, in the bottom corner.') +
         (canFull()
-          ? `<div class="set-row"><div class="grow"><b>Pantalla completa</b><small>Sin barras del navegador.</small></div>
-             <button class="btn small" id="set-full">${isFull() ? 'Salir' : 'Activar'}</button></div>`
+          ? `<div class="set-row"><div class="grow"><b>Fullscreen</b><small>Without browser bars.</small></div>
+             <button class="btn small" id="set-full">${isFull() ? 'Exit' : 'Turn on'}</button></div>`
           : iosTip()
-            ? `<div class="set-row"><div class="grow"><b>Pantalla completa</b><small>${esc(IOS_TIP)}</small></div></div>`
+            ? `<div class="set-row"><div class="grow"><b>Fullscreen</b><small>${esc(IOS_TIP)}</small></div></div>`
             : '');
     } else if (tab === 'ctl') {
       box.innerHTML =
-        section('En móvil o tablet') +
-        `<p class="sub">Pon el dedo en cualquier parte y arrastra para moverte: el joystick aparece donde tocas. Toca un ataque de abajo para cambiarlo y el botón de arriba a la derecha para pausar. Se juega en horizontal.</p>` +
-        `<div class="set-row"><div class="grow"><b>Tamaño del joystick</b><small>Cuánto hay que arrastrar el dedo.</small></div></div>` +
+        section('On mobile or tablet') +
+        `<p class="sub">Put your finger anywhere and drag to move: the joystick appears where you touch. Tap a move at the bottom to switch to it and the top-right button to pause. Play in landscape.</p>` +
+        `<div class="set-row"><div class="grow"><b>Joystick size</b><small>How far you need to drag your finger.</small></div></div>` +
         choice('stick', [
-          [0.8, 'Pequeño'],
+          [0.8, 'Small'],
           [1, 'Normal'],
-          [1.25, 'Grande']
+          [1.25, 'Large']
         ]) +
-        `<div class="set-row"><div class="grow"><b>Colocar los botones</b><small>Pon los ataques, la pausa y el joystick (fijo, si quieres) donde quieras de la pantalla.</small></div>
-             <button class="btn small" id="set-layout">Colocar</button></div>` +
-        section('En PC') +
+        `<div class="set-row"><div class="grow"><b>Place the buttons</b><small>Put the attacks, the pause button and the joystick (fixed, if you like) anywhere on the screen.</small></div>
+             <button class="btn small" id="set-layout">Place</button></div>` +
+        section('On PC') +
         `<div class="keys">
-             <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o flechas</div><span>moverse</span>
-             <div><kbd>1</kbd>–<kbd>4</kbd> o clic en el icono</div><span>elegir ataque</span>
-             <div><kbd>Q</kbd> / <kbd>E</kbd></div><span>ataque anterior / siguiente</span>
-             <div><kbd>Esc</kbd> o <kbd>P</kbd></div><span>pausa</span>
-             <div><kbd>1</kbd>–<kbd>3</kbd></div><span>elegir carta al subir de nivel</span>
+             <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys</div><span>move</span>
+             <div><kbd>1</kbd>–<kbd>4</kbd> or click its icon</div><span>choose move</span>
+             <div><kbd>Q</kbd> / <kbd>E</kbd></div><span>previous / next move</span>
+             <div><kbd>Esc</kbd> or <kbd>P</kbd></div><span>pause</span>
+             <div><kbd>1</kbd>–<kbd>3</kbd></div><span>choose a card when leveling up</span>
            </div>`;
     } else if (tab === 'acc') {
       renderAccount(box);
     } else {
       box.innerHTML =
-        `<div class="about-logo">PokéSurvivor</div><p class="sub center">Versión ${esc(VERSION)}</p>` +
-        `<p class="sub">Juego de fans <b>gratuito y sin ánimo de lucro</b>: sin anuncios ni compras. Pokémon y sus personajes son propiedad de Nintendo, Creatures y GAME FREAK; este proyecto no está afiliado a ellos.</p>` +
-        section('Créditos') +
+        `<div class="about-logo">PokéSurvivor</div><p class="sub center">Version ${esc(VERSION)}</p>` +
+        `<p class="sub">Fan game <b>free and non-profit</b>: no ads or purchases. Pokémon and its characters are owned by Nintendo, Creatures and GAME FREAK; this project is not affiliated with them.</p>` +
+        section('Credits') +
         `<ul class="credits">
-             <li><b>Sprites:</b> PMD SpriteCollab y sus artistas (CC BY-NC 4.0).</li>
-             <li><b>Datos de los Pokémon:</b> PokéAPI.</li>
-             <li><b>Música y sonidos:</b> originales, generados por el propio juego.</li>
-             <li><b>Fuente:</b> Pixelify Sans (OFL).</li>
+             <li><b>Sprites:</b> PMD SpriteCollab and its artists (CC BY-NC 4.0).</li>
+             <li><b>Pokémon data:</b> PokéAPI.</li>
+             <li><b>Music and sounds:</b> original, generated by the game itself.</li>
+             <li><b>Font:</b> Pixelify Sans (OFL).</li>
            </ul>` +
         `<div class="row wrap" style="justify-content:center;gap:8px">
              ${
                window.PS_PAGES
-                 ? `<a class="btn small" href="${G.I18n.lang === 'en' ? 'en/guide/' : 'guia/'}" target="_blank">Guía y preguntas</a>
-             <a class="btn small" href="${G.I18n.lang === 'en' ? 'en/pokedex/' : 'pokedex/'}" target="_blank">Pokédex</a>`
+                 ? `<a class="btn small" href="${G.I18n.page('guide/')}" target="_blank">Guide &amp; FAQ</a>
+             <a class="btn small" href="${G.I18n.page('pokedex/')}" target="_blank">Pokédex</a>`
                  : ''
              }
-             <button class="btn small" data-legal>Aviso legal y privacidad</button>
-             <a class="btn small" href="contacto/" target="_blank" rel="noopener">Contacto</a>
-             <a class="btn small" href="${REPO}" target="_blank" rel="noopener">Código (GitHub)</a>
+             <button class="btn small" data-legal>Legal notice &amp; privacy</button>
+             <a class="btn small" href="${G.I18n.page('contact/')}" target="_blank" rel="noopener">Contact</a>
+             <a class="btn small" href="${REPO}" target="_blank" rel="noopener">Code (GitHub)</a>
            </div>`;
     }
     wire(box);
@@ -182,29 +182,29 @@ G.SettingsUI = (() => {
   function renderAccount(box) {
     const st = G.DB.guest ? 'guest' : G.DB.syncState;
     const SYNC = {
-      ok: 'Guardado en la nube',
-      syncing: 'Guardando…',
-      pending: 'Pendiente de subir (se sube al salir del juego)',
-      offline: 'Sin conexión: se subirá al volver',
-      local: 'Guardado sólo en este navegador',
-      guest: 'Invitado: no se guarda'
+      ok: 'Saved in the cloud',
+      syncing: 'Saving…',
+      pending: 'Waiting to upload (uploads when you leave the game)',
+      offline: "Offline: it will upload when you're back",
+      local: 'Saved only in this browser',
+      guest: 'Guest: not saved'
     };
     if (G.DB.guest) {
       box.innerHTML =
-        section('Cuenta', 'Estás jugando como <b>invitado</b>: tu progreso no se guarda al salir.') +
-        `<button class="btn gold" id="set-login">Crear cuenta o entrar</button>`;
+        section('Account', "You're playing as <b>guest</b>: your progress isn't saved when you leave.") +
+        `<button class="btn gold" id="set-login">Sign up or log in</button>`;
       return;
     }
     const nick = G.Social.me ? G.Social.me.name : G.DB.user || '';
-    const kind = G.DB.mode === 'local' ? 'Partida de este navegador' : 'Google';
+    const kind = G.DB.mode === 'local' ? "This browser's save" : 'Google';
     box.innerHTML =
-      section('Cuenta') +
-      `<div class="set-row"><div class="grow"><b>Apodo</b><small>Es único y no se puede cambiar.</small></div><span class="gold" translate="no">${esc(nick)}</span></div>` +
-      `<div class="set-row"><div class="grow"><b>Tipo de cuenta</b></div><span>${esc(kind)}</span></div>` +
-      `<div class="set-row"><div class="grow"><b>Partida</b></div><span>${esc(SYNC[st] || st)}</span></div>` +
+      section('Account') +
+      `<div class="set-row"><div class="grow"><b>Nickname</b><small>It's unique and can't be changed.</small></div><span class="gold" translate="no">${esc(nick)}</span></div>` +
+      `<div class="set-row"><div class="grow"><b>Account type</b></div><span>${esc(kind)}</span></div>` +
+      `<div class="set-row"><div class="grow"><b>Save data</b></div><span>${esc(SYNC[st] || st)}</span></div>` +
       `<div class="row wrap" style="gap:8px;margin-top:12px">
-           <button class="btn" id="set-logout">Cerrar sesión</button>
-           <button class="btn danger" id="set-delete">Borrar cuenta</button>
+           <button class="btn" id="set-logout">Log out</button>
+           <button class="btn danger" id="set-delete">Delete account</button>
          </div><p class="note" id="set-msg"></p>`;
   }
 
@@ -256,15 +256,15 @@ G.SettingsUI = (() => {
           return;
         }
         close();
-        G.UI.toast('Cuenta borrada');
+        G.UI.toast('Account deleted');
         G.Audio.music(null);
         G.Flow.toLogin();
       };
   }
 
-  /** Cerrar sesión (si estás en una partida, se abandona). */
+  /** Log out (if you're in a run, it is abandoned). */
   function leave() {
-    if (G.DB.guest && !confirm('Eres invitado: se perderá todo el progreso. ¿Salir?')) return;
+    if (G.DB.guest && !confirm("You're a guest: all your progress will be lost. Log out?")) return;
     if (G.Game.state !== 'ui') G.Game.quit && G.Game.quit();
     G.Audio.music(null);
     G.DB.logout().then(() => G.Flow.toLogin());

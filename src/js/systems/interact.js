@@ -1,17 +1,17 @@
-/* ============ interact.js — altares, manantiales, cofres con candado y trampas ============
- * Los objetos los coloca world.js (raros, en el suelo libre); aquí está lo que
- * pasa al tocarlos. Todo se mira alrededor de TU Pokémon:
+/* ============ interact.js — altars, springs, locked chests and traps ============
+ * The objects are placed by world.js (rare, on free ground); this is what
+ * happens when you touch them. Everything is checked around YOUR Pokémon:
  *
- *   altar     da un poder de 25 s (Furia, Rayo, Imán o Prisa) y se apaga
- *   spring    cura mientras estás encima; se agota y se recarga sola
- *   bigchest  quédate a su lado CHEST_TIME segundos (mientras te atacan) y se
- *             abre: monedas, tickets y experiencia para subir un nivel
- *   trap      salta al pisarla (tú o un enemigo) y afecta a todo lo cercano:
- *             veneno, pegajosa (ralentiza) o explosiva
+ *   altar     grants a 25 s power (Fury, Thunderbolt, Magnet or Haste) and goes dark
+ *   spring    heals while you stand on it; it runs dry and refills on its own
+ *   bigchest  stay next to it for CHEST_TIME seconds (while being attacked) and it
+ *             opens: coins, tickets and enough experience for one level
+ *   trap      triggers when stepped on (by you or an enemy) and affects everything nearby:
+ *             poison, sticky (slows) or explosive
  *
- * Cooperativo: altares y manantiales son de cada uno (en cada ordenador); el
- * cofre y las trampas se rompen como cualquier objeto y el anfitrión reparte
- * el botín y el daño a los enemigos (ver world.destroyProp y coop.propBroken).
+ * Co-op: altars and springs are per player (on each computer); the
+ * chest and traps break like any other object and the host hands out
+ * the loot and the damage to enemies (see world.destroyProp and coop.propBroken).
  */
 G.Interact = (() => {
   const CHEST_TIME = 3.5;
@@ -19,8 +19,8 @@ G.Interact = (() => {
   const POWERS = [
     {
       id: 'dmg',
-      name: 'Furia',
-      desc: 'daño ×2',
+      name: 'Fury',
+      desc: 'damage ×2',
       color: '#ff5f6d',
       on: p => {
         p.atkMul *= 2;
@@ -31,8 +31,8 @@ G.Interact = (() => {
     },
     {
       id: 'spd',
-      name: 'Rayo',
-      desc: '+45% velocidad',
+      name: 'Thunderbolt',
+      desc: '+45% speed',
       color: '#5fd4ff',
       on: p => {
         p.spdMul *= 1.45;
@@ -43,8 +43,8 @@ G.Interact = (() => {
     },
     {
       id: 'mag',
-      name: 'Imán',
-      desc: 'atraes todo desde lejos',
+      name: 'Magnet',
+      desc: 'you pull everything from afar',
       color: '#ff8ad8',
       on: p => {
         p.magnet *= 4;
@@ -55,8 +55,8 @@ G.Interact = (() => {
     },
     {
       id: 'cd',
-      name: 'Prisa',
-      desc: '-40% recarga',
+      name: 'Haste',
+      desc: '-40% cooldown',
       color: '#ffd23f',
       on: p => {
         p.cdMul *= 0.6;
@@ -80,8 +80,8 @@ G.Interact = (() => {
           spring(dt, pl, p, d2);
           break;
         case 'altar':
-          // Contando el tamaño de tu Pokémon: uno grande (Reshiram, Zekrom...) choca
-          // con el altar antes de llegar a 30 y no lo podía activar.
+          // Counting your Pokémon's size: a big one (Reshiram, Zekrom...) bumps into
+          // the altar before getting within 30 and couldn't activate it.
           if (!p.used && !pl.dead && d2 < Math.max(30, p.r + pl.r + 14) ** 2) usePower(pl, p);
           break;
         case 'bigchest':
@@ -117,7 +117,7 @@ G.Interact = (() => {
       healAcc = 0;
       G.Audio.sfx('xp');
     }
-    if (p.charge <= 0.02) G.Spawner.say('El manantial se ha secado (se recarga solo)', 2.2, true);
+    if (p.charge <= 0.02) G.Spawner.say('The spring has dried up (it refills on its own)', 2.2, true);
   }
 
   function usePower(pl, p) {
@@ -127,12 +127,12 @@ G.Interact = (() => {
     G.FX.ring(p.x, p.y - 20, 8, 90, pw.color, 0.6, 5);
     G.FX.burst(pl.x, pl.y - pl.bodyH * 0.5, pw.color, 24, 200);
     G.Audio.sfx('legend');
-    G.Spawner.say('¡Poder ' + pw.name + '! ' + pw.desc + ' durante ' + POWER_TIME + ' s', 3, true);
+    G.Spawner.say(`${pw.name} power! ${pw.desc} for ${POWER_TIME} s`, 3, true);
   }
 
   /**
-   * Una trampa salta (en cada ordenador; ver la cabecera). El daño a enemigos
-   * sólo lo hace quien manda; a ti te afecta si estás dentro.
+   * A trap goes off (on each computer; see the header). Damage to enemies
+   * is only dealt by the authority; it affects you if you are inside.
    */
   function trapEffect(p) {
     const x = p.x,
@@ -172,7 +172,7 @@ G.Interact = (() => {
       if (k === 0) pl.hurt(pl.maxHp * 0.1);
       else if (k === 1) {
         pl.slowT = 3.5;
-        G.FX.dmgText(pl.x, pl.y - pl.bodyH - 6, '¡Pegajoso!', '#8bd94a');
+        G.FX.dmgText(pl.x, pl.y - pl.bodyH - 6, 'Sticky!', '#8bd94a');
       } else pl.hurt(pl.maxHp * 0.2);
     }
   }

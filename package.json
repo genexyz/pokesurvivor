@@ -2,7 +2,7 @@
   "name": "pokesurvivor",
   "version": "1.0.0",
   "private": true,
-  "description": "PokéSurvivor · Mundo Misterioso: bullet-heaven con Pokémon (HTML + Canvas 2D, sin framework).",
+  "description": "PokéSurvivor · Mystery Dungeon: a Pokémon bullet-heaven (HTML + Canvas 2D, no framework).",
   "license": "SEE LICENSE IN LICENSE",
   "engines": {
     "node": ">=22"
@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "node server/index.mjs --dev",
     "build": "node scripts/build.js && npm run build:pages",
-    "build:force": "node scripts/build.js --forzar && npm run build:pages",
+    "build:force": "node scripts/build.js --force && npm run build:pages",
     "build:debug": "node scripts/build.js --expose && npm run build:pages",
     "build:pages": "node scripts/export_data.js && node scripts/py.js scripts/make_seo_pages.py",
     "start": "node server/index.mjs",

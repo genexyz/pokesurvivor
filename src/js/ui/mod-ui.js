@@ -1,13 +1,13 @@
-/* ============ mod-ui.js — moderación del ranking (pantalla oculta) ============
- * Sólo la ve la cuenta de moderación (G.Ranking.isAdmin, y firestore.rules
- * admin(): aunque alguien abriera esta pantalla, el servidor no le dejaría
- * hacer nada). Se abre con el botón "Moderación" del ranking.
+/* ============ mod-ui.js — leaderboard moderation (hidden screen) ============
+ * Only the moderation account sees it (G.Ranking.isAdmin, and firestore.rules
+ * admin(): even if someone opened this screen, the server wouldn't let them
+ * do anything). Opened with the leaderboard's "Moderation" button.
  *
- *   Reportes          marcas reportadas por los jugadores, las más reportadas
- *                     primero: borrar la marca, banear (no puede volver a
- *                     subir marcas, y se borra su marca de todas las tablas de
- *                     ahora) o descartar el reporte.
- *   Baneados          las cuentas baneadas del ranking; se pueden desbanear.
+ *   Reports           records reported by players, most reported first:
+ *                     delete the record, ban (can no longer upload records,
+ *                     and their record is removed from every current board)
+ *                     or dismiss the report.
+ *   Banned            accounts banned from the leaderboard; they can be unbanned.
  */
 G.ModUI = (() => {
   const $ = G.UI.$;
@@ -17,19 +17,19 @@ G.ModUI = (() => {
   function init() {
     $('mod-back').onclick = () => G.RankingUI.open();
     $('mod-purge').onclick = async () => {
-      if (!confirm('¿Quitar del ranking TODAS las marcas de más de 1 hora (todas las tablas)? No se puede deshacer.')) return;
+      if (!confirm("Remove from the leaderboard ALL records over 1 hour (every board)? This can't be undone.")) return;
       const b = $('mod-purge');
       b.disabled = true;
       try {
         const r = await G.Ranking.purgeAbove(3600, (i, n) => {
-          b.textContent = 'Revisando ' + i + ' / ' + n + '…';
+          b.textContent = `Checking ${i} / ${n}…`;
         });
-        G.UI.toast('Quitadas ' + r.rows + ' marcas de más de 1 hora (' + r.boards + ' tablas)', 5000);
+        G.UI.toast(`Removed ${r.rows} records over 1 hour (${r.boards} boards)`, 5000);
       } catch (e) {
-        G.UI.toast('No se pudo: ' + (e.code || e.message), 5000);
+        G.UI.toast('Failed: ' + (e.code || e.message), 5000);
       }
       b.disabled = false;
-      b.textContent = 'Quitar marcas de más de 1 hora';
+      b.textContent = 'Remove records over 1 hour';
       render();
     };
     document.querySelectorAll('#mod-tabs .tab').forEach(t => {
@@ -58,34 +58,34 @@ G.ModUI = (() => {
   async function render() {
     document.querySelectorAll('#mod-tabs .tab').forEach(t => t.classList.toggle('on', t.dataset.tab === tab));
     const list = $('mod-list');
-    list.innerHTML = '<p class="sub">Cargando…</p>';
+    list.innerHTML = '<p class="sub">Loading…</p>';
     try {
       if (tab === 'rep') await renderReports(list);
       else await renderMarked(list);
     } catch (e) {
-      list.innerHTML = '<p class="sub">No se pudo cargar (' + esc(e.code || e.message) + ').</p>';
+      list.innerHTML = `<p class="sub">Couldn't load (${esc(e.code || e.message)}).</p>`;
     }
   }
 
-  /** "s_w2026-42" -> "Solo · Semana" */
+  /** "s_w2026-42" -> "Solo · Week" */
   function boardName(b) {
     const [m, p] = b.split('_');
-    const mode = m === 'g' ? 'Grupo' : 'Solo';
-    const per = p.startsWith('d') ? 'Hoy' : p.startsWith('w') ? 'Semana' : p.startsWith('m') ? 'Mes' : 'Histórico';
+    const mode = m === 'g' ? 'Group' : 'Solo';
+    const per = p.startsWith('d') ? 'Today' : p.startsWith('w') ? 'Week' : p.startsWith('m') ? 'Month' : 'All-time';
     const dex = (b.match(/_p(\d+)$/) || [])[1];
-    return mode + ' · ' + per + (dex && G.DEX_BY[dex] ? ' · sólo ' + G.DEX_BY[dex].name : '');
+    return mode + ' · ' + per + (dex && G.DEX_BY[dex] ? ' · only ' + G.DEX_BY[dex].name : '');
   }
-  // Con la Sentencia de Arceus (minuto 30) casi nadie pasa de ~32-33 min.
+  // With Arceus's Judgment (minute 30) almost nobody gets past ~32-33 min.
   const SUSPECT_T = 33 * 60;
 
   async function renderReports(list) {
     const groups = await G.Ranking.reports();
-    list.innerHTML = groups.length ? '' : '<p class="sub">No hay reportes.</p>';
+    list.innerHTML = groups.length ? '' : '<p class="sub">No reports.</p>';
     for (const g of groups) {
       const row = document.createElement('div');
       row.className = 'rk-row mod-row rep';
       const mode = g.board.startsWith('g_') ? 'g' : 's';
-      // Lo que se ve de la marca ahora en su tabla (nivel, derrotados, Pokémon).
+      // What the record currently shows on its board (level, defeated, Pokémon).
       const info = await G.Ranking.entryInfo(g.board, g.e).catch(() => null);
       const t = info ? info.t : g.t;
       const sus = t > SUSPECT_T;
@@ -95,13 +95,13 @@ G.ModUI = (() => {
         info.dex.forEach((d, i) => {
           if (G.DEX_BY[d]) mons.appendChild(G.UI.spriteCanvas(d, 44, 40, { scale: 1, shiny: !!(info.shiny || [])[i] }));
         });
-      row.innerHTML = `<span class="pos" title="veces reportada">${g.n}×</span>`;
+      row.innerHTML = `<span class="pos" title="times reported">${g.n}×</span>`;
       row.appendChild(mons);
       row.insertAdjacentHTML(
         'beforeend',
         `<span class="who"><b translate="no">${g.names.map(esc).join(' · ')}</b>
-          <small>${esc(boardName(g.board))}${info ? ' · Nv. ' + (info.lv || 1) + ' · ' + (info.kills || 0).toLocaleString('es') + ' derrotados' : ' · ya no está en el top 50'}</small>
-          ${sus ? '<small class="mod-warn">Más de 33 min: casi imposible con la Sentencia de Arceus</small>' : ''}</span>
+          <small><span>${esc(boardName(g.board))}</span>${info ? ' · Lv. ' + (info.lv || 1) + ' · ' + (info.kills || 0).toLocaleString(G.I18n.locale) + ' defeated' : ' · no longer in the top 50'}</small>
+          ${sus ? '<small class="mod-warn">Over 33 min: nearly impossible with the Judgment of Arceus</small>' : ''}</span>
         <span class="time${sus ? ' mod-warn' : ''}">${fmt(t)}</span>`
       );
       const acts = document.createElement('span');
@@ -115,29 +115,29 @@ G.ModUI = (() => {
           G.UI.toast(msg);
           row.remove();
         } catch (e) {
-          G.UI.toast('No se pudo: ' + (e.code || e.message));
+          G.UI.toast('Failed: ' + (e.code || e.message));
           acts.querySelectorAll('button').forEach(b => {
             b.disabled = false;
           });
         }
       };
       acts.append(
-        btn('Borrar marca', 'ghost', () =>
+        btn('Delete record', 'ghost', () =>
           busy(async () => {
             await G.Ranking.removeEverywhere(g.e, mode, [], g.board);
             await G.Ranking.dismiss(g.ids);
-          }, 'Marca borrada')
+          }, 'Record deleted')
         ),
-        btn('Banear', 'danger', () => {
-          if (!confirm('¿Banear a ' + g.names.join(', ') + '? No podrán volver a salir en el ranking y se borra su marca.')) return;
+        btn('Ban user', 'danger', () => {
+          if (!confirm('Ban ' + g.names.join(', ') + "? They won't appear on the leaderboard again and their record is deleted.")) return;
           busy(async () => {
             const uids = g.e.split('_');
             for (const u of uids) await G.Ranking.setMarked(u, true).catch(() => {});
             await G.Ranking.removeEverywhere(g.e, mode, [], g.board);
             await G.Ranking.dismiss(g.ids);
-          }, 'Baneado');
+          }, 'User banned');
         }),
-        btn('Descartar', 'ghost', () => busy(() => G.Ranking.dismiss(g.ids), 'Reporte descartado'))
+        btn('Dismiss', 'ghost', () => busy(() => G.Ranking.dismiss(g.ids), 'Report dismissed'))
       );
       row.appendChild(acts);
       list.appendChild(row);
@@ -146,22 +146,22 @@ G.ModUI = (() => {
 
   async function renderMarked(list) {
     const accs = await G.Ranking.markedAccounts();
-    list.innerHTML = accs.length ? '' : '<p class="sub">No hay cuentas baneadas.</p>';
+    list.innerHTML = accs.length ? '' : '<p class="sub">No banned accounts.</p>';
     for (const a of accs) {
       const row = document.createElement('div');
       row.className = 'rk-row mod-row';
       row.innerHTML = `<span class="pos"></span>
-        <span class="who"><b translate="no">${esc(a.name)}</b><small translate="no">${a.coins.toLocaleString('es')} monedas · ${a.t1} tickets · ${a.t10} ×10 · ${a.owned} Pokémon · ${esc(a.uid)}</small></span>`;
+        <span class="who"><b translate="no">${esc(a.name)}</b><small>${a.coins.toLocaleString(G.I18n.locale)} coins · ${a.t1} tickets · ${a.t10} ×10 · ${a.owned} Pokémon · <span translate="no">${esc(a.uid)}</span></small></span>`;
       const acts = document.createElement('span');
       acts.className = 'mod-acts';
       acts.append(
-        btn('Desbanear', 'ghost', async () => {
+        btn('Unban', 'ghost', async () => {
           try {
             await G.Ranking.setMarked(a.uid, false);
-            G.UI.toast('Desbaneada');
+            G.UI.toast('Account unbanned');
             row.remove();
           } catch (e) {
-            G.UI.toast('No se pudo: ' + (e.code || e.message));
+            G.UI.toast('Failed: ' + (e.code || e.message));
           }
         })
       );

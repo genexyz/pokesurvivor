@@ -1,7 +1,7 @@
-/* ============ main.js — arranque ============ */
+/* ============ main.js — boot ============ */
 (() => {
-  // Si un archivo no llega a cargarse (conexión móvil que se corta), mejor
-  // avisar que arrancar a medias.
+  // If a file fails to load (e.g. a dropped mobile connection), better to
+  // warn than to start half-broken.
   const NEED = [
     'U',
     'I18n',
@@ -46,34 +46,38 @@
     'Flow'
   ];
   function broken() {
-    // (En la versión publicada G no está en window: va encerrado, ver scripts/build.js.)
+    // (In the published build G is not on window: it is wrapped, see scripts/build.js.)
     const miss = NEED.filter(k => typeof G !== 'object' || !G[k]);
     if (!miss.length) return false;
     const el = document.getElementById('boot');
+    const es = typeof G === 'object' && G.I18n ? G.I18n.lang === 'es' : /^es/i.test(navigator.language || '');
     el.innerHTML =
-      'No se pudo cargar todo el juego (¿se cortó la conexión?).<br><button class="btn gold" style="margin-top:12px" onclick="location.reload()">Recargar</button>';
-    console.warn('[Arranque] faltan:', miss.join(', '));
+      (es ? 'No se pudo cargar todo el juego (¿se cortó la conexión?).' : "The game couldn't fully load (did the connection drop?).") +
+      '<br><button class="btn gold" style="margin-top:12px" onclick="location.reload()">' +
+      (es ? 'Recargar' : 'Reload') +
+      '</button>';
+    console.warn('[Boot] missing:', miss.join(', '));
     return true;
   }
 
-  // Mantenimiento (mudanza a servidores nuevos): no se entra ni se inicia
-  // sesión, así no se escribe nada mientras se copian las cuentas y partidas.
-  // Para probar en local: añade ?dev a la dirección.
+  // Maintenance (moving to new servers): no entering the game or signing
+  // in, so nothing is written while accounts and saves are being copied.
+  // To test locally: add ?dev to the address.
   const MAINTENANCE = false;
   function maintenance() {
     if (!MAINTENANCE || /[?&]dev\b/.test(location.search)) return false;
-    const en = typeof G === 'object' && G.I18n ? G.I18n.lang === 'en' : !/^es/i.test(navigator.language || '');
+    const es = typeof G === 'object' && G.I18n ? G.I18n.lang === 'es' : /^es/i.test(navigator.language || '');
     const el = document.getElementById('boot');
     el.setAttribute('translate', 'no');
     el.innerHTML =
       '<div class="boot-in"><h1>PokéSurvivor</h1>' +
-      (en
+      (!es
         ? '<p><b>We are under maintenance.</b></p><p>We are moving the game to new servers so it can stay free for everyone. ' +
           'Your account, your save and your Pokémon are safe. Please come back in a few hours!</p>'
         : '<p><b>Estamos en mantenimiento.</b></p><p>Estamos mudando el juego a servidores nuevos para que siga siendo gratis para todos. ' +
           'Tu cuenta, tu partida y tus Pokémon están a salvo. ¡Vuelve en unas horas!</p>') +
       '<button class="btn gold" style="margin-top:12px" onclick="location.reload()">' +
-      (en ? 'Try again' : 'Volver a intentarlo') +
+      (es ? 'Volver a intentarlo' : 'Try again') +
       '</button></div>';
     return true;
   }
@@ -82,15 +86,15 @@
     if (maintenance()) return;
     if (broken()) return;
     G.I18n.startDom();
-    // Espera a la fuente pixel para que la UI no salte al cargarla.
+    // Wait for the pixel font so the UI doesn't jump when it loads.
     const ready = document.fonts && document.fonts.load ? document.fonts.load('16px Pixelify') : Promise.resolve();
     ready.catch(() => {}).then(() => G.Flow.boot());
   }
   if (document.readyState === 'loading') addEventListener('DOMContentLoaded', boot);
   else boot();
 
-  // Instalable como app (PWA). Sólo con http(s): abierto con doble clic (file://) no hace falta.
-  // Con npm run dev no: guardaría en caché el código mientras se programa.
+  // Installable as an app (PWA). Only over http(s): not needed when opened by double-click (file://).
+  // Not with npm run dev: it would cache the code while developing.
   if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.PS_DEV) {
     addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(e => console.warn('[PWA]', e.message)));
   }

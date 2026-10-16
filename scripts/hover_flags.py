@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Marca qué Pokémon FLOTAN de verdad en su sprite (y por tanto pueden pasar por
-encima de rocas y agua) y cuáles caminan aunque sean de tipo Volador.
+Flags which Pokémon really FLOAT in their sprite (and can therefore pass over
+rocks and water) and which ones walk even though they are Flying type.
 
     python scripts/hover_flags.py
 
-Mira el primer fotograma de Idle (mirando abajo) de cada Pokémon: si el pixel
-opaco más bajo queda claramente por encima del ancla del suelo (la sombra),
-es que flota. Añade "hv":1 a esos Pokémon en js/data/sprites-meta.js.
+Looks at the first Idle frame (facing down) of each Pokémon: if the lowest
+opaque pixel is clearly above the ground anchor (the shadow), it floats.
+Adds "hv":1 to those Pokémon in js/data/sprites-meta.js.
 """
 import io
 import json
@@ -20,7 +20,7 @@ from PIL import Image
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 META = os.path.join(ROOT, 'src', 'js', 'data', 'sprites-meta.js')
 ASSETS = os.path.join(ROOT, 'public', 'assets', 'pokemon')
-GAP = 1          # píxeles de arte entre los pies y el suelo (los que caminan dan <= -0,5)
+GAP = 1          # art pixels between the feet and the ground (walkers give <= -0.5)
 
 LINE = re.compile(r'^(\s*)(\d+): (\{.*\}),\s*$')
 
@@ -36,7 +36,7 @@ def gap_of(dex, idle):
     bbox = alpha.point(lambda a: 255 if a > 40 else 0).getbbox()
     if not bbox:
         return 0
-    bottom = bbox[3] - 1                     # fila del pixel opaco más bajo
+    bottom = bbox[3] - 1                     # row of the lowest opaque pixel
     return idle['ay'] - bottom
 
 
@@ -58,18 +58,22 @@ def main():
             hovering.append(dex)
         out.append(f"{m.group(1)}{dex}: {json.dumps(data, separators=(',', ':'))},")
     text = '\n'.join(out)
-    if ' *                 hv=1 si flota' not in text:
-        text = text.replace(' *                 sm animaciones que le faltan al shiny',
-                            ' *                 sm animaciones que le faltan al shiny\n'
-                            ' *                 hv=1 si flota en su sprite (scripts/hover_flags.py):\n'
-                            ' *                 pasa por encima de rocas y agua')
+    # Document the hv flag in the header (once). The header may still be the old Spanish one.
+    if ' *                 hv=1 ' not in text:
+        for sm in (' *                 sm animations the shiny is missing',
+                   ' *                 sm animaciones que le faltan al shiny'):
+            if sm in text:
+                text = text.replace(sm, sm + '\n'
+                                    ' *                 hv=1 if it floats in its sprite (scripts/hover_flags.py):\n'
+                                    ' *                 passes over rocks and water', 1)
+                break
     with io.open(META, 'w', encoding='utf-8', newline='\n') as f:
         f.write(text)
-    print(f'{len(hovering)} Pokémon flotan')
+    print(f'{len(hovering)} Pokémon float')
     return hovering
 
 
 if __name__ == '__main__':
     h = main()
     for d in [6, 12, 16, 41, 81, 92, 93, 94, 109, 151, 722, 18, 142, 249, 384]:
-        print(d, 'flota' if d in h else 'camina')
+        print(d, 'floats' if d in h else 'walks')

@@ -1,23 +1,23 @@
-/* ============ db.js — base de datos: nuestro servidor (nube) o local ============
- * TODO el acceso a datos persistentes pasa por aquí. El resto del juego sólo
- * usa G.DB.*.
+/* ============ db.js — database: our server (cloud) or local ============
+ * ALL access to persistent data goes through here. The rest of the game only
+ * uses G.DB.*.
  *
- * Dos modos (se decide en ready()):
+ * Two modes (decided in ready()):
  *
- *   NUBE  (nuestro servidor: server/, con Postgres)
- *     Desde la web oficial (o localhost con el servidor y su base de datos).
- *     Sólo se entra con Google. La partida se guarda en el servidor y se
- *     puede seguir en cualquier aparato. Además se guarda una copia local
- *     para poder jugar sin conexión; al sincronizar se FUSIONA (save-merge.js):
- *     las colecciones se unen y nunca se pierde un Pokémon ni un shiny.
+ *   CLOUD (our server: server/, with Postgres)
+ *     From the official website (or localhost with the server and its database).
+ *     Sign-in is Google only. The save is stored on the server and can be
+ *     continued on any device. A local copy is also kept so the game can be
+ *     played offline; when syncing it is MERGED (save-merge.js): collections
+ *     are joined and a Pokémon or a shiny is never lost.
  *
  *   LOCAL (localStorage)
- *     Sin servidor (copia en otra web, abierto con doble clic, npm run dev sin
- *     base de datos): una partida en este navegador, sin cuenta.
- *       ps.save.local    la partida
- *       ps.session       'local' si se estaba jugando
+ *     No server (a copy on another website, opened by double-clicking, npm run dev
+ *     without a database): one save in this browser, no account.
+ *       ps.save.local    the save
+ *       ps.session       'local' if it was being played
  *
- * El modo invitado juega con una partida en memoria que no se guarda.
+ * Guest mode plays with an in-memory save that isn't stored.
  */
 G.DB = (() => {
   const K_SES = 'ps.session',
@@ -28,15 +28,15 @@ G.DB = (() => {
   const START_COINS = 500;
 
   let mode = 'local'; // 'cloud' | 'local'
-  let localReason = ''; // por qué no hay nube: 'dev' | 'file' | 'host' | 'config' | 'error'
-  let user = null; // nombre visible
-  let key = null; // 'local' o el id de la cuenta
+  let localReason = ''; // why there is no cloud: 'dev' | 'file' | 'host' | 'config' | 'error'
+  let user = null; // display name
+  let key = null; // 'local' or the account id
   let guest = false;
   let save = null;
   let storageOk = true;
-  let me = null; // lo que dice el servidor de la sesión: { user: { id, admin }, nick }
+  let me = null; // what the server says about the session: { user: { id, admin }, nick }
 
-  // ---------------- almacenamiento local seguro ----------------
+  // ---------------- safe local storage ----------------
 
   function read(k) {
     try {
@@ -53,9 +53,9 @@ G.DB = (() => {
       localStorage.setItem(k, s);
       return true;
     } catch (e) {
-      // Navegador lleno (sobre todo por lo que guarda el ranking): se libera lo
-      // prescindible y se reintenta. Antes la copia de la partida dejaba de
-      // guardarse sin avisar y, al recargar, se volvía a la de la nube.
+      // Browser storage full (mostly from what the leaderboard caches): free what
+      // can be spared and retry. The save copy used to silently stop being
+      // stored and, on reload, the game went back to the cloud one.
       try {
         for (let i = localStorage.length - 1; i >= 0; i--) {
           const key = localStorage.key(i);
@@ -73,36 +73,36 @@ G.DB = (() => {
     try {
       localStorage.removeItem(k);
     } catch (e) {
-      /* nada */
+      /* nothing */
     }
   }
 
-  // ---------------- partida ----------------
+  // ---------------- save ----------------
 
   function newSave(name) {
     return {
       v: VERSION,
       name,
       created: Date.now(),
-      updated: Date.now(), // última modificación (para fusionar)
+      updated: Date.now(), // last modification (for merging)
       coins: START_COINS,
       owned: {}, // dex -> { at, from: 'starter'|'gacha'|'wild' }
-      shiny: {}, // dex -> { at, from } — variantes shiny conseguidas
-      partner: null, // dex del Pokémon con el que juegas
-      partnerShiny: false, // jugar con su versión shiny (si la tienes)
-      starter: null, // dex que te tocó en el test
+      shiny: {}, // dex -> { at, from } — shiny variants obtained
+      partner: null, // dex of the Pokémon you play with
+      partnerShiny: false, // play with its shiny version (if you have it)
+      starter: null, // dex you got in the quiz
       personality: null, // { trait, scores }
-      upgrades: {}, // (antiguo) mejoras de la cuenta; ahora van por Pokémon
-      pupg: {}, // dex -> { id -> nivel }: mejoras de cada Pokémon
-      tickets: { t1: 0, t10: 0 }, // tickets del gacha (x1 y x10)
-      pity: {}, // generación del banner -> tiradas sin ★5
-      legends: {}, // dex -> fecha: legendarios vencidos en grietas
-      arenas: {}, // tipo -> fecha: arenas de grieta ganadas
-      itemsFound: {}, // id -> fecha: objetos equipables encontrados
-      evoMoves: {}, // id -> fecha: movimientos evolucionados alguna vez
-      ach: {}, // id -> fecha: logros conseguidos
-      missions: {}, // misiones del día / semana (systems/progress.js)
-      profile: { favs: [], title: '' }, // perfil público: 3 favoritos y título
+      upgrades: {}, // (old) account upgrades; they are now per Pokémon
+      pupg: {}, // dex -> { id -> level }: each Pokémon's upgrades
+      tickets: { t1: 0, t10: 0 }, // gacha tickets (x1 and x10)
+      pity: {}, // banner generation -> pulls without a ★5
+      legends: {}, // dex -> date: legendaries defeated in rifts
+      arenas: {}, // type -> date: rift arenas won
+      itemsFound: {}, // id -> date: equippable items found
+      evoMoves: {}, // id -> date: moves evolved at some point
+      ach: {}, // id -> date: achievements earned
+      missions: {}, // daily / weekly missions (systems/progress.js)
+      profile: { favs: [], title: '' }, // public profile: 3 favourites and title
       stats: {
         runs: 0,
         bestTime: 0,
@@ -121,14 +121,14 @@ G.DB = (() => {
     };
   }
 
-  /** Rellena campos que falten en partidas de versiones anteriores. */
+  /** Fills in fields missing from saves of older versions. */
   function migrate(s, name) {
     const base = newSave(name || s.name);
     for (const k in base) if (s[k] == null) s[k] = base[k];
     for (const k in base.stats) if (s.stats[k] == null) s.stats[k] = base.stats[k];
-    // v1 -> v2: había un único banner (Kanto) con el pity como número.
+    // v1 -> v2: there was a single banner (Kanto) with pity as a number.
     if (typeof s.pity === 'number') s.pity = { 1: s.pity };
-    // v2 -> v3: las mejoras eran de la cuenta; pasan al compañero de entonces.
+    // v2 -> v3: upgrades belonged to the account; they move to the partner at that time.
     if (!s.pupgDone) {
       if (s.partner && Object.values(s.upgrades || {}).some(v => v > 0)) {
         s.pupg[s.partner] = Object.assign({}, s.upgrades);
@@ -136,16 +136,44 @@ G.DB = (() => {
       s.pupgDone = true;
     }
     s.tickets = Object.assign({ t1: 0, t10: 0 }, s.tickets);
+    migrateSpanish(s);
     sanitize(s);
     s.v = VERSION;
     return s;
   }
 
   /**
-   * Quita lo imposible de una partida editada a mano (la copia del navegador
-   * se puede tocar): números negativos o raros, mejoras por encima del
-   * máximo y Pokémon que no existen. Lo que sí sea posible lo frena el
-   * servidor (server/api.mjs, saves).
+   * The game used to be written in Spanish and some saved values were Spanish
+   * text: personality traits ('valiente' -> 'brave'), the profile title (the
+   * title text -> the achievement id) and the default names.
+   */
+  function migrateSpanish(s) {
+    const P = s.personality;
+    if (P && G.TRAIT_LEGACY) {
+      if (G.TRAIT_LEGACY[P.trait]) P.trait = G.TRAIT_LEGACY[P.trait];
+      if (isObj(P.scores)) {
+        for (const k of Object.keys(P.scores)) {
+          const id = G.TRAIT_LEGACY[k];
+          if (!id) continue;
+          P.scores[id] = (P.scores[id] || 0) + P.scores[k];
+          delete P.scores[k];
+        }
+      }
+    }
+    const prof = s.profile;
+    if (prof && prof.title && G.AchDefs && !G.AchDefs.BY[prof.title]) {
+      const a = G.AchDefs.LIST.find(a => a.title && (a.title === prof.title || G.I18n.es(a.title) === prof.title));
+      prof.title = a ? a.id : '';
+    }
+    if (s.name === 'Entrenador') s.name = 'Trainer';
+    else if (s.name === 'Invitado') s.name = 'Guest';
+  }
+
+  /**
+   * Removes the impossible from a hand-edited save (the browser copy can be
+   * tampered with): negative or odd numbers, upgrades above the maximum and
+   * Pokémon that don't exist. What is possible is checked by the server
+   * (server/api.mjs, saves).
    */
   function sanitize(s) {
     const n = v => (Number.isFinite(+v) && +v > 0 ? Math.floor(+v) : 0);
@@ -172,7 +200,7 @@ G.DB = (() => {
       for (const coll of ['owned', 'shiny']) {
         for (const d of Object.keys(s[coll] || {})) if (!G.DEX_BY[d]) delete s[coll][d];
       }
-    // Atajos: 4 huecos con un movimiento que exista (o null), sin repetir.
+    // Shortcuts: 4 slots with an existing move (or null), no repeats.
     if (s.pbind && typeof s.pbind === 'object') {
       for (const d of Object.keys(s.pbind)) {
         const l = Array.isArray(s.pbind[d]) ? s.pbind[d].slice(0, 4) : [];
@@ -185,7 +213,7 @@ G.DB = (() => {
         });
       }
     } else s.pbind = {};
-    // Veto: listas de movimientos que existen, sin repetir, como mucho 3.
+    // Ban list: lists of existing moves, no repeats, 3 at most.
     if (s.pban && typeof s.pban === 'object') {
       for (const d of Object.keys(s.pban)) {
         const l = Array.isArray(s.pban[d]) ? s.pban[d] : [];
@@ -206,9 +234,9 @@ G.DB = (() => {
       }
   }
 
-  // Fusionar partidas y la libreta de monedas y tickets: js/core/save-merge.js.
+  // Merging saves and the coin and ticket ledger: js/core/save-merge.js.
   const { CUR, isObj, ledOf, merge } = G.SaveMerge;
-  // Este aparato (navegador): un nombre al azar que se queda guardado.
+  // This device (browser): a random name that stays stored.
   const DEV = (() => {
     let d = read('ps.dev');
     if (typeof d !== 'string' || !/^[a-z0-9]{6,12}$/.test(d)) {
@@ -217,18 +245,18 @@ G.DB = (() => {
     }
     return d;
   })();
-  /** Apunta en la libreta de ESTE aparato lo que ha cambiado desde la última vez. */
+  /** Records in THIS device's ledger what has changed since last time. */
   function fold(s) {
     if (!s) return s;
     s.led = ledOf(s, DEV);
     return s;
   }
 
-  /** Sustituye el contenido de `save` sin cambiar el objeto (otros módulos lo tienen). */
-  // Copia `s` sobre la partida SIN cambiar los objetos de dentro (mejoras,
-  // Pokémon...): las pantallas abiertas guardan referencias a ellos. Antes se
-  // sustituían y una compra hecha justo después de subir la partida se
-  // apuntaba en la copia vieja: se cobraban las monedas y la mejora se perdía.
+  /** Replaces the contents of `save` without changing the object (other modules hold it). */
+  // Copies `s` over the save WITHOUT changing the objects inside (upgrades,
+  // Pokémon...): open screens keep references to them. They used to be
+  // replaced, and a purchase made right after uploading the save was recorded
+  // in the old copy: the coins were charged and the upgrade was lost.
   function assignDeep(dst, src) {
     for (const k of Object.keys(dst)) if (!(k in src)) delete dst[k];
     for (const k in src) {
@@ -241,14 +269,14 @@ G.DB = (() => {
   }
 
   // =====================================================================
-  //                               MODO LOCAL
+  //                               LOCAL MODE
   // =====================================================================
 
   function beginLocal() {
     key = LOCAL;
     guest = false;
     const s = read(K_SAVE + LOCAL);
-    save = fold(s ? migrate(s, s.name) : newSave('Entrenador'));
+    save = fold(s ? migrate(s, s.name) : newSave('Trainer'));
     user = save.name;
     write(K_SES, LOCAL);
     write(K_SAVE + LOCAL, save);
@@ -261,7 +289,7 @@ G.DB = (() => {
   }
 
   // =====================================================================
-  //                               MODO NUBE
+  //                               CLOUD MODE
   // =====================================================================
 
   let uid = null;
@@ -270,11 +298,11 @@ G.DB = (() => {
     pending = false,
     pushing = null,
     lastPush = 0;
-  // Lo normal se sube cada 2 h; al cerrar la pestaña, siempre; al cambiar de
-  // pestaña, si hace más de 30 min. Lo que vale algo (tiradas, compras,
-  // Pokémon nuevos, shinies, premios, récords que entran en un top) se sube
-  // enseguida, y al acabar cada partida como mucho cada 30 min. La copia del
-  // navegador se guarda siempre al momento (y se fusiona al volver a entrar).
+  // Normal changes are uploaded every 2 h; when closing the tab, always; when
+  // switching tabs, if it's been more than 30 min. Valuable things (pulls,
+  // purchases, new Pokémon, shinies, rewards, records that enter a top) are
+  // uploaded right away, and at the end of each run at most every 30 min. The
+  // browser copy is always saved immediately (and merged on the next visit).
   const PUSH_GAP = 2 * 3600 * 1000,
     PUSH_GAP_URGENT = 15 * 1000,
     PUSH_GAP_RUN = 30 * 60 * 1000,
@@ -288,21 +316,21 @@ G.DB = (() => {
       try {
         fn(s);
       } catch (e) {
-        /* nada */
+        /* nothing */
       }
     });
   }
 
   /**
-   * Llama a nuestro servidor (/api/...). Devuelve el JSON de la respuesta;
-   * si falla, lanza { code } (el código HTTP, 'unavailable' sin conexión).
+   * Calls our server (/api/...). Returns the response JSON;
+   * on failure it throws { code } (the HTTP status, 'unavailable' when offline).
    */
   async function api(path, opts = {}) {
     const init = { method: opts.method || 'GET', credentials: 'same-origin', headers: {} };
     if (opts.body !== undefined) {
       init.headers['content-type'] = 'application/json';
       init.body = JSON.stringify(opts.body);
-      // Al cerrar la pestaña, la subida sigue aunque la página se vaya (hasta 64 KB).
+      // When closing the tab, the upload continues even as the page goes away (up to 64 KB).
       if (opts.keepalive && init.body.length < 60000) init.keepalive = true;
     }
     let r;
@@ -315,21 +343,21 @@ G.DB = (() => {
     try {
       j = await r.json();
     } catch (e) {
-      /* sin cuerpo */
+      /* no body */
     }
     if (!r.ok) throw { code: r.status, message: (j && j.error) || r.statusText };
     return j;
   }
 
   /*
-   * La nube sólo desde la web oficial: el código está en GitHub, y una copia
-   * publicada en otra web llamaría a NUESTRO servidor. Ahí el juego va en
-   * modo local. (El servidor tampoco acepta sesiones de otros orígenes.)
+   * The cloud only from the official website: the code is on GitHub, and a copy
+   * published on another website would call OUR server. There the game runs in
+   * local mode. (The server doesn't accept sessions from other origins either.)
    */
   const HOSTS = ['survivor.preciostcg.com', 'localhost', '127.0.0.1'];
 
   async function initCloud() {
-    // npm run dev sin base de datos: sin nube (server/index.mjs).
+    // npm run dev without a database: no cloud (server/index.mjs).
     if (window.PS_DEV === 'local') {
       localReason = 'dev';
       return false;
@@ -345,7 +373,7 @@ G.DB = (() => {
     try {
       me = await api('api/me');
     } catch (e) {
-      // Sin conexión: si hay copia de la última cuenta, se juega con ella.
+      // Offline: if there's a copy of the last account, play with it.
       const last = read('ps.lastuid');
       if (e.code === 'unavailable' && last && read(K_CLOUD + last)) {
         me = { cloud: true, offline: true, user: { id: last }, nick: read('ps.nick.' + last) };
@@ -358,9 +386,9 @@ G.DB = (() => {
     addEventListener('online', () => {
       if (pending) pushNow();
     });
-    // Al salir de la pestaña se sube lo pendiente, pero no más de una vez cada
-    // 30 min (la gente cambia de pestaña a menudo). Lo que no se sube sigue en
-    // la copia de este navegador y se sube al volver a entrar.
+    // When leaving the tab, pending changes are uploaded, but no more than once
+    // every 30 min (people switch tabs often). What isn't uploaded stays in this
+    // browser's copy and is uploaded on the next visit.
     const hideFlush = () => {
       if (pending && Date.now() - lastPush > HIDE_GAP) pushNow();
     };
@@ -371,7 +399,7 @@ G.DB = (() => {
         hideFlush();
       } else if (hiddenAt && Date.now() - hiddenAt > PULL_GAP) pullSoon();
     });
-    // Al cerrar o recargar la página, lo pendiente se sube siempre.
+    // When closing or reloading the page, pending changes are always uploaded.
     addEventListener('pagehide', () => {
       if (pending) pushNow(true);
     });
@@ -379,10 +407,10 @@ G.DB = (() => {
   }
 
   /*
-   * Al volver al juego tras más de 30 min fuera (el móvil con la pestaña
-   * abierta de ayer), se baja la partida de la nube y se junta con la de aquí:
-   * así se ve lo conseguido en el otro aparato. En plena partida se espera a
-   * volver al menú.
+   * When coming back to the game after more than 30 min away (the phone with
+   * yesterday's tab open), the cloud save is downloaded and merged with this one:
+   * that way what was earned on the other device shows up. During a run it
+   * waits until back in the menu.
    */
   const PULL_GAP = 30 * 60 * 1000;
   let lastPull = 0,
@@ -403,12 +431,12 @@ G.DB = (() => {
         write(K_CLOUD + uid, save);
         if (G.UI && G.UI.refreshCoins) G.UI.refreshCoins();
       })
-      .catch(e => console.warn('[DB] no se pudo bajar la partida:', e.code || e.message));
+      .catch(e => console.warn('[DB] could not download the save:', e.code || e.message));
   }
 
   const plain = s => JSON.parse(JSON.stringify(s));
 
-  /** Abre la partida de la nube de la cuenta con la sesión iniciada. */
+  /** Opens the cloud save of the signed-in account. */
   async function openCloud() {
     uid = me.user.id;
     const cached = read(K_CLOUD + uid);
@@ -418,12 +446,12 @@ G.DB = (() => {
       try {
         remote = (await api('api/save')).save;
       } catch (e) {
-        if (!cached) throw e; // sin conexión y sin copia: no hay nada que abrir
+        if (!cached) throw e; // offline and no copy: nothing to open
         online = false;
       }
     }
     let s = merge(cached && fold(migrate(cached)), remote && migrate(remote));
-    if (!s) s = newSave(me.nick || 'Entrenador');
+    if (!s) s = newSave(me.nick || 'Trainer');
     save = fold(migrate(s, s.name));
     if (me.nick) save.name = me.nick;
     key = uid;
@@ -432,10 +460,10 @@ G.DB = (() => {
     write(K_CLOUD + uid, save);
     write('ps.lastuid', uid);
     lastPull = Date.now();
-    // Sólo se sube si hay algo que la nube no tenga (cuenta nueva, progreso de
-    // este aparato sin subir...), y SIN esperar a que acabe para enseñar el menú.
+    // Only upload if there's something the cloud doesn't have (new account, this
+    // device's progress not yet uploaded...), and WITHOUT waiting for it to show the menu.
     const same = remote && (!cached || (cached.updated || 0) <= (remote.updated || 0));
-    lastPush = Date.now(); // la primera compra o ticket no sube al momento: espera como las demás
+    lastPush = Date.now(); // the first purchase or ticket isn't uploaded instantly: it waits like the rest
     if (!online) {
       pending = true;
       setSync('offline');
@@ -445,20 +473,20 @@ G.DB = (() => {
   }
 
   /*
-   * Nunca se sube dos veces en menos de 65 s; mientras, todo está en el navegador.
+   * Never upload twice within 65 s; meanwhile, everything is in the browser.
    */
   const K_OK = 'ps.cloudok.',
     MIN_GAP = 65000;
   const sinceOk = () => Date.now() - (+read(K_OK + uid) || 0);
 
   /**
-   * Sube la partida: el servidor la FUSIONA con la que tiene (en una
-   * transacción, server/api.mjs) y devuelve el resultado.
-   * @param closing  la página se está cerrando: se sube ya (sin esperar los 65 s)
+   * Uploads the save: the server MERGES it with the one it has (in a
+   * transaction, server/api.mjs) and returns the result.
+   * @param closing  the page is closing: upload now (without waiting the 65 s)
    */
   function pushNow(closing = false) {
     if (mode !== 'cloud' || guest || !save || !uid) return Promise.resolve();
-    // Si ya hay una subida en marcha, se hace otra justo después (para lo que haya cambiado mientras).
+    // If an upload is already running, do another right after (for whatever changed meanwhile).
     if (pushing) {
       pending = true;
       return pushing.then(() => (pending ? pushNow() : undefined));
@@ -482,15 +510,15 @@ G.DB = (() => {
     lastPush = Date.now();
     setSync('syncing');
     const req = api('api/save', { method: 'PUT', body: { save: plain(fold(save)) }, keepalive: closing });
-    // Si la red se cae a medias, la petición puede quedarse esperando: tope de 12 s.
+    // If the network drops midway, the request may hang: 12 s cap.
     const timeout = new Promise((_, rej) => setTimeout(() => rej({ code: 'unavailable' }), 12000));
     let failed = false;
     pushing = Promise.race([req, timeout])
       .then(r => {
         fails = 0;
         write(K_OK + uid, Date.now());
-        // Se FUSIONA con lo de ahora (no se sobrescribe): si has cambiado algo
-        // mientras se subía (elegir compañero, una compra...), no se pierde.
+        // MERGED with the current state (not overwritten): if you changed something
+        // while it was uploading (choosing a partner, a purchase...), it isn't lost.
         if (r && r.save && save) {
           applyInPlace(merge(plain(fold(save)), migrate(r.save)));
           write(K_CLOUD + uid, save);
@@ -499,7 +527,7 @@ G.DB = (() => {
         if (G.UI && G.UI.refreshCoins) G.UI.refreshCoins();
       })
       .catch(e => {
-        console.warn('[DB] no se pudo sincronizar:', e.code || e.message);
+        console.warn('[DB] could not sync:', e.code || e.message);
         pending = true;
         failed = true;
         setSync(navigator.onLine === false || e.code === 'unavailable' ? 'offline' : 'pending');
@@ -507,13 +535,13 @@ G.DB = (() => {
       })
       .finally(() => {
         pushing = null;
-        // (Si ha fallado, el reintento ya está programado con su espera creciente.)
+        // (If it failed, the retry is already scheduled with its growing delay.)
         if (!failed && pending && syncState === 'pending') schedulePush(Math.max(1500, PUSH_GAP - (Date.now() - lastPush)));
       });
     return pushing;
   }
 
-  // Si ya había una subida programada antes, se respeta (una compra no espera a la siguiente partida).
+  // If an upload was already scheduled earlier, keep it (a purchase doesn't wait for the next run).
   let pushDue = 0;
   function schedulePush(ms) {
     const due = Date.now() + ms;
@@ -526,7 +554,7 @@ G.DB = (() => {
       pushNow();
     }, ms);
   }
-  /** Reintento con espera creciente: 15 s, 30 s, 1 min, 2 min... hasta 10 min. */
+  /** Retry with a growing delay: 15 s, 30 s, 1 min, 2 min... up to 10 min. */
   let fails = 0;
   function scheduleRetry() {
     const ms = Math.min(10 * 60e3, 15e3 * Math.pow(2, fails)) * (0.8 + Math.random() * 0.4);
@@ -539,25 +567,25 @@ G.DB = (() => {
 
   function errorText(e) {
     const c = e && e.code;
-    if (c === 'unavailable') return 'Sin conexión a internet.';
-    if (c === 401) return 'Tu sesión ha caducado: vuelve a entrar con Google.';
-    return 'Error: ' + ((e && e.message) || c || 'desconocido');
+    if (c === 'unavailable') return 'No internet connection.';
+    if (c === 401) return 'Your session has expired: sign in with Google again.';
+    return 'Error: ' + ((e && e.message) || c || 'unknown');
   }
 
   // =====================================================================
-  //                           API PÚBLICA
+  //                           PUBLIC API
   // =====================================================================
 
   let readyP = null;
 
-  /** Arranca la base de datos y recupera la sesión anterior. → true si hay sesión. */
+  /** Starts the database and restores the previous session. → true if there is a session. */
   function ready() {
     if (readyP) return readyP;
     readyP = (async () => {
       try {
         if (await initCloud()) mode = 'cloud';
       } catch (e) {
-        console.warn('[DB] sin nube:', e.code || e.message);
+        console.warn('[DB] no cloud:', e.code || e.message);
         localReason = 'error';
         mode = 'local';
       }
@@ -570,7 +598,7 @@ G.DB = (() => {
         await openCloud();
         return true;
       } catch (e) {
-        console.warn('[DB] no se pudo abrir la partida:', e.code || e.message);
+        console.warn('[DB] could not open the save:', e.code || e.message);
         return false;
       }
     })();
@@ -578,29 +606,29 @@ G.DB = (() => {
   }
 
   /**
-   * Entrar con Google: la página va a Google y vuelve aquí con la sesión
-   * iniciada (ready() la recupera). Si algo falla → { ok: false, error }.
+   * Sign in with Google: the page goes to Google and comes back here signed in
+   * (ready() restores the session). If something fails → { ok: false, error }.
    */
   async function loginWithGoogle() {
-    if (mode !== 'cloud') return { ok: false, error: 'Entrar con Google necesita la versión publicada del juego.' };
+    if (mode !== 'cloud') return { ok: false, error: 'Google sign-in needs the online version of the game.' };
     try {
       const back = location.pathname + location.search;
       const r = await api('api/auth/sign-in/social', { method: 'POST', body: { provider: 'google', callbackURL: back } });
-      if (!r || !r.url) throw { message: 'sin enlace de Google' };
+      if (!r || !r.url) throw { message: 'no Google link' };
       location.href = r.url;
-      return new Promise(() => {}); // la página se va
+      return new Promise(() => {}); // the page goes away
     } catch (e) {
       return { ok: false, error: errorText(e) };
     }
   }
 
-  /** Jugar sin cuenta guardando en este navegador (sólo en modo local). */
+  /** Play without an account, saving in this browser (local mode only). */
   function playLocal() {
     beginLocal();
     return { ok: true, isNew: !save.partner };
   }
 
-  /** Cambia el nombre que se ve en la partida (al elegir apodo). */
+  /** Changes the name shown in the save (when choosing a nickname). */
   function setName(n) {
     if (!save || guest) return;
     save.name = n;
@@ -610,20 +638,20 @@ G.DB = (() => {
   }
 
   function playAsGuest() {
-    user = 'Invitado';
+    user = 'Guest';
     key = null;
     guest = true;
     uid = null;
-    save = newSave('Invitado');
+    save = newSave('Guest');
     if (mode === 'local') remove(K_SES);
     return { ok: true, isNew: true };
   }
 
   /**
-   * Guarda la partida actual (no hace nada en modo invitado). En el navegador,
-   * al momento; en la nube:
-   * @param urgent  true: lo que vale algo (tiradas, compras, Pokémon, premios): enseguida
-   *                'run': al acabar una partida (como mucho cada 30 min) · false: cada 2 h
+   * Saves the current game (does nothing in guest mode). In the browser,
+   * immediately; in the cloud:
+   * @param urgent  true: valuable things (pulls, purchases, Pokémon, rewards): right away
+   *                'run': at the end of a run (at most every 30 min) · false: every 2 h
    */
   function commit(urgent = false) {
     if (guest || !key || !save) return false;
@@ -638,7 +666,7 @@ G.DB = (() => {
     return true;
   }
 
-  /** Funciones que se ejecutan al cerrar sesión o borrar la cuenta (amigos, salas...). */
+  /** Functions run when logging out or deleting the account (friends, rooms...). */
   const leaveHooks = [];
 
   async function logout() {
@@ -646,7 +674,7 @@ G.DB = (() => {
       try {
         await fn('logout');
       } catch (e) {
-        /* nada */
+        /* nothing */
       }
     }
     if (mode === 'cloud' && !guest && save) {
@@ -654,7 +682,7 @@ G.DB = (() => {
         try {
           await pushNow(true);
         } catch (e) {
-          /* queda la copia local */
+          /* the local copy remains */
         }
       }
       await api('api/auth/sign-out', { method: 'POST', body: {} }).catch(() => {});
@@ -671,9 +699,9 @@ G.DB = (() => {
     setSync(mode === 'cloud' ? 'ok' : 'local');
   }
 
-  /** Borra la cuenta y la partida (en el servidor o en este navegador). */
+  /** Deletes the account and the save (on the server or in this browser). */
   async function deleteAccount() {
-    if (guest || !key) return { ok: false, error: 'No hay cuenta que borrar.' };
+    if (guest || !key) return { ok: false, error: 'There is no account to delete.' };
     if (mode === 'local') {
       remove(K_SAVE + key);
       remove(K_SES);
@@ -685,7 +713,7 @@ G.DB = (() => {
       clearTimeout(retryT);
       pending = false;
       for (const fn of leaveHooks) await fn('delete');
-      // El servidor lo borra todo: partida, apodo, amigos, ranking y la cuenta.
+      // The server deletes everything: save, nickname, friends, leaderboard and the account.
       await api('api/account', { method: 'DELETE' });
       remove(K_CLOUD + uid);
       remove('ps.lastuid');
@@ -697,7 +725,7 @@ G.DB = (() => {
     }
   }
 
-  // ---------------- helpers de partida ----------------
+  // ---------------- save helpers ----------------
 
   function owns(dex) {
     return !!(save && save.owned[dex]);
@@ -711,14 +739,14 @@ G.DB = (() => {
     return !!(save && save.shiny && save.shiny[dex]);
   }
 
-  /** Mejoras compradas para un Pokémon: { id -> nivel }. */
+  /** Upgrades bought for a Pokémon: { id -> level }. */
   function upgradesOf(dex) {
     if (!save) return {};
     save.pupg = save.pupg || {};
     return save.pupg[dex] || (save.pupg[dex] = {});
   }
 
-  /** Da la versión shiny (y la normal, si no la tenía). Devuelve true si es nueva. */
+  /** Grants the shiny version (and the normal one, if missing). Returns true if it's new. */
   function grantShiny(dex, from) {
     grant(dex, from);
     if (save.shiny[dex]) return false;
@@ -749,19 +777,19 @@ G.DB = (() => {
     onLeave(fn) {
       leaveHooks.push(fn);
     },
-    /** ¿Está disponible lo online (amigos, ranking, multijugador)? */
+    /** Are online features available (friends, leaderboard, multiplayer)? */
     get online() {
       return mode === 'cloud' && !guest && !!uid && !!save;
     },
-    /** El id de la cuenta (sólo en la nube). */
+    /** The account id (cloud only). */
     get uid() {
       return mode === 'cloud' && !guest ? uid : null;
     },
-    /** El apodo que tiene reservado en el servidor (o null). */
+    /** The nickname reserved on the server (or null). */
     get nick() {
       return (me && me.nick) || null;
     },
-    /** ¿Es la cuenta de moderación? (ADMIN_EMAILS en el servidor) */
+    /** Is this a moderator account? (ADMIN_EMAILS on the server) */
     get isAdmin() {
       return !!(me && me.user && me.user.admin);
     },

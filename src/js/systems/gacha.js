@@ -1,21 +1,21 @@
-/* ============ gacha.js — un banner por generación ============
- * Lógica pura: no toca la interfaz. La pantalla está en ui/gacha-ui.js.
+/* ============ gacha.js — one banner per generation ============
+ * Pure logic: doesn't touch the UI. The screen lives in ui/gacha-ui.js.
  *
- * 9 banners (Kanto ... Paldea). Cada uno con su propio pity.
- * Probabilidades por tirada:  1★ 45% · 2★ 30% · 3★ 17% · 4★ 6.5% · 5★ 1.5%
- * Garantías:
- *   - la tirada ×10 trae al menos un 4★ o superior
- *   - a las 70 tiradas sin 5★ en ese banner, el siguiente es 5★ seguro
- * Shiny: 1 de cada 100 tiradas sale en su versión shiny.
- * Repetidos: se convierten en Pokémonedas (los shiny repetidos, el triple).
+ * 9 banners (Kanto ... Paldea). Each one with its own pity.
+ * Odds per pull:  1★ 45% · 2★ 30% · 3★ 17% · 4★ 6.5% · 5★ 1.5%
+ * Guarantees:
+ *   - the ×10 pull brings at least one 4★ or higher
+ *   - after 70 pulls without a 5★ on that banner, the next one is a guaranteed 5★
+ * Shiny: 1 in 100 pulls comes out in its shiny version.
+ * Duplicates: turned into Pokécoins (duplicate shinies, triple).
  *
- * Se tira con TICKETS (se consiguen jugando):
+ * Pulls cost TICKETS (earned by playing):
  *   ×1   1 ticket
- *   ×10  10 tickets normales, o 1 ticket ×10 (eliges con qué)
+ *   ×10  10 normal tickets, or 1 ×10 ticket (you choose which)
  */
 G.Gacha = (() => {
-  /** ¿Qué gasta una tirada de n? → { t1, t10 } o null si no te llega. */
-  /** @param use  't1' (tickets normales) o 't10' (un ticket ×10, sólo para la ×10) */
+  /** What does a pull of n cost? → { t1, t10 } or null if you can't afford it. */
+  /** @param use  't1' (normal tickets) or 't10' (one ×10 ticket, only for the ×10 pull) */
   function costOf(save, n, use = 't1') {
     const t = save.tickets || { t1: 0, t10: 0 };
     if (n === 10 && use === 't10') return t.t10 >= 1 ? { t1: 0, t10: 1 } : null;
@@ -31,9 +31,9 @@ G.Gacha = (() => {
   const PITY_5 = 70;
   const SHINY_RATE = 1 / 100;
   const REFUND = { 1: 15, 2: 30, 3: 60, 4: 120, 5: 300 };
-  let forceShiny = 0; // para pruebas y vídeos: las N próximas salen shiny
+  let forceShiny = 0; // for testing and videos: the next N come out shiny
 
-  const RARITY_NAME = { 1: 'Común', 2: 'Poco común', 3: 'Rara', 4: 'Épica', 5: 'Legendaria' };
+  const RARITY_NAME = { 1: 'Common', 2: 'Uncommon', 3: 'Rare', 4: 'Epic', 5: 'Legendary' };
   const RARITY_COLOR = { 1: '#9fb1c9', 2: '#5fe08a', 3: '#4fb4ff', 4: '#c47bff', 5: '#ffcb3d' };
 
   const BANNERS = [
@@ -41,7 +41,7 @@ G.Gacha = (() => {
     { gen: 2, name: 'Johto', color: ['#5a2a1a', '#7a3d1f', '#2d4a6e'] },
     { gen: 3, name: 'Hoenn', color: ['#0f4d6e', '#1b6a5a', '#2a3d78'] },
     { gen: 4, name: 'Sinnoh', color: ['#2a2a5e', '#3d3d8a', '#5a2a6e'] },
-    { gen: 5, name: 'Teselia', color: ['#1a1a2a', '#3a3a4e', '#2a4a6e'] },
+    { gen: 5, name: 'Unova', color: ['#1a1a2a', '#3a3a4e', '#2a4a6e'] },
     { gen: 6, name: 'Kalos', color: ['#4a1a3a', '#2a3a7a', '#1a5a7a'] },
     { gen: 7, name: 'Alola', color: ['#7a3a1a', '#1a6a6a', '#2a4a8a'] },
     { gen: 8, name: 'Galar', color: ['#4a1a5a', '#1a3a6a', '#6a1a3a'] },
@@ -52,12 +52,12 @@ G.Gacha = (() => {
     return p.gen === gen && !!G.SPRITE_META[p.dex];
   }
 
-  /** Pokémon de una rareza en un banner. */
+  /** Pokémon of one rarity in a banner. */
   function pool(rarity, gen) {
     return G.DEX.filter(p => inBanner(p, gen) && p.rarity === rarity);
   }
 
-  /** Pool no vacío más cercano (algunas generaciones tienen rarezas casi vacías). */
+  /** Nearest non-empty pool (some generations have almost-empty rarities). */
   function poolNear(rarity, gen) {
     for (const d of [0, -1, 1, -2, 2, -3, 3, -4, 4]) {
       const r = rarity + d;
@@ -79,7 +79,7 @@ G.Gacha = (() => {
     return rates[rates.length - 1][0];
   }
 
-  /** Los 3 más fuertes de la generación, para el cartel del banner. */
+  /** The 3 strongest of the generation, for the banner poster. */
   function featured(gen) {
     return G.DEX.filter(p => inBanner(p, gen) && p.rarity === 5)
       .sort((a, b) => b.bst - a.bst)
@@ -88,8 +88,8 @@ G.Gacha = (() => {
   }
 
   /**
-   * Hace `n` tiradas en el banner `gen` sobre el guardado `save` (lo modifica).
-   * Devuelve null si no hay monedas, o la lista de resultados:
+   * Makes `n` pulls on banner `gen` against the save `save` (modifies it).
+   * Returns null if there are no coins, or the list of results:
    *   { dex, rarity, shiny, isNew, refund }
    */
   function pull(save, n, gen = 1, use = 't1') {
@@ -113,8 +113,8 @@ G.Gacha = (() => {
       if (rarity === 5) save.pity[gen] = 0;
       let mon = G.U.pick(list);
       let shiny = G.Sprites.hasShiny(mon.dex) && (forceShiny > 0 ? (forceShiny--, true) : Math.random() < SHINY_RATE);
-      // Los shiny no se repiten: si ya tienes ese, sale otro de la misma rareza
-      // cuyo shiny te falte; si los tienes todos, sale normal.
+      // Shinies don't repeat: if you already have that one, another of the same rarity
+      // whose shiny you're missing comes out; if you have them all, it comes out normal.
       if (shiny && save.shiny[mon.dex]) {
         const missing = list.filter(p => G.Sprites.hasShiny(p.dex) && !save.shiny[p.dex]);
         if (missing.length) mon = G.U.pick(missing);

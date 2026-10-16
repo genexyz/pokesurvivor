@@ -1,17 +1,17 @@
-/* ============ save-merge.js — fusionar dos versiones de una partida ============
- * Lo usan el navegador (G.SaveMerge, desde db.js) y el servidor (server/api.mjs,
- * con require): así la partida se fusiona exactamente igual en los dos sitios.
- * No depende de nada del juego.
+/* ============ save-merge.js — merge two versions of a save ============
+ * Used by the browser (G.SaveMerge, from db.js) and the server (server/api.mjs,
+ * via require): so the save is merged exactly the same way in both places.
+ * It doesn't depend on anything from the game.
  *
- * LIBRETA de monedas y tickets (14-10-2026). Antes las monedas y los tickets
- * eran "los de la versión más reciente": si un aparato con datos viejos (el
- * móvil con la pestaña abierta de ayer) guardaba algo, su número ganaba y se
- * perdía lo conseguido en el otro (un jugador pasó de 36 tickets a 3).
- * Ahora cada aparato apunta en save.led[aparato] lo que ha ganado y gastado
- * de cada cosa ([ganado, gastado], sólo crecen) y el saldo es la suma de
- * todos: al fusionar se toma el mayor de cada apunte y no se pierde nada.
- *   led.base: el saldo que había antes de la libreta (o al empezar).
- *   led.old:  cambios de una versión anterior del juego (pestañas sin actualizar).
+ * Coin and ticket LEDGER (14-10-2026). Coins and tickets used to be "those of
+ * the most recent version": if a device with stale data (the phone with
+ * yesterday's tab open) saved something, its number won and whatever was
+ * earned on the other one was lost (a player went from 36 tickets to 3).
+ * Now each device records in save.led[device] what it has earned and spent
+ * of each thing ([earned, spent], they only grow) and the balance is the sum
+ * of all of them: merging takes the larger of each entry and nothing is lost.
+ *   led.base: the balance before the ledger existed (or at the start).
+ *   led.old:  changes from an older version of the game (tabs not yet updated).
  */
 (() => {
   const CUR = {
@@ -56,7 +56,7 @@
     if (d > 0) p[0] = num(p[0]) + d;
     else p[1] = num(p[1]) - d;
   }
-  /** La libreta de una partida (sin tocarla); lo que no cuadre, a `dev`. */
+  /** A save's ledger (without modifying it); any mismatch goes to `dev`. */
   function ledOf(s, dev) {
     if (!isObj(s.led)) {
       const b = balOf(s),
@@ -66,19 +66,19 @@
     }
     const led = JSON.parse(JSON.stringify(s.led)),
       b = balOf(s);
-    // Un saldo en negativo (lo mismo gastado en dos aparatos sin conexión) se ve como 0.
+    // A negative balance (the same thing spent on two offline devices) shows as 0.
     for (const k in CUR) addTo(led, dev, k, b[k] - Math.max(0, ledSum(led, k)));
     return led;
   }
 
   /**
-   * Fusiona dos versiones de la misma partida (p. ej. una jugada sin
-   * conexión y la de la nube). Nunca se pierde nada conseguido:
-   *   - colecciones (owned, shiny): unión
-   *   - mejoras y estadísticas: el máximo de cada una
-   *   - monedas y tickets: la libreta de cada aparato (ver arriba)
-   *   - compañero, pity...: los de la versión más reciente
-   * Es idempotente: fusionar dos veces da lo mismo.
+   * Merges two versions of the same save (e.g. one played offline and the
+   * cloud one). Nothing earned is ever lost:
+   *   - collections (owned, shiny): union
+   *   - upgrades and stats: the maximum of each
+   *   - coins and tickets: each device's ledger (see above)
+   *   - partner, pity...: those of the most recent version
+   * It is idempotent: merging twice gives the same result.
    */
   function merge(a, b) {
     if (!a) return b;
@@ -86,7 +86,7 @@
     const newer = (a.updated || 0) >= (b.updated || 0) ? a : b;
     const older = newer === a ? b : a;
     const r = JSON.parse(JSON.stringify(newer));
-    // Monedas y tickets: el mayor de cada apunte de cada aparato, y el saldo es la suma.
+    // Coins and tickets: the larger of each entry per device, and the balance is the sum.
     const la = ledOf(a, 'old'),
       lb = ledOf(b, 'old'),
       led = {};
@@ -115,12 +115,12 @@
       for (const k in older.pupg[d]) mine[k] = Math.max(mine[k] || 0, older.pupg[d][k]);
     }
     r.pupgDone = r.pupgDone || older.pupgDone;
-    // Lo conseguido nunca se pierde: unión de legendarios, arenas, objetos, logros...
+    // What's been earned is never lost: union of legendaries, arenas, items, achievements...
     for (const coll of ['legends', 'arenas', 'itemsFound', 'evoMoves', 'ach']) {
       r[coll] = r[coll] || {};
       for (const k in older[coll] || {}) if (!r[coll][k]) r[coll][k] = older[coll][k];
     }
-    // Misiones del mismo día/semana: el mayor progreso y lo ya recogido.
+    // Missions of the same day/week: the highest progress and whatever was already claimed.
     const mo = older.missions || {},
       mr = (r.missions = r.missions || {});
     for (const [per, list] of [

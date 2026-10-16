@@ -1,5 +1,5 @@
-/* /api/...: partida, apodo y perfil, ranking (con el anti-trampas) y moderación.
- * Lo que va en directo (amigos, en línea, invitaciones, salas) está en live.mjs.
+/* /api/...: save, nickname and profile, leaderboard (with anti-cheat) and moderation.
+ * The live part (friends, online status, invites, rooms) is in live.mjs.
  */
 import { createRequire } from 'node:module';
 import { q, tx } from './db.mjs';
@@ -7,7 +7,7 @@ import { userOf } from './auth.mjs';
 import * as live from './live.mjs';
 
 const require = createRequire(import.meta.url);
-// La misma fusión de partidas que usa el navegador.
+// The same save merge the browser uses.
 const { merge } = require('../src/js/core/save-merge.js');
 
 export const NICK = /^[A-Za-z0-9_ñÑáéíóúÁÉÍÓÚ]{3,16}$/;
@@ -32,7 +32,7 @@ function readBody(req, limit = MAX_SAVE + 4096) {
     req.on('data', c => {
       n += c.length;
       if (n > limit) {
-        rej(new HttpError(413, 'Demasiado grande'));
+        rej(new HttpError(413, 'Too large'));
         req.destroy();
       } else chunks.push(c);
     });
@@ -41,7 +41,7 @@ function readBody(req, limit = MAX_SAVE + 4096) {
       try {
         res(JSON.parse(Buffer.concat(chunks).toString('utf8')));
       } catch (e) {
-        rej(new HttpError(400, 'JSON no válido'));
+        rej(new HttpError(400, 'Invalid JSON'));
       }
     });
     req.on('error', rej);
@@ -57,29 +57,29 @@ function send(res, status, obj) {
 const isObj = v => v && typeof v === 'object' && !Array.isArray(v);
 const int = v => (Number.isFinite(+v) ? Math.floor(+v) : NaN);
 
-// ---------------- partida ----------------
+// ---------------- save ----------------
 
 async function getSave(u) {
   const r = await q('SELECT save, ban FROM saves WHERE uid = $1', [u.id]);
   return r.rows[0] ? { save: r.rows[0].save, ban: r.rows[0].ban } : { save: null };
 }
 
-/** Sube la partida: se FUSIONA con la que hay (fila bloqueada mientras) y se devuelve el resultado. */
+/** Uploads the save: it is MERGED with the stored one (row locked meanwhile) and the result is returned. */
 async function putSave(u, body) {
   const incoming = body.save;
-  if (!isObj(incoming)) fail(400, 'Falta la partida');
+  if (!isObj(incoming)) fail(400, 'Missing save');
   const merged = await tx(async c => {
     const r = await c.query('SELECT save FROM saves WHERE uid = $1 FOR UPDATE', [u.id]);
     const m = r.rows[0] ? merge(incoming, r.rows[0].save) : incoming;
-    // Lo que el servidor no deja: saldos negativos o raros.
+    // What the server doesn't allow: negative or odd balances.
     const n = v => (Number.isFinite(+v) && +v > 0 ? Math.floor(+v) : 0);
     m.coins = n(m.coins);
     m.tickets = isObj(m.tickets) ? m.tickets : {};
     m.tickets.t1 = n(m.tickets.t1);
     m.tickets.t10 = n(m.tickets.t10);
     const json = JSON.stringify(m);
-    if (json.length > MAX_SAVE) fail(413, 'Partida demasiado grande');
-    // (ban no se toca: sólo lo cambia la moderación.)
+    if (json.length > MAX_SAVE) fail(413, 'Save too large');
+    // (ban is left alone: only moderation changes it.)
     await c.query(
       `INSERT INTO saves (uid, save, v, updated_at) VALUES ($1, $2::jsonb, $3, now())
        ON CONFLICT (uid) DO UPDATE SET save = EXCLUDED.save, v = EXCLUDED.v, updated_at = now()`,
@@ -90,7 +90,7 @@ async function putSave(u, body) {
   return { save: merged };
 }
 
-/** Borra la cuenta y todo lo suyo. */
+/** Deletes the account and everything that belongs to it. */
 async function deleteAccount(u) {
   await tx(async c => {
     for (const sql of [
@@ -110,7 +110,7 @@ async function deleteAccount(u) {
   return { ok: true };
 }
 
-// ---------------- apodo y perfil ----------------
+// ---------------- nickname and profile ----------------
 
 export async function nickOf(uid) {
   const r = await q('SELECT name FROM profiles WHERE uid = $1', [uid]);
@@ -119,20 +119,20 @@ export async function nickOf(uid) {
 
 async function claimNick(u, body) {
   const name = String(body.name || '').trim();
-  if (!NICK.test(name)) fail(400, 'El apodo debe tener 3-16 letras, números o _.');
+  if (!NICK.test(name)) fail(400, 'The nickname must be 3-16 letters, numbers or _.');
   const mine = await nickOf(u.id);
-  if (mine) return { ok: true, name: mine }; // el apodo no se cambia
+  if (mine) return { ok: true, name: mine }; // the nickname can't be changed
   try {
     await q('INSERT INTO profiles (uid, name, lower) VALUES ($1, $2, $3)', [u.id, name, name.toLowerCase()]);
   } catch (e) {
-    if (e.code === '23505') return { ok: false, error: 'Ese apodo ya lo tiene otro jugador.' };
+    if (e.code === '23505') return { ok: false, error: 'That nickname is already taken.' };
     throw e;
   }
   live.onNick(u.id, name);
   return { ok: true, name };
 }
 
-/** Lo que se enseña de ti: favoritos, título, récords y medallas (sin el apodo). */
+/** What others see of you: favourites, title, records and medals (without the nickname). */
 function cleanProfile(d) {
   d = isObj(d) ? d : {};
   const best = isObj(d.best) ? d.best : {};
@@ -148,7 +148,7 @@ function cleanProfile(d) {
 
 async function putProfile(u, body) {
   const r = await q('UPDATE profiles SET data = $2::jsonb, at = now() WHERE uid = $1', [u.id, JSON.stringify(cleanProfile(body))]);
-  if (!r.rowCount) fail(409, 'Primero elige tu apodo.');
+  if (!r.rowCount) fail(409, 'Choose your nickname first.');
   return { ok: true };
 }
 
@@ -158,7 +158,7 @@ async function getProfile(uid) {
   return { profile: Object.assign({}, r.rows[0].data, { name: r.rows[0].name }) };
 }
 
-// ---------------- ranking ----------------
+// ---------------- leaderboard ----------------
 
 async function runStart(u, body) {
   const mode = body.mode === 'g' ? 'g' : 's';
@@ -173,47 +173,47 @@ async function runStart(u, body) {
 const rowOf = r => ({ id: r.id, t: r.t, uids: r.uids, names: r.names, dex: r.dex, shiny: r.shiny, lv: r.lv, kills: r.kills });
 
 /**
- * Guarda una marca en las tablas donde mejora. Lo que antes vigilaban las
- * reglas de Firestore (validEntry): duración posible desde que empezó la
- * sesión, nivel y derrotados posibles, cuenta no baneada, equipo bien formado.
+ * Stores a record on the boards where it improves. What the Firestore rules
+ * used to check (validEntry): a possible duration since the session started,
+ * possible level and defeated count, account not banned, well-formed team.
  */
 async function submit(u, body) {
   const mode = body.mode === 'g' ? 'g' : 's';
-  const e = isObj(body.entry) ? body.entry : fail(400, 'Falta la marca');
+  const e = isObj(body.entry) ? body.entry : fail(400, 'Missing record');
   const t = int(e.t),
     lv = int(e.lv),
     kills = int(e.kills);
-  if (!(t >= 1 && t <= 3600)) fail(400, 'Tiempo no válido');
-  if (!(lv >= 0 && lv <= 10 + t / 4) || !(kills >= 0 && kills <= 100 + t * 12)) fail(400, 'Marca imposible');
+  if (!(t >= 1 && t <= 3600)) fail(400, 'Invalid time');
+  if (!(lv >= 0 && lv <= 10 + t / 4) || !(kills >= 0 && kills <= 100 + t * 12)) fail(400, 'Impossible record');
   const uids = Array.isArray(e.uids) ? e.uids.map(String) : [];
   const n = uids.length;
   const dex = (Array.isArray(e.dex) ? e.dex : []).map(int);
   const shiny = (Array.isArray(e.shiny) ? e.shiny : []).map(Boolean);
-  if (dex.length !== n || shiny.length !== n || dex.some(d => !(d > 0 && d < 10000))) fail(400, 'Equipo no válido');
+  if (dex.length !== n || shiny.length !== n || dex.some(d => !(d > 0 && d < 10000))) fail(400, 'Invalid team');
   let id;
   if (mode === 's') {
-    if (n !== 1 || uids[0] !== u.id) fail(400, 'Equipo no válido');
+    if (n !== 1 || uids[0] !== u.id) fail(400, 'Invalid team');
     id = u.id;
   } else {
     const sorted = [...uids].sort();
-    if (n < 2 || n > 4 || new Set(uids).size !== n || !uids.includes(u.id) || sorted.join() !== uids.join()) fail(400, 'Equipo no válido');
+    if (n < 2 || n > 4 || new Set(uids).size !== n || !uids.includes(u.id) || sorted.join() !== uids.join()) fail(400, 'Invalid team');
     id = uids.join('_');
   }
   const boards = [...new Set(Array.isArray(body.boards) ? body.boards : [])];
   if (!boards.length || boards.length > 12 || boards.some(b => typeof b !== 'string' || !BOARD.test(b) || b[0] !== mode))
-    fail(400, 'Tablas no válidas');
+    fail(400, 'Invalid boards');
   const chk = await q(
     `SELECT EXTRACT(EPOCH FROM (now() - r.started_at)) AS secs, COALESCE(s.ban, false) AS ban
        FROM run_starts r LEFT JOIN saves s ON s.uid = r.uid WHERE r.uid = $1`,
     [u.id]
   );
-  if (!chk.rows[0]) fail(403, 'No hay partida empezada');
-  if (chk.rows[0].ban) fail(403, 'Cuenta fuera del ranking');
-  if (t > +chk.rows[0].secs + 30) fail(403, 'Marca imposible');
-  // Los apodos, del servidor (no de lo que mande el anfitrión).
+  if (!chk.rows[0]) fail(403, 'No run started');
+  if (chk.rows[0].ban) fail(403, 'Account excluded from the leaderboard');
+  if (t > +chk.rows[0].secs + 30) fail(403, 'Impossible record');
+  // Nicknames come from the server (not from whatever the host sends).
   const pr = await q('SELECT uid, name FROM profiles WHERE uid = ANY($1)', [uids]);
   const nameBy = new Map(pr.rows.map(r => [r.uid, r.name]));
-  if (nameBy.size !== n) fail(400, 'Algún jugador no tiene apodo');
+  if (nameBy.size !== n) fail(400, 'A player has no nickname');
   const names = uids.map(x => nameBy.get(x));
   const better = [];
   for (const b of boards) {
@@ -231,10 +231,10 @@ async function submit(u, body) {
   return { better };
 }
 
-/** El top 50 de una tabla (o sólo tú y tus amigos) y tu puesto. */
+/** A board's top 50 (or only you and your friends) and your position. */
 async function board(u, url) {
   const b = url.searchParams.get('b') || '';
-  if (!BOARD.test(b)) fail(400, 'Tabla no válida');
+  if (!BOARD.test(b)) fail(400, 'Invalid board');
   let rows;
   if (url.searchParams.get('scope') === 'friends') {
     const circle = [u.id, ...(await live.friendIds(u.id))];
@@ -254,7 +254,7 @@ async function board(u, url) {
 async function report(u, body) {
   const b = String(body.board || ''),
     e = String(body.e || '');
-  if (!BOARD.test(b) || !/^[A-Za-z0-9_]{1,200}$/.test(e)) fail(400, 'Reporte no válido');
+  if (!BOARD.test(b) || !/^[A-Za-z0-9_]{1,200}$/.test(e)) fail(400, 'Invalid report');
   const names = (Array.isArray(body.names) ? body.names : []).slice(0, 4).map(x => String(x).slice(0, 16));
   await q('INSERT INTO reports (board, e, by_uid, names, t) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING', [
     b,
@@ -266,7 +266,7 @@ async function report(u, body) {
   return { ok: true };
 }
 
-// ---------------- moderación ----------------
+// ---------------- moderation ----------------
 
 const admin = {
   async reports() {
@@ -323,15 +323,15 @@ const admin = {
   }
 };
 
-// ---------------- rutas ----------------
+// ---------------- routes ----------------
 
-/** Atiende /api/* (salvo /api/auth/*, que es de better-auth). */
+/** Handles /api/* (except /api/auth/*, which belongs to better-auth). */
 export async function handleApi(req, res, url) {
   try {
     const p = url.pathname,
       m = req.method;
-    // Sólo peticiones de nuestra propia web (además de la cookie SameSite).
-    if (m !== 'GET' && req.headers.origin && req.headers.origin !== live.ORIGIN) fail(403, 'Origen no permitido');
+    // Only requests from our own website (on top of the SameSite cookie).
+    if (m !== 'GET' && req.headers.origin && req.headers.origin !== live.ORIGIN) fail(403, 'Origin not allowed');
     if (p === '/api/me' && m === 'GET') {
       const u = await userOf(req);
       return send(res, 200, {
@@ -342,7 +342,7 @@ export async function handleApi(req, res, url) {
       });
     }
     const u = await userOf(req);
-    if (!u) fail(401, 'Inicia sesión');
+    if (!u) fail(401, 'Please sign in');
     const body = m === 'GET' || m === 'DELETE' ? {} : await readBody(req);
     let out;
     if (p === '/api/save' && m === 'GET') out = await getSave(u);
@@ -356,15 +356,15 @@ export async function handleApi(req, res, url) {
     else if (p === '/api/lb' && m === 'GET') out = await board(u, url);
     else if (p === '/api/report' && m === 'POST') out = await report(u, body);
     else if (p.startsWith('/api/admin/')) {
-      if (!u.admin) fail(403, 'Sólo moderación');
+      if (!u.admin) fail(403, 'Moderators only');
       const fn = admin[p.slice(11)];
-      if (!fn) fail(404, 'No existe');
+      if (!fn) fail(404, 'Not found');
       out = await fn(body);
-    } else fail(404, 'No existe');
+    } else fail(404, 'Not found');
     send(res, 200, out);
   } catch (e) {
     if (e instanceof HttpError) return send(res, e.status, { error: e.message });
     console.error('[api]', req.method, url.pathname, e);
-    send(res, 500, { error: 'Error del servidor' });
+    send(res, 500, { error: 'Server error' });
   }
 }

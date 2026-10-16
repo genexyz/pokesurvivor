@@ -1,6 +1,7 @@
-/* Exporta los datos del juego a JSON para generar las páginas web (make_seo_pages.py).
+/* Exports the game data to JSON to generate the web pages (make_seo_pages.py).
  *   node scripts/export_data.js  ->  .cache/gamedata.json
- * Carga los mismos archivos que el juego en un contexto aislado (sin navegador). */
+ * Loads the same files as the game in an isolated context (no browser), in English
+ * (the source language), and captures the Spanish dictionary (lang-es.js) as `es`. */
 const fs = require('fs'),
   path = require('path'),
   vm = require('vm');
@@ -30,8 +31,8 @@ const sandbox = {
   parseInt,
   parseFloat,
   location: { pathname: '/', protocol: 'file:' },
-  navigator: { language: 'es', languages: ['es'] },
-  localStorage: { getItem: () => 'es', setItem: noop },
+  navigator: { language: 'en', languages: ['en'] },
+  localStorage: { getItem: () => 'en', setItem: noop },
   document: {
     documentElement: {},
     createElement: () => ({ getContext: () => fakeCtx, width: 0, height: 0 }),
@@ -51,16 +52,16 @@ const sandbox = {
 sandbox.window = sandbox;
 vm.createContext(sandbox);
 const load = f => vm.runInContext(fs.readFileSync(path.join(ROOT, 'src', f), 'utf8'), sandbox, { filename: f });
-const EN = {};
+const ES = {};
 for (const f of ['js/core/util.js', 'js/core/i18n.js']) load(f);
-// Captura el diccionario inglés (clave en español).
+// Captures the Spanish dictionary (English key -> Spanish).
 const add = G.I18n.add;
 G.I18n.add = d => {
-  Object.assign(EN, d);
+  Object.assign(ES, d);
   add(d);
 };
 for (const f of [
-  'js/data/lang-en.js',
+  'js/data/lang-es.js',
   'js/core/settings.js',
   'js/data/pokedex.js',
   'js/data/sprites-meta.js',
@@ -74,7 +75,7 @@ for (const f of [
   try {
     load(f);
   } catch (e) {
-    console.warn('aviso', f, e.message);
+    console.warn('warning', f, e.message);
   }
 }
 const moves = Object.values(G.Moves.BY_ID).map(m => {
@@ -112,14 +113,14 @@ const out = {
   matrix: Object.fromEntries(
     Object.keys(G.U.TYPE_NAME).map(a => [a, Object.fromEntries(Object.keys(G.U.TYPE_NAME).map(d => [d, G.Types.mult(a, [d])]))])
   ),
-  // (Sin la arena de Arceus: las de las grietas son una por tipo.)
+  // (Without the Arceus arena: the rift ones are one per type.)
   arenas: Object.fromEntries(
     Object.entries(G.ARENA_THEMES || (G.Tiles && G.Tiles.ARENA_THEMES) || {})
       .filter(([k]) => k !== 'judgment')
       .map(([k, v]) => [k, v.name])
   ),
   funding: { kofi: G.Funding.kofi, sponsors: G.Funding.sponsors, costs: G.Funding.costs },
-  en: EN
+  es: ES
 };
 fs.mkdirSync(path.join(ROOT, '.cache'), { recursive: true });
 fs.writeFileSync(path.join(ROOT, '.cache', 'gamedata.json'), JSON.stringify(out));
@@ -128,13 +129,13 @@ console.log(
   out.dex.length,
   'Pokémon,',
   out.moves.length,
-  'movimientos,',
+  'moves,',
   out.items.length,
-  'objetos,',
+  'items,',
   out.achievements.length,
-  'logros,',
+  'achievements,',
   Object.keys(out.arenas).length,
   'arenas,',
-  Object.keys(out.en).length,
-  'traducciones'
+  Object.keys(out.es).length,
+  'translations'
 );

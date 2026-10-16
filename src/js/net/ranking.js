@@ -1,37 +1,37 @@
-/* ============ ranking.js — clasificación de tiempo aguantado ============
- * Nuestro servidor (server/api.mjs, tabla lb_entries de Postgres):
+/* ============ ranking.js — survival time leaderboard ============
+ * Our server (server/api.mjs, Postgres table lb_entries):
  *
- *   POST /api/lb        guarda tu marca en las tablas donde mejoras (el
- *                       servidor comprueba que sea posible: anti-trampas)
- *   GET  /api/lb?b=...  el top 50 de una tabla (o sólo tú y tus amigos) y tu puesto
+ *   POST /api/lb        stores your record on the boards where you improve (the
+ *                       server checks that it's possible: anti-cheat)
+ *   GET  /api/lb?b=...  a board's top 50 (or only you and your friends) and your position
  *
- *   tabla = modo + periodo:
- *     s_d20261008   solitario, hoy            g_...   en grupo
- *     s_w2026-41j   semana ISO                s_m202610j  mes
- *     s_all2        histórico
- *     s_all2_p25    histórico sólo con Pikachu (el filtro por Pokémon sólo
- *                   existe en el histórico)
- *   id = tu uid (solitario) o los uid del equipo ordenados y unidos con "_".
+ *   board = mode + period:
+ *     s_d20261008   solo, today               g_...   group
+ *     s_w2026-41j   ISO week                  s_m202610j  month
+ *     s_all2        all-time
+ *     s_all2_p25    all-time with Pikachu only (the per-Pokémon filter only
+ *                   exists for all-time)
+ *   id = your uid (solo) or the team's uids sorted and joined with "_".
  *
- * Los periodos se cuentan en hora de España (Europe/Madrid).
+ * Periods are counted in Spanish time (Europe/Madrid).
  */
 G.Ranking = (() => {
   const TZ = 'Europe/Madrid';
   const PERIODS = [
-    ['d', 'Diario'],
-    ['w', 'Semanal'],
-    ['m', 'Mensual'],
-    ['a', 'Histórico']
+    ['d', 'Daily'],
+    ['w', 'Weekly'],
+    ['m', 'Monthly'],
+    ['a', 'All-time']
   ];
   const TOP = 50;
-  // Las runs de menos de 2 minutos no se suben (nunca entran en un top que importe).
+  // Runs shorter than 2 minutes aren't uploaded (they never make a top that matters).
   const MIN_T = 120;
-  const TTL = 60 * 1000; // lo leído vale 1 min
+  const TTL = 60 * 1000; // fetched data is valid for 1 min
 
   const on = () => G.DB.online;
   const api = (path, opts) => G.DB.api(path, opts);
 
-  // ---------------- periodos ----------------
+  // ---------------- periods ----------------
 
   function madridDate(date) {
     const p = {};
@@ -42,7 +42,7 @@ G.Ranking = (() => {
     return { y: +p.year, m: +p.month, d: +p.day };
   }
 
-  /** Semana ISO (lunes a domingo) de una fecha y-m-d. */
+  /** ISO week (Monday to Sunday) of a y-m-d date. */
   function isoWeek(y, m, d) {
     const t = new Date(Date.UTC(y, m - 1, d));
     const day = t.getUTCDay() || 7;
@@ -51,7 +51,7 @@ G.Ranking = (() => {
     return { year: t.getUTCFullYear(), week: Math.ceil(((t - y0) / 86400000 + 1) / 7) };
   }
 
-  const ALL = 'all2'; // histórico
+  const ALL = 'all2'; // all-time
   function periodIds(date = new Date()) {
     const { y, m, d } = madridDate(date);
     const w = isoWeek(y, m, d);
@@ -60,8 +60,8 @@ G.Ranking = (() => {
   }
 
   /*
-   * Nombres de las tablas: los de periodIds() salvo semana y mes, que llevan
-   * una "j". periodIds() se queda igual porque también lo usan las misiones
+   * Board names: those from periodIds() except week and month, which carry
+   * a "j". periodIds() stays the same because missions use it too
    * (progress.js).
    */
   function boardIds(date) {
@@ -69,14 +69,14 @@ G.Ranking = (() => {
     return Object.assign({}, p, { w: p.w + 'j', m: p.m + 'j' });
   }
 
-  /** El filtro por Pokémon sólo existe en el histórico. */
+  /** The per-Pokémon filter only exists for all-time. */
   function board(mode, period, dex) {
     return mode + '_' + boardIds()[period] + (dex && period === 'a' ? '_p' + dex : '');
   }
 
-  // ---------------- lo leído (1 min) ----------------
+  // ---------------- fetched data (1 min) ----------------
 
-  const mem = new Map(); // tabla:alcance -> { at, p }
+  const mem = new Map(); // board:scope -> { at, p }
   function fetchBoard(b, friendsOnly) {
     const k = b + ':' + (friendsOnly ? 'f' : 'a');
     const c = mem.get(k);
@@ -90,13 +90,13 @@ G.Ranking = (() => {
     for (const k of [...mem.keys()]) if (!b || k.startsWith(b + ':')) mem.delete(k);
   }
 
-  // ---------------- anti-trampas ----------------
+  // ---------------- anti-cheat ----------------
 
   /**
-   * Al empezar la PRIMERA partida de la sesión (en grupo, el anfitrión) el
-   * servidor apunta la hora: ninguna marca puede durar más que el tiempo real
-   * desde entonces (server/api.mjs). Antes se espera a que acabe de subirse
-   * la marca de la partida anterior.
+   * When the session's FIRST run starts (in a group, the host's) the server
+   * records the time: no record can last longer than the real time since then
+   * (server/api.mjs). It first waits for the previous run's record to finish
+   * uploading.
    */
   let busy = Promise.resolve(),
     runMarked = '';
@@ -105,27 +105,27 @@ G.Ranking = (() => {
     runMarked = G.DB.uid;
     const go = n =>
       api('api/run-start', { method: 'POST', body: { mode } }).catch(e => {
-        console.warn('[Ranking] inicio:', e.code || e.message);
+        console.warn('[Ranking] start:', e.code || e.message);
         if (n < 2) setTimeout(() => go(n + 1), 15000);
         else runMarked = '';
       });
     busy.then(() => go(0));
   }
-  /** La subida de una marca (para que la partida siguiente espere a que acabe). */
+  /** A record's upload (so the next run waits for it to finish). */
   function track(p) {
     busy = p.catch(() => {});
     return p;
   }
 
-  // ---------------- guardar ----------------
+  // ---------------- storing ----------------
 
-  /** Guarda la entrada en cada tabla donde mejore. → periodos mejorados */
+  /** Stores the entry on each board where it improves. → improved periods */
   async function store(mode, boards, entry) {
     let r;
     try {
       r = await api('api/lb', { method: 'POST', body: { mode, entry, boards: boards.map(x => x[0]) } });
     } catch (e) {
-      console.warn('[Ranking] no se pudo guardar:', e.code || e.message);
+      console.warn('[Ranking] could not store:', e.code || e.message);
       return [];
     }
     const better = [];
@@ -139,11 +139,11 @@ G.Ranking = (() => {
 
   function announce(better) {
     if (!better.length) return;
-    const names = { d: 'de hoy', w: 'de la semana', m: 'del mes', a: 'histórico' };
+    const names = { d: 'today', w: 'of the week', m: 'of the month', a: 'all-time' };
     const best = PERIODS.map(p => p[0])
       .filter(p => better.includes(p))
       .pop();
-    G.UI.toast('¡Nueva mejor marca ' + names[best] + ' en el ranking!', 3400);
+    G.UI.toast(`New best record ${names[best]} on the leaderboard!`, 3400);
   }
 
   function submitSolo(r) {
@@ -160,7 +160,7 @@ G.Ranking = (() => {
     return better;
   }
 
-  /** La sube el anfitrión, con todo el equipo. */
+  /** Uploaded by the host, with the whole team. */
   function submitGroup(r) {
     return track(submitGroupNow(r));
   }
@@ -183,11 +183,11 @@ G.Ranking = (() => {
     return better;
   }
 
-  // ---------------- leer ----------------
+  // ---------------- reading ----------------
 
   /**
-   * Mejores marcas de una tabla.
-   * @param friendsOnly  sólo tú y tus amigos
+   * A board's best records.
+   * @param friendsOnly  only you and your friends
    */
   async function top(mode, period, dex, friendsOnly) {
     if (!on()) return [];
@@ -195,21 +195,21 @@ G.Ranking = (() => {
     return (r.rows || []).slice(0, TOP);
   }
 
-  /** Tu puesto en la tabla (aunque no salgas en el top). → { pos, t, row } | null */
+  /** Your position on the board (even if you're not in the top). → { pos, t, row } | null */
   async function myRank(mode, period, dex) {
     if (!on()) return null;
     const r = await fetchBoard(board(mode, period, dex), false);
     return r.mine || null;
   }
 
-  /** (Al borrar la cuenta, el servidor quita tus marcas.) */
+  /** (When the account is deleted, the server removes your records.) */
   function removeMine() {
     return Promise.resolve();
   }
 
-  // ---------------- reportes y moderación ----------------
+  // ---------------- reports and moderation ----------------
 
-  /** Reporta una marca sospechosa (una vez por marca y jugador). → true si se ha enviado */
+  /** Reports a suspicious record (once per record and player). → true if it was sent */
   const repKey = () => 'ps.rk.rep.' + (G.DB.uid || '');
   function reported() {
     try {
@@ -223,7 +223,7 @@ G.Ranking = (() => {
     const key = b + '__' + row.id;
     const done = reported();
     if (!done.has(key)) {
-      // (Si ya lo habías reportado desde otro aparato, el servidor no lo repite: da igual.)
+      // (If you already reported it from another device, the server doesn't repeat it: no harm.)
       await api('api/report', { method: 'POST', body: { board: b, e: row.id, names: row.names.slice(0, 4), t: row.t | 0 } }).catch(
         () => {}
       );
@@ -231,35 +231,35 @@ G.Ranking = (() => {
       try {
         localStorage.setItem(repKey(), JSON.stringify([...done].slice(-300)));
       } catch (e) {
-        /* lleno */
+        /* full */
       }
     }
     return true;
   }
 
-  // Cuenta de moderación (ADMIN_EMAILS en el servidor): la pantalla oculta de js/ui/mod-ui.js.
+  // Moderator account (ADMIN_EMAILS on the server): the hidden screen in js/ui/mod-ui.js.
   const isAdmin = () => on() && G.DB.isAdmin;
 
-  /** Admin: los reportes, juntos por marca (los más reportados primero). */
+  /** Admin: the reports, grouped by record (most reported first). */
   async function reports() {
     return (await api('api/admin/reports')).groups;
   }
 
-  /** Admin: la fila de una marca en el top 50 de su tabla (o null si ya no está). */
+  /** Admin: a record's row in its board's top 50 (or null if it's no longer there). */
   async function entryInfo(b, e) {
     const r = await fetchBoard(b, false);
     return (r.rows || []).find(x => x.id === e) || null;
   }
 
-  /** Admin: quita una marca de una tabla. */
+  /** Admin: removes a record from a board. */
   async function removeEntry(b, e) {
     await api('api/admin/remove', { method: 'POST', body: { b, e } }).catch(err =>
-      console.warn('[Ranking] quitar', b, err.code || err.message)
+      console.warn('[Ranking] remove', b, err.code || err.message)
     );
     forget(b);
   }
 
-  /** Admin: quita la marca de un jugador o equipo de todas las tablas de ahora (y de `also`). */
+  /** Admin: removes a player's or team's record from all current boards (and from `also`). */
   async function removeEverywhere(e, mode, dexes = [], also = null) {
     const ids = boardIds();
     const boards = new Set(PERIODS.map(([p]) => mode + '_' + ids[p]));
@@ -268,34 +268,34 @@ G.Ranking = (() => {
     await Promise.all([...boards].map(b => removeEntry(b, e)));
   }
 
-  /** Admin: quita de TODAS las tablas las marcas de más de `maxT` segundos. → { rows, boards } */
+  /** Admin: removes records longer than `maxT` seconds from ALL boards. → { rows, boards } */
   async function purgeAbove(maxT) {
     const r = await api('api/admin/purge', { method: 'POST', body: { maxT } });
     forget();
     return r;
   }
 
-  /** Admin: banea o desbanea una cuenta del ranking (baneada = no puede subir marcas). */
+  /** Admin: bans or unbans an account from the leaderboard (banned = can't upload records). */
   function setMarked(uid, on) {
     return api('api/admin/ban', { method: 'POST', body: { uid, on: !!on } });
   }
-  /** Admin: borra reportes ya vistos. */
+  /** Admin: deletes reports already reviewed. */
   function dismiss(ids) {
     return api('api/admin/dismiss', { method: 'POST', body: { ids } });
   }
-  /** Admin: cuentas baneadas del ranking. */
+  /** Admin: accounts banned from the leaderboard. */
   async function markedAccounts() {
     return (await api('api/admin/banned')).accounts;
   }
 
-  // (Lo que guardaba la versión anterior en el navegador ya no sirve.)
+  // (What the previous version stored in the browser is no longer useful.)
   try {
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const k = localStorage.key(i);
       if (k && (k.startsWith('ps.rk.c.') || k.startsWith('ps.rk.best') || k === 'ps.rk.thr')) localStorage.removeItem(k);
     }
   } catch (e) {
-    /* nada */
+    /* nothing */
   }
 
   return {

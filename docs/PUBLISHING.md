@@ -1,96 +1,94 @@
-# Publicar el juego (Coolify + Docker)
+# Publishing the game (Coolify + Docker)
 
-El juego es una web estática más un servidor pequeño de Node (`server/`) con
-Postgres para la nube: cuentas de Google, partidas, amigos, ranking y las salas
-del cooperativo. `npm run build` genera la web en `dist/` y el `Dockerfile`
-monta una imagen con el servidor, que sirve `dist/` y la nube. Se publica en
-**Coolify**, en **https://survivor.preciostcg.com**. Nada de servicios de pago:
-Postgres va en el mismo Coolify y el cooperativo sólo usa el STUN gratis de Google.
+The game is a static website plus a small Node server (`server/`) with
+Postgres for the cloud: Google accounts, saves, friends, leaderboard and co-op
+lobbies. `npm run build` generates the website in `dist/` and the `Dockerfile`
+builds an image with the server, which serves `dist/` and the cloud. It is
+published on **Coolify**, at **https://survivor.preciostcg.com**. No paid services:
+Postgres runs on the same Coolify and co-op only uses Google's free STUN.
 
-## 1. Crear la aplicación en Coolify (una vez)
+## 1. Create the application in Coolify (once)
 
-0. **Postgres:** en el mismo proyecto, **+ New → Database → PostgreSQL**. Copia su
-   URL interna (`postgres://...`): es el `DATABASE_URL` de abajo. Activa sus
-   copias de seguridad programadas (Backups) si quieres.
-1. **Projects → (tu proyecto) → + New → Public/Private Repository** y elige este
-   repositorio, rama `main`.
-2. **Build Pack: Dockerfile** (usa el `Dockerfile` de la raíz).
+0. **Postgres:** in the same project, **+ New → Database → PostgreSQL**. Copy its
+   internal URL (`postgres://...`): it is the `DATABASE_URL` below. Turn on its
+   scheduled backups (Backups) if you like.
+1. **Projects → (your project) → + New → Public/Private Repository** and pick this
+   repository, branch `main`.
+2. **Build Pack: Dockerfile** (uses the `Dockerfile` at the root).
 3. **Ports Exposes: `80`**.
-4. **Domains:** `https://survivor.preciostcg.com`. Coolify (Traefik) saca el
-   certificado HTTPS solo (y deja pasar el WebSocket `/ws` sin configurar nada).
-   En el DNS de preciostcg.com, un registro `A` `survivor` apuntando a la IP del servidor.
-   4b. **Environment Variables** (ver `.env.example`):
-   - `DATABASE_URL`: la del Postgres del paso 0
+4. **Domains:** `https://survivor.preciostcg.com`. Coolify (Traefik) gets the
+   HTTPS certificate on its own (and lets the `/ws` WebSocket through with no extra setup).
+   In the preciostcg.com DNS, an `A` record `survivor` pointing to the server's IP.
+   4b. **Environment Variables** (see `.env.example`):
+   - `DATABASE_URL`: the one from the Postgres in step 0
    - `BETTER_AUTH_URL=https://survivor.preciostcg.com`
-   - `BETTER_AUTH_SECRET`: uno nuevo, `openssl rand -base64 32`
-   - `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`: los mismos que precios-tcg
-   - `ADMIN_EMAILS`: tu correo de Google (para la moderación del ranking)
-     4c. **Google Cloud Console → APIs y servicios → Credenciales →** el cliente OAuth
-     de precios-tcg: añade el origen `https://survivor.preciostcg.com` y la URI de
-     redirección `https://survivor.preciostcg.com/api/auth/callback/google` (y para
-     probar en local, `http://localhost:3000/api/auth/callback/google`).
-     La pantalla de "Elige una cuenta" de Google enseña el nombre de la app de ese cliente.
-5. Activa **Auto Deploy** (webhook de GitHub) para que cada `git push` publique.
+   - `BETTER_AUTH_SECRET`: a new one, `openssl rand -base64 32`
+   - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`: the same as precios-tcg
+   - `ADMIN_EMAILS`: your Google email (for leaderboard moderation)
+     4c. **Google Cloud Console → APIs & Services → Credentials →** the precios-tcg
+     OAuth client: add the origin `https://survivor.preciostcg.com` and the redirect
+     URI `https://survivor.preciostcg.com/api/auth/callback/google` (and, for
+     local testing, `http://localhost:3000/api/auth/callback/google`).
+     Google's "Choose an account" screen shows that client's app name.
+5. Turn on **Auto Deploy** (GitHub webhook) so every `git push` publishes.
 6. **Deploy**.
 
-La imagen hace `npm ci`, `npm run build` (Node + Python dentro del contenedor) y
-arranca `node server/index.mjs` en el puerto 80. Al arrancar, el servidor crea
-o actualiza solo las tablas de Postgres. No hace falta instalar nada en el servidor.
+The image runs `npm ci`, `npm run build` (Node + Python inside the container) and
+starts `node server/index.mjs` on port 80. On startup, the server creates or
+updates the Postgres tables by itself. Nothing needs to be installed on the server.
 
-## 2. Actualizar el juego
+## 2. Updating the game
 
 ```
-npm run build        # opcional: comprobar en local que compila (npm start para verlo)
+npm run build        # optional: check locally that it builds (npm start to see it)
 git add -A
-git commit -m "Qué has cambiado"
-git push             # Coolify reconstruye y publica
+git commit -m "What you changed"
+git push             # Coolify rebuilds and publishes
 ```
 
-`dist/` no se sube al repositorio: lo genera la imagen en cada despliegue.
+`dist/` is not committed: the image generates it on every deploy.
 
-Los jugadores pasan solos a la versión nueva (`src/js/core/updater.js` mira
-`/version.json` cada 5 min). El servidor sirve `version.json` y las páginas sin caché
-y `js/app.min.js` con caché larga (la URL lleva la huella `?v=`).
+Players move to the new version on their own (`src/js/core/updater.js` checks
+`/version.json` every 5 min). The server serves `version.json` and the pages with no cache
+and `js/app.min.js` with a long cache (the URL carries the `?v=` fingerprint).
 
-### Actualización obligatoria
+### Mandatory update
 
-Para que también se corten las partidas en curso (guardando lo ganado), en
-Coolify añade la **Build Variable** `BUILD_ARGS=--forzar`, despliega, y luego
-quítala. En local equivale a `npm run build:force`.
+To also cut short the runs in progress (keeping what was earned), add the
+**Build Variable** `BUILD_ARGS=--force` in Coolify, deploy, and then remove it.
+Locally this is `npm run build:force`. The old flag name `--forzar` still works as
+an alias, but if Coolify still has `BUILD_ARGS=--forzar` saved, update it to `--force`.
 
-## 3. Probar en local
+## 3. Testing locally
 
 ```
-cp .env.example .env   # y rellena BETTER_AUTH_SECRET y las claves de Google
-npm run db:up          # Postgres en Docker (docker-compose.dev.yml)
-npm run dev            # http://localhost:3000, con nube; sin DATABASE_URL va en modo local
+cp .env.example .env   # and fill in BETTER_AUTH_SECRET and the Google keys
+npm run db:up          # Postgres in Docker (docker-compose.dev.yml)
+npm run dev            # http://localhost:3000, with cloud; without DATABASE_URL it runs in local mode
 ```
 
-La imagen: `npm run docker:build` y `npm run docker:run` (http://localhost:8080;
-su `DATABASE_URL` tiene que llegar desde dentro del contenedor, p. ej.
-`host.docker.internal` en vez de `localhost`).
+The image: `npm run docker:build` and `npm run docker:run` (http://localhost:8080;
+its `DATABASE_URL` must be reachable from inside the container, e.g.
+`host.docker.internal` instead of `localhost`).
 
-## 4. Nube y dominio
+## 4. Cloud and domain
 
-- La nube (cuentas, partidas, cooperativo) sólo se activa en los dominios de
-  `HOSTS` en `src/js/core/db.js`; en otro dominio el juego va en modo local y
-  avisa de que no es la web oficial. Para otro dominio: añádelo a `HOSTS`, cambia
-  `BETTER_AUTH_URL` y la URI de redirección del cliente OAuth de Google.
-- Las páginas para buscadores usan `SITE = 'https://survivor.preciostcg.com/'`
-  (`scripts/make_seo_pages.py`) y `src/index.html` tiene esa URL en canonical y
-  og:image: cámbialas si publicas en otro dominio.
+- The cloud (accounts, saves, co-op) is only enabled on the domains in
+  `HOSTS` in `src/js/core/db.js`; on any other domain the game runs in local mode and
+  warns that it is not the official website. For another domain: add it to `HOSTS`, change
+  `BETTER_AUTH_URL` and the redirect URI of the Google OAuth client.
+- The generated pages use `SITE = 'https://survivor.preciostcg.com/'`
+  (`scripts/make_seo_pages.py`) and `src/index.html` has that URL in og:image:
+  change them if you publish on another domain.
 
-## 5. Que salga en Google
+## 5. Search engines
 
-1. <https://search.google.com/search-console> → **Añadir propiedad** → tu dominio.
-2. Verificación por DNS (registro TXT) o con la etiqueta `<meta ...>` dentro de
-   `<head>` en `src/index.html` (y publicar).
-3. **Sitemaps** → `sitemap.xml`.
+Indexing is turned off on purpose: this is an internal mini-game. See [SEO.md](SEO.md).
 
-## Recordatorios
+## Reminders
 
-- **Nada de dinero**: ni anuncios, ni donaciones a cambio de nada, ni pagos.
-  Lo exige la licencia de los sprites (CC BY-NC) y la del código (PolyForm
-  Noncommercial), y es lo que más reduce el riesgo de que Nintendo pida retirarlo.
-- Si llega una reclamación de derechos al correo del aviso legal, atiéndela
-  rápido: retirar lo que pidan suele cerrar el asunto.
+- **No money**: no ads, no donations in exchange for anything, no payments.
+  The sprite license (CC BY-NC) and the code license (PolyForm
+  Noncommercial) require it, and it is what most reduces the risk of Nintendo asking for a takedown.
+- If a rights claim arrives at the legal notice email address, deal with it
+  quickly: removing what they ask for usually settles the matter.

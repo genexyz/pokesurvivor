@@ -1,24 +1,24 @@
-PokéSurvivor — licencias
+PokéSurvivor — licenses
 
-1) CÓDIGO (todo lo que hay en js/, css/, index.html, dev.html, tools/ y la
-   música de js/data/music.js)
+1) CODE (everything in js/, css/, index.html, dev.html, tools/ and the
+   music in js/data/music.js)
 
-   - Desde el 14-10-2026 (todo lo publicado después del commit b297089):
-     PolyForm Noncommercial License 1.0.0, texto completo en
-     LICENSE-NONCOMMERCIAL.md. Se puede usar, estudiar, modificar y compartir
-     SIN fines comerciales: no se puede vender, cobrar por jugarlo ni por
-     nada dentro de él, ni ponerle anuncios.
+   - Since 2026-10-14 (everything published after commit b297089):
+     PolyForm Noncommercial License 1.0.0, full text in
+     LICENSE-NONCOMMERCIAL.md. It may be used, studied, modified and shared
+     for NON-commercial purposes only: it may not be sold, nor may anyone
+     charge for playing it or for anything inside it, nor put ads on it.
 
      Required Notice: Copyright 2026 JPTER78 (https://github.com/JPTER78/pokesurvivor)
 
-   - Las versiones hasta el commit b297089 incluido (14-10-2026) se
-     publicaron bajo la licencia MIT de abajo, y para esas copias sigue
-     valiendo. No se aplica a nada posterior.
+   - Versions up to and including commit b297089 (2026-10-14) were
+     published under the MIT license below, which still applies to those
+     copies. It does not apply to anything later.
 
-   La única web oficial del juego es https://pokesurvivor.com. El juego es
-   gratis: cualquier web que cobre por él no es nuestra.
+   The game's only official website is https://pokesurvivor.com. The game is
+   free: any website that charges for it is not ours.
 
-MIT License (sólo versiones hasta el commit b297089)
+MIT License (only versions up to commit b297089)
 
 Copyright (c) 2026 JPTER78
 
@@ -40,16 +40,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-2) CONTENIDO DE TERCEROS (NO cubierto por las licencias del código):
+2) THIRD-PARTY CONTENT (NOT covered by the code licenses):
 
-- assets/pokemon/: sprites de SpriteCollab (https://github.com/PMDCollab/SpriteCollab),
-  licencia CC BY-NC 4.0. Uso NO comercial y con atribución; los autores están
-  en CREDITS.md.
+- assets/pokemon/: sprites from SpriteCollab (https://github.com/PMDCollab/SpriteCollab),
+  CC BY-NC 4.0 license. NON-commercial use only, with attribution; the authors
+  are listed in CREDITS.md.
 - assets/fonts/: Pixelify Sans, SIL Open Font License 1.1 (assets/fonts/OFL.txt).
-- js/data/pokedex.js: datos obtenidos de PokeAPI (https://pokeapi.co/).
+- js/data/pokedex.js: data obtained from PokeAPI (https://pokeapi.co/).
 
-3) MARCAS
+3) TRADEMARKS
 
-Pokémon y todos los nombres y personajes relacionados son marcas y propiedad
-de Nintendo, Creatures Inc., GAME FREAK y The Pokémon Company. Este es un
-proyecto de fan sin ánimo de lucro, no afiliado ni aprobado por ellos.
+Pokémon and all related names and characters are trademarks and property
+of Nintendo, Creatures Inc., GAME FREAK and The Pokémon Company. This is a
+non-profit fan project, not affiliated with or endorsed by them.

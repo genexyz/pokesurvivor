@@ -1,10 +1,10 @@
-/* Servidor de PokéSurvivor (sustituye a nginx y a scripts/dev-server.js).
- *   npm start      ->  dist/ tal cual se publica (antes: npm run build). Es lo que corre en Coolify.
- *   npm run dev    ->  src/ + public/, se recarga al guardar.
- * Con DATABASE_URL hay nube: cuentas de Google, partidas, amigos, ranking y
- * salas del cooperativo (api.mjs, live.mjs). Sin ella, el juego va en modo
- * local (en dev) o sólo sirve los archivos.
- * Puerto: PORT (3000 por defecto; en el Dockerfile, 80).
+/* PokéSurvivor server (replaces nginx and scripts/dev-server.js).
+ *   npm start      ->  dist/ exactly as published (run npm run build first). This is what runs on Coolify.
+ *   npm run dev    ->  src/ + public/, reloads on save.
+ * With DATABASE_URL there is a cloud: Google accounts, saves, friends, leaderboard and
+ * co-op rooms (api.mjs, live.mjs). Without it, the game runs in local mode
+ * (in dev) or the server only serves the files.
+ * Port: PORT (3000 by default; 80 in the Dockerfile).
  */
 import './env.mjs';
 import http from 'node:http';
@@ -44,15 +44,44 @@ const TYPES = {
 const GZIP = /^(text\/|application\/(json|javascript|manifest\+json|xml)|image\/svg)/;
 
 if (!DEV && !fs.existsSync(path.join(ROOT, 'dist', 'index.html'))) {
-  console.error('No hay dist/: ejecuta antes npm run build');
+  console.error('No dist/: run npm run build first');
   process.exit(1);
 }
 
-process.on('unhandledRejection', e => console.error('[server] promesa sin capturar:', e));
+process.on('unhandledRejection', e => console.error('[server] unhandled rejection:', e));
 
-// ---------------- archivos ----------------
+// ---------------- old URLs ----------------
 
-/** Lo mismo que hacía deploy/nginx.conf con la caché. */
+/** The website used to have Spanish paths at the root and English under /en/. */
+const OLD_PAGES = {
+  guia: 'guide',
+  legendarios: 'legendaries',
+  tipos: 'types',
+  movimientos: 'moves',
+  objetos: 'items',
+  logros: 'achievements',
+  novedades: 'news',
+  apoyar: 'support',
+  contacto: 'contact'
+};
+
+function renamed(p) {
+  const m = /^\/([a-z]+)(\/.*)?$/.exec(p);
+  return m && Object.hasOwn(OLD_PAGES, m[1]) ? '/' + OLD_PAGES[m[1]] + (m[2] || '/') : null;
+}
+
+/** Where an old URL lives now (permanent redirect), or null. */
+function movedTo(p) {
+  if (p === '/en' || p.startsWith('/en/')) {
+    const q = p.slice(3) || '/';
+    return renamed(q) || q;
+  }
+  return renamed(p);
+}
+
+// ---------------- files ----------------
+
+/** Same caching that deploy/nginx.conf used to do. */
 function cacheOf(p) {
   if (DEV || p === '/version.json') return 'no-store';
   if (p.startsWith('/js/')) return 'public, max-age=31536000, immutable';
@@ -72,13 +101,13 @@ function find(urlPath) {
       }
       if (st.isFile()) return { f, st, dir };
     } catch (e) {
-      /* no está aquí */
+      /* not here */
     }
   }
   return null;
 }
 
-const gzCache = new Map(); // archivo -> { mtime, buf } (en producción los archivos no cambian)
+const gzCache = new Map(); // file -> { mtime, buf } (files don't change in production)
 function body(req, file, type, st) {
   const raw = fs.readFileSync(file);
   if (!GZIP.test(type) || raw.length < 1024 || !/\bgzip\b/.test(req.headers['accept-encoding'] || '')) return { buf: raw };
@@ -110,7 +139,7 @@ function sendText(res, status, type, text) {
   res.end(text);
 }
 
-// ---------------- desarrollo: recarga al guardar ----------------
+// ---------------- development: reload on save ----------------
 
 const reloaders = new Set();
 if (DEV) {
@@ -123,17 +152,17 @@ if (DEV) {
   });
 }
 
-function devPage(en) {
+function devPage(es) {
   let html = fs.readFileSync(path.join(ROOT, 'src', 'index.html'), 'utf8');
-  // Sin base de datos, el juego va en modo local (sin nube).
+  // Without a database, the game runs in local mode (no cloud).
   const inject =
     (CLOUD ? '<script>' : `<script>window.PS_DEV = 'local';`) +
     `new EventSource('/__reload').onmessage = () => location.reload();</script>\n`;
   html = html.replace('<!-- scripts:begin -->', inject + '<!-- scripts:begin -->');
-  // /en/: el juego en inglés, igual que lo genera scripts/make_seo_pages.py.
-  if (en)
+  // /es/: the game in Spanish, just like scripts/make_seo_pages.py generates it.
+  if (es)
     html = html
-      .replace('<html lang="es">', '<html lang="en">')
+      .replace(/<html lang="[a-z]+">/, '<html lang="es">')
       .replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<base href="../">');
   return html;
 }
@@ -150,16 +179,16 @@ function devRoute(req, res, p) {
     sendText(res, 200, TYPES['.html'], devPage(false));
     return true;
   }
-  if (p === '/en') {
-    res.writeHead(301, { Location: '/en/' });
+  if (p === '/es') {
+    res.writeHead(301, { Location: '/es/' });
     res.end();
     return true;
   }
-  if (p === '/en/' || p === '/en/index.html') {
+  if (p === '/es/' || p === '/es/index.html') {
     sendText(res, 200, TYPES['.html'], devPage(true));
     return true;
   }
-  // updater.js no hace nada en dev.
+  // updater.js does nothing in dev.
   if (p === '/version.json') {
     sendText(res, 200, TYPES['.json'], JSON.stringify({ v: 'dev' }) + '\n');
     return true;
@@ -167,7 +196,7 @@ function devRoute(req, res, p) {
   return false;
 }
 
-// ---------------- servidor ----------------
+// ---------------- server ----------------
 
 const api = CLOUD ? await import('./api.mjs') : null;
 const live = CLOUD ? await import('./live.mjs') : null;
@@ -184,10 +213,16 @@ const server = http.createServer(async (req, res) => {
     if (p.startsWith('/api/auth/')) return authHandler(req, res);
     return api.handleApi(req, res, new URL(req.url, BASE_URL));
   }
+  const moved = movedTo(p);
+  if (moved) {
+    const q = new URL(req.url, 'http://x').search;
+    res.writeHead(301, { Location: encodeURI(moved) + q });
+    return res.end();
+  }
   if (DEV && devRoute(req, res, p)) return;
   const hit = find(p);
   if (hit) {
-    // /pokedex -> /pokedex/ (como un servidor estático normal), así funcionan los enlaces relativos.
+    // /pokedex -> /pokedex/ (like a normal static server), so relative links work.
     if (!p.endsWith('/') && fs.statSync(path.join(hit.dir, p)).isDirectory()) {
       res.writeHead(301, { Location: p + '/' });
       return res.end();
@@ -200,7 +235,7 @@ const server = http.createServer(async (req, res) => {
     res,
     404,
     TYPES['.txt'],
-    `404: ${p}` + (DEV ? '\nLas páginas de la web (guía, pokédex...) sólo existen tras npm run build; míralas con npm start.' : '')
+    `404: ${p}` + (DEV ? '\nThe website pages (guide, pokédex...) only exist after npm run build; view them with npm start.' : '')
   );
 });
 
@@ -209,17 +244,17 @@ if (live) server.on('upgrade', (req, socket, head) => live.handleUpgrade(req, so
 if (CLOUD) {
   await migrateAuth();
   await initSchema();
-  if (!haveGoogle) console.warn('[server] Faltan GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET: no se podrá entrar.');
-  if (!process.env.BETTER_AUTH_SECRET) console.warn('[server] Falta BETTER_AUTH_SECRET.');
+  if (!haveGoogle) console.warn('[server] Missing GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET: nobody will be able to sign in.');
+  if (!process.env.BETTER_AUTH_SECRET) console.warn('[server] Missing BETTER_AUTH_SECRET.');
 }
 
 server.listen(PORT, () => {
-  const mode = DEV ? 'desarrollo' : 'dist/';
-  console.log(`PokéSurvivor · ${mode} · ${CLOUD ? 'con nube (' + BASE_URL + ')' : 'sin nube (falta DATABASE_URL)'}`);
-  console.log(`  http://localhost:${PORT}/\n  http://localhost:${PORT}/en/`);
+  const mode = DEV ? 'development' : 'dist/';
+  console.log(`PokéSurvivor · ${mode} · ${CLOUD ? 'with cloud (' + BASE_URL + ')' : 'no cloud (DATABASE_URL missing)'}`);
+  console.log(`  http://localhost:${PORT}/\n  http://localhost:${PORT}/es/`);
 });
 
-// Coolify para el contenedor con SIGTERM: se cierra ordenadamente.
+// Coolify stops the container with SIGTERM: shut down cleanly.
 for (const sig of ['SIGTERM', 'SIGINT'])
   process.on(sig, () => {
     server.close();

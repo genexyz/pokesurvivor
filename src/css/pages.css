@@ -1,6 +1,6 @@
-/* ============ pages.css — páginas de texto (guía, Pokédex, 404) ============
- * Mismo estilo que el juego (azul de Mundo Misterioso, dorado y fuente pixel),
- * pero pensadas para leer cómodamente en PC y móvil. */
+/* ============ pages.css — text pages (guide, Pokédex, 404) ============
+ * Same style as the game (Mystery Dungeon blue, gold and pixel font),
+ * but designed for comfortable reading on PC and mobile. */
 @font-face {
   font-family: 'Pixelify';
   src: url('../assets/fonts/PixelifyPS-400.ttf') format('truetype');
@@ -271,7 +271,7 @@ footer {
   }
 }
 
-/* ---------- piezas de las páginas de contenido ---------- */
+/* ---------- content page pieces ---------- */
 .top nav a.lang {
   border: 2px solid var(--edge);
   border-radius: 8px;

@@ -1,18 +1,18 @@
-/* ============ net.js — conexión entre los jugadores de una sala ============
- * Topología en estrella: el ANFITRIÓN habla con cada invitado; los invitados
- * sólo hablan con el anfitrión (él reenvía lo que haga falta).
+/* ============ net.js — connection between the players in a room ============
+ * Star topology: the HOST talks to each guest; guests only talk to the host
+ * (who forwards whatever is needed).
  *
- * Dos caminos, a la vez:
- *   directo  WebRTC (canal de datos entre navegadores, sin pasar por ningún
- *            servidor). La negociación (señalización) va por nuestro servidor
+ * Two paths, at the same time:
+ *   direct   WebRTC (data channel between browsers, without going through any
+ *            server). The negotiation (signalling) goes through our server
  *            (G.Live, WebSocket; server/live.mjs).
- *            Sólo con STUN gratuito de Google: si la red no deja conectar
- *            directo (algunos routers y datos móviles), esa pareja no puede
- *            jugar junta. (Se podría añadir un TURN propio, coturn, en ICE.)
- *   relé     (APAGADO) los mensajes irían por el servidor.
+ *            Only with Google's free STUN: if the network doesn't allow a direct
+ *            connection (some routers and mobile data), that pair can't play
+ *            together. (Our own TURN, coturn, could be added to ICE.)
+ *   relay    (OFF) messages would go through the server.
  *
- * Se envía por el canal directo si está abierto; si no, por el relé. El que
- * recibe escucha los dos, así que no hace falta ponerse de acuerdo.
+ * Messages go through the direct channel if it's open; otherwise through the
+ * relay. The receiver listens to both, so no agreement is needed.
  *
  * API:  open(roomId, isHost, hostUid) · close() · send(to, msg) · toHost(msg)
  *       broadcast(msg) · on(fn(from, msg)) · onPeer(fn(uid, state))
@@ -20,10 +20,10 @@
  */
 G.Net = (() => {
   const ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
-  const DIRECT_TIMEOUT = 9000; // ms para conseguir canal directo antes de usar el relé
-  // Relé APAGADO: sin conexión directa, esa pareja no puede jugar junta
-  // ('failed') y el anfitrión lo reintenta cada RETRY_MS. Por el servidor sólo
-  // pasa la señalización (unos pocos mensajes pequeños para conectarse).
+  const DIRECT_TIMEOUT = 9000; // ms to get a direct channel before using the relay
+  // Relay OFF: without a direct connection, that pair can't play together
+  // ('failed') and the host retries every RETRY_MS. Only signalling goes
+  // through the server (a few small messages to connect).
   const ALLOW_RELAY = false,
     RETRY_MS = 15000;
 
@@ -47,7 +47,7 @@ G.Net = (() => {
     });
   }
 
-  // ---------------- apertura ----------------
+  // ---------------- opening ----------------
 
   function open(id, host, hostId) {
     if (roomId === id) return;
@@ -56,8 +56,8 @@ G.Net = (() => {
     roomId = id;
     isHost = host;
     hostUid = hostId;
-    // Invitado: hueco para el anfitrión desde ya (se sustituye al llegar su
-    // oferta). Así, si no llega nunca, se sigue por el relé y se sabe cuándo se va.
+    // Guest: a slot for the host right away (replaced when its offer arrives).
+    // That way, if it never arrives, we carry on via the relay and know when it leaves.
     if (!isHost) {
       const p = { pc: null, dc: null, mode: 'connecting', timer: 0 };
       p.timer = setTimeout(() => {
@@ -77,7 +77,7 @@ G.Net = (() => {
     hostUid = null;
   }
 
-  /** El anfitrión llama a esto cuando cambian los miembros de la sala. */
+  /** The host calls this when the room members change. */
   function syncMembers(uids) {
     if (!roomId) return;
     if (isHost) {
@@ -93,7 +93,7 @@ G.Net = (() => {
   function newPeer(u) {
     const p = { pc: null, dc: null, mode: 'connecting', timer: 0 };
     peers.set(u, p);
-    // Sin WebRTC (navegador antiguo o bloqueado): directamente por el relé.
+    // No WebRTC (old or blocked browser): straight to the relay.
     let pc;
     try {
       pc = p.pc = new RTCPeerConnection({ iceServers: ICE });
@@ -108,7 +108,7 @@ G.Net = (() => {
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'failed' && p.mode !== 'closed') useRelay(u);
     };
-    // Si en unos segundos no hay canal directo, se sigue por el relé.
+    // If there's no direct channel within a few seconds, carry on via the relay.
     p.timer = setTimeout(() => {
       if (p.mode === 'connecting') useRelay(u);
     }, DIRECT_TIMEOUT);
@@ -148,13 +148,13 @@ G.Net = (() => {
       emitPeer(u);
       return;
     }
-    // Sin relé: no se puede jugar con esa persona por ahora. El anfitrión reintenta.
+    // No relay: you can't play with that person for now. The host retries.
     clearTimeout(p.timer);
     p.mode = 'failed';
     try {
       if (p.pc) p.pc.close();
     } catch (e) {
-      /* nada */
+      /* nothing */
     }
     emitPeer(u);
     if (isHost)
@@ -166,7 +166,7 @@ G.Net = (() => {
       }, RETRY_MS);
   }
 
-  /** Anfitrión: abre conexión con un invitado. */
+  /** Host: opens a connection with a guest. */
   async function connect(u) {
     if (!roomId || peers.has(u)) return;
     const p = newPeer(u);
@@ -181,7 +181,7 @@ G.Net = (() => {
     }
   }
 
-  const pendingIce = new Map(); // candidatos que llegan antes que la oferta
+  const pendingIce = new Map(); // candidates that arrive before the offer
 
   async function onSignal(from, sig) {
     let p = peers.get(from);
@@ -208,7 +208,7 @@ G.Net = (() => {
         }
       }
     } catch (e) {
-      console.warn('[Net] señalización:', e.message);
+      console.warn('[Net] signalling:', e.message);
       useRelay(from);
     }
   }
@@ -225,23 +225,23 @@ G.Net = (() => {
     try {
       if (p.dc) p.dc.close();
     } catch (e) {
-      /* nada */
+      /* nothing */
     }
     try {
       if (p.pc) p.pc.close();
     } catch (e) {
-      /* nada */
+      /* nothing */
     }
     peers.delete(u);
     if (!silent) emitPeer(u);
   }
 
-  // ---------------- envío / recepción ----------------
+  // ---------------- send / receive ----------------
 
   function relayPush(to, env) {
     if (roomId) G.Live.send('sig', { to, env });
   }
-  // Lo que llega por el servidor: señalización (o el aviso de empezar).
+  // What arrives via the server: signalling (or the start notice).
   G.Live.on('sig', msg => {
     const m = msg.env;
     if (!roomId || msg.room !== roomId || !m || !msg.f) return;
@@ -258,11 +258,11 @@ G.Net = (() => {
         p.dc.send(JSON.stringify(msg));
         return;
       } catch (e) {
-        /* cae al relé */
+        /* fall back to the relay */
       }
     }
-    // Sin relé, los datos de la partida no van por el servidor (se pierden: esa
-    // pareja no está conectada). Sólo pasa el aviso de empezar.
+    // Without a relay, game data doesn't go through the server (it's dropped: that
+    // pair isn't connected). Only the start notice goes through.
     if (!ALLOW_RELAY && !(msg && msg.k === 'start')) return;
     stats.relaySent++;
     relayPush(to, { f: uid, d: msg });
@@ -281,7 +281,7 @@ G.Net = (() => {
       try {
         fn(from, msg);
       } catch (e) {
-        console.error('[Net] mensaje:', e);
+        console.error('[Net] message:', e);
       }
     });
   }
@@ -306,7 +306,7 @@ G.Net = (() => {
       const p = peers.get(u);
       return p ? p.mode : 'closed';
     },
-    /** ¿Va por el relé (o no hay conexión)? Entonces se manda menos a menudo. */
+    /** Is it going via the relay (or not connected)? Then send less often. */
     slow(u) {
       const p = peers.get(u);
       return !p || p.mode !== 'direct';

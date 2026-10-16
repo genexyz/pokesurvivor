@@ -1,19 +1,19 @@
-/* ============ items.js — objetos equipables (uno por run) ============
- * Se encuentran en los cofres (a veces en los normales, a menudo en los de
- * candado) y los sueltan los jefes. Sólo puedes llevar UNO; si encuentras
- * otro, eliges con cuál quedarte. Duran lo que dura la run.
+/* ============ items.js — held items (one per run) ============
+ * Found in chests (sometimes in normal ones, often in locked ones) and
+ * dropped by bosses. You can only hold ONE; if you find another, you choose
+ * which one to keep. They last for the whole run.
  *
- *   on(pl)   se lo pones (lo que hace mientras lo llevas)
- *   off(pl)  se lo quitas (deshace lo de on)
- * Los que reaccionan a algo (golpe mortal, daño hecho...) los mira el
- * jugador con pl.hasItem(id).
+ *   on(pl)   equip it (what it does while held)
+ *   off(pl)  unequip it (undoes on)
+ * Items that react to something (lethal hit, damage dealt...) are checked
+ * by the player with pl.hasItem(id).
  */
 G.Items = (() => {
   const LIST = [
     {
       id: 'leftovers',
-      name: 'Restos',
-      desc: 'Recuperas un 1,5% de tu vida por segundo.',
+      name: 'Leftovers',
+      desc: 'You recover 1.5% of your HP per second.',
       on: p => {
         p.regenFlat += p.maxHp * 0.015;
         p._itemRegen = p.maxHp * 0.015;
@@ -24,8 +24,8 @@ G.Items = (() => {
     },
     {
       id: 'choiceband',
-      name: 'Cinta Elección',
-      desc: '+40% de daño, pero no puedes cambiar de movimiento.',
+      name: 'Choice Band',
+      desc: "+40% damage, but you can't switch moves.",
       on: p => {
         p.atkMul *= 1.4;
       },
@@ -35,8 +35,8 @@ G.Items = (() => {
     },
     {
       id: 'quickclaw',
-      name: 'Garra Rápida',
-      desc: '-20% de recarga en todos tus movimientos.',
+      name: 'Quick Claw',
+      desc: '-20% cooldown on all your moves.',
       on: p => {
         p.cdMul *= 0.8;
       },
@@ -46,16 +46,16 @@ G.Items = (() => {
     },
     {
       id: 'focussash',
-      name: 'Banda Focus',
-      desc: 'Un golpe que te dejaría KO te deja con 1 de vida (cada 60 s).',
+      name: 'Focus Sash',
+      desc: 'A hit that would knock you out leaves you at 1 HP (every 60 s).',
       on: () => {},
       off: () => {}
     },
-    { id: 'shellbell', name: 'Cascabel Concha', desc: 'Recuperas vida con el daño que haces.', on: () => {}, off: () => {} },
+    { id: 'shellbell', name: 'Shell Bell', desc: 'You heal from the damage you deal.', on: () => {}, off: () => {} },
     {
       id: 'amuletcoin',
-      name: 'Moneda Amuleto',
-      desc: '+50% de Pokémonedas al acabar la run.',
+      name: 'Amulet Coin',
+      desc: '+50% PokéCoins at the end of the run.',
       on: p => {
         p.coinMul *= 1.5;
       },
@@ -65,8 +65,8 @@ G.Items = (() => {
     },
     {
       id: 'luckyegg',
-      name: 'Huevo Suerte',
-      desc: '+30% de experiencia.',
+      name: 'Lucky Egg',
+      desc: '+30% experience.',
       on: p => {
         p.xpMul *= 1.3;
       },
@@ -76,8 +76,8 @@ G.Items = (() => {
     },
     {
       id: 'lifeorb',
-      name: 'Vidasfera',
-      desc: '+30% de daño, pero cada ataque te quita un poco de vida.',
+      name: 'Life Orb',
+      desc: '+30% damage, but each attack costs a little HP.',
       on: p => {
         p.atkMul *= 1.3;
       },
@@ -87,8 +87,8 @@ G.Items = (() => {
     },
     {
       id: 'choicescarf',
-      name: 'Pañuelo Elección',
-      desc: '+35% de velocidad.',
+      name: 'Choice Scarf',
+      desc: '+35% speed.',
       on: p => {
         p.spdMul *= 1.35;
       },
@@ -96,11 +96,11 @@ G.Items = (() => {
         p.spdMul /= 1.35;
       }
     },
-    { id: 'rockyhelmet', name: 'Casco Dentado', desc: 'Los que te golpean cuerpo a cuerpo reciben daño.', on: () => {}, off: () => {} },
+    { id: 'rockyhelmet', name: 'Rocky Helmet', desc: 'Foes that hit you in melee take damage.', on: () => {}, off: () => {} },
     {
       id: 'assaultvest',
-      name: 'Chaleco Asalto',
-      desc: '+20% de reducción de daño recibido.',
+      name: 'Assault Vest',
+      desc: '+20% damage reduction.',
       on: p => {
         p.dmgReduce += 0.2;
       },
@@ -112,7 +112,7 @@ G.Items = (() => {
   const BY = {};
   for (const it of LIST) BY[it.id] = it;
 
-  /** Uno al azar, distinto del que ya llevas. */
+  /** A random one, different from the one you already hold. */
   function roll(except) {
     const pool = LIST.filter(i => i.id !== except);
     return G.U.pick(pool).id;

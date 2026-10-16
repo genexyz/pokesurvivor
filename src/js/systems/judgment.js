@@ -1,41 +1,41 @@
-/* ============ judgment.js — La Sentencia de Arceus (minuto 30) ============
+/* ============ judgment.js — Arceus's Judgment (minute 30) ============
  *
- * Al llegar al minuto 30 se acaba la partida "normal" (como la Muerte de
+ * At minute 30 the "normal" run ends (like Death in
  * Vampire Survivors):
  *
- *   1. Animación: la pantalla se oscurece, aparece "LA SENTENCIA DE ARCEUS"
- *      con su rueda dorada, destello y viaje a una arena enorme y arrasada
- *      (Ruinas del Juicio). Arceus baja del cielo por un pilar de luz y cae
- *      con una onda de choque. La primera vez se ve entera; después se puede
- *      saltar (en cooperativo sólo el anfitrión).
- *   2. Pelea: Arceus es INVENCIBLE (no es un enemigo: los ataques no le
- *      apuntan). Te persigue cada vez más deprisa; tocarle quita el 40 % de la
- *      vida y lanza la Sentencia (pilares de luz), rayos en cruz y ondas, todo
- *      con aviso en el suelo. Ese daño ignora tipos y defensa.
- *   3. Cada 5 s acude un legendario al azar, cada uno con el DOBLE de vida y de
- *      daño que el anterior. El primero, según el daño que hacíais antes de la
- *      Sentencia a UN enemigo (unos 3 s), para que no caiga al momento.
- *      Dan experiencia, pero nada más (ni monedas, ni tickets, ni objetos).
- *   4. Sin límite de tiempo: por muy fuerte que vayas (curación sin tope,
- *      defensa...), los legendarios que se acumulan, cada uno el doble de
- *      fuertes, acaban contigo (el 8.º ya pega 128 veces más que el 1.º).
+ *   1. Cutscene: the screen darkens, "THE JUDGMENT OF ARCEUS" appears
+ *      with its golden wheel, a flash and a trip to a huge, ravaged arena
+ *      (Ruins of Judgment). Arceus descends from the sky through a pillar of light and lands
+ *      with a shockwave. The first time it plays in full; afterwards it can be
+ *      skipped (in co-op only by the host).
+ *   2. Fight: Arceus is INVINCIBLE (it is not an enemy: attacks don't
+ *      target it). It chases you ever faster; touching it takes 40% of your
+ *      max HP, and it casts Judgment (pillars of light), cross beams and waves, all
+ *      telegraphed on the ground. That damage ignores types and defense.
+ *   3. Every 5 s a random legendary shows up, each with DOUBLE the HP and
+ *      damage of the previous one. The first one is based on the damage you dealt before the
+ *      Judgment to ONE enemy (about 3 s), so it doesn't fall instantly.
+ *      They give experience, but nothing else (no coins, tickets or items).
+ *   4. No time limit: however strong you are (uncapped healing,
+ *      defense...), the legendaries piling up, each twice as
+ *      strong, will finish you (the 8th already hits 128 times harder than the 1st).
  *
- * Mientras dura no sale nada más (ni oleadas, ni eventos, ni grietas; desde
- * el 28:00 ya no se abren grietas). Si a las 30:00 estás en una grieta o
- * eligiendo una carta, empieza al terminar.
+ * While it lasts nothing else spawns (no waves, events or rifts; from
+ * 28:00 rifts no longer open). If at 30:00 you are in a rift or
+ * picking a card, it starts when that ends.
  *
- * Cooperativo: lo decide el anfitrión. Mensajes (ver coop.js):
- *   'jd' cfg (empieza) · 'jk' (salta la animación)
- *   y en cada envío del anfitrión, ja: [x, y, animación, dirección] de Arceus.
+ * Co-op: the host decides. Messages (see coop.js):
+ *   'jd' cfg (start) · 'jk' (skip the cutscene)
+ *   and in every host update, ja: Arceus's [x, y, animation, direction].
  */
 G.Judgment = (() => {
   const AT = 30 * 60;
-  const ARENA_R = 24; // en tiles (la arena de la grieta: 11)
-  const BOSS_EVERY = 5; // sin tope: siguen saliendo mientras aguantes
-  const TOUCH = 0.4; // vida que quita tocar a Arceus
+  const ARENA_R = 24; // in tiles (the rift arena: 11)
+  const BOSS_EVERY = 5; // no cap: they keep coming as long as you last
+  const TOUCH = 0.4; // HP fraction lost by touching Arceus
   const ARCEUS = 493,
     SCALE = 1.5;
-  // Línea de tiempo de la animación (segundos).
+  // Cutscene timeline (seconds).
   const T_TITLE = 1.3,
     T_FLASH = 4.7,
     T_PORT = 5.1,
@@ -48,22 +48,22 @@ G.Judgment = (() => {
   const TS = () => G.Tiles.T * G.Sprites.PX;
 
   let phase = null; // null | 'cine' | 'fight'
-  let ct = 0; // reloj de la animación
-  let cfg = null; // { tx, ty, q: [dex de los legendarios] }
+  let ct = 0; // cutscene clock
+  let cfg = null; // { tx, ty, q: [legendaries' dex] }
   let ported = false,
     landed = false,
     canSkip = false,
     cues = {};
   let A = null; // Arceus
-  let center = null; // centro de la arena (mundo)
+  let center = null; // arena center (world)
   let arenaT = 0,
     bossT = 0,
     bossN = 0,
     base = 0,
     downs = 0;
-  // Daño a un solo enemigo por segundo (el que más recibe en cada segundo; con
-  // ataques en área, sumar todo daría una vida enorme). Se guardan los últimos
-  // 30 s y vale la media de los 6 mejores.
+  // Damage to a single enemy per second (the one taking the most each second; with
+  // area attacks, summing everything would give huge HP). The last
+  // 30 s are kept and the average of the best 6 is used.
   let hits = new Map(),
     hitT = 0,
     samples = [];
@@ -89,7 +89,7 @@ G.Judgment = (() => {
     cam = null;
   }
 
-  /** Daño hecho a un enemigo (lo llama Enemy.hurt en quien manda). */
+  /** Damage dealt to an enemy (called by Enemy.hurt on the authority). */
   function noteDmg(d, e) {
     if (!phase) hits.set(e.id, (hits.get(e.id) || 0) + d);
   }
@@ -112,9 +112,9 @@ G.Judgment = (() => {
     return top.length ? top.reduce((a, b) => a + b, 0) / top.length : 0;
   }
 
-  // ---------------- arranque ----------------
+  // ---------------- start ----------------
 
-  /** Quien manda: elige la arena y los legendarios, y avisa a todos. */
+  /** Authority: picks the arena and the legendaries, and tells everyone. */
   function start() {
     const pool = G.DEX.filter(p => p.leg && p.dex !== ARCEUS && G.SPRITE_META[p.dex]);
     const q = [];
@@ -124,7 +124,7 @@ G.Judgment = (() => {
     begin(c);
   }
 
-  /** En cada ordenador: empieza la animación. */
+  /** On each computer: start the cutscene. */
   function begin(c) {
     if (phase) return;
     cfg = c;
@@ -132,7 +132,7 @@ G.Judgment = (() => {
     ct = 0;
     cues = {};
     const s = G.DB.save;
-    // La primera vez se ve entera; en grupo la salta el anfitrión.
+    // The first time it plays in full; in a group the host skips it.
     canSkip = !!(s && s.stats && s.stats.judged > 0) && authority();
     G.Sprites.preload([ARCEUS, ...new Set(c.q.slice(0, 12))], 12000);
     cineAnim = new G.Sprites.Animator(ARCEUS, 1);
@@ -140,7 +140,7 @@ G.Judgment = (() => {
     G.Audio.music(null);
   }
 
-  /** Salta la animación (tecla o toque; en grupo, el anfitrión). */
+  /** Skip the cutscene (key or tap; in a group, the host). */
   function skip() {
     if (phase !== 'cine' || !canSkip || ct >= T_BACK) return;
     if (G.Coop.isHost) G.Coop.broadcast(['jk']);
@@ -153,7 +153,7 @@ G.Judgment = (() => {
     ct = T_BACK;
   }
 
-  /** Viaje a la arena (a mitad de la animación, tapado por el destello). */
+  /** Trip to the arena (mid-cutscene, hidden by the flash). */
   function port() {
     ported = true;
     const pl = G.Game.player,
@@ -195,7 +195,7 @@ G.Judgment = (() => {
     anim.dir = 0;
   }
 
-  /** Arceus toca el suelo. */
+  /** Arceus touches the ground. */
   function land(quiet = false) {
     if (landed || !A) return;
     landed = true;
@@ -210,7 +210,7 @@ G.Judgment = (() => {
     G.FX.burst(A.x, A.y - 10, '#ffffff', 30, 240);
   }
 
-  /** Fin de la animación: empieza la pelea. */
+  /** End of the cutscene: the fight begins. */
   function fight() {
     phase = 'fight';
     if (!ported) port();
@@ -220,17 +220,17 @@ G.Judgment = (() => {
     bossN = 0;
     downs = 0;
     G.Progress.event('judge');
-    // Vida del primer legendario: unos 3 s de vuestro daño a un enemigo (y un mínimo).
+    // First legendary's HP: about 3 s of your damage to one enemy (with a minimum).
     const n = G.Game.everyone().length,
       t = G.Game.st.time;
     const floor = (3200 + t * 9) * 0.35 * G.Coop.scaleHp(n);
     base = Math.max(floor, singleDps() * 3);
-    G.Spawner.say('¡Huye de Arceus! Es invencible', 3, true);
+    G.Spawner.say('Run from Arceus! It is invincible', 3, true);
   }
 
-  // ---------------- cada fotograma ----------------
+  // ---------------- every frame ----------------
 
-  /** Durante la animación (el resto del juego está parado). */
+  /** During the cutscene (the rest of the game is paused). */
   function cineTick(dt) {
     const prev = ct;
     ct += dt;
@@ -248,7 +248,7 @@ G.Judgment = (() => {
     if (at(T_PORT) && !ported) port();
     if (at(T_DESC)) G.Audio.sfx('descend');
     if (A && !landed) {
-      // Bajada: lenta al principio y frenando al final (como si se posara).
+      // Descent: slow at first and braking at the end (as if settling down).
       const k = G.U.clamp((ct - T_DESC) / (T_LAND - T_DESC), 0, 1);
       A.lift = 900 * Math.pow(1 - k, 2.2);
       A.anim.loop('Idle');
@@ -263,7 +263,7 @@ G.Judgment = (() => {
       A.anim.update(dt);
       A.spin += dt;
     }
-    // Cámara: tu Pokémon; sube despacio hacia Arceus mientras baja y vuelve.
+    // Camera: your Pokémon; slowly pans up to Arceus while it descends, then back.
     let tx = pl.x,
       ty = pl.y;
     if (ported && A && ct < T_BACK) {
@@ -281,10 +281,10 @@ G.Judgment = (() => {
   }
   let cam = null;
 
-  /** En la pelea (lo llama game.js en cada fotograma de juego). */
+  /** During the fight (called by game.js every game frame). */
   function update(dt, pl, time) {
     if (!phase) {
-      sampleDps(dt); // (para la vida del primer legendario)
+      sampleDps(dt); // (for the first legendary's HP)
       if (authority() && time >= AT && !G.Rift.inArena) start();
       return;
     }
@@ -332,7 +332,7 @@ G.Judgment = (() => {
       A.anim.loop('Idle');
       return;
     }
-    // Más lento que tú al principio; a los ~35 s ya te alcanza.
+    // Slower than you at first; after ~35 s it catches up.
     const k = Math.min(1.22, 0.74 + arenaT * 0.013);
     const spd = Math.max(70, (tg.spd || 100) * k);
     const [dx, dy] = G.U.norm(tg.x - A.x, tg.y - A.y);
@@ -349,13 +349,13 @@ G.Judgment = (() => {
     }
   }
 
-  /** Ataques de Arceus: todos avisan en el suelo y quitan un % de la vida. */
+  /** Arceus's attacks: all are telegraphed on the ground and take a % of max HP. */
   function cast(id, tg) {
     A.last = id;
     const c = (A.cast = { id, t: 0, wind: 0.7 });
     const H = o => G.Hazards.add(Object.assign({ type: null, pure: true, dmg: 1, color: GOLD }, o));
     if (id === 'rain') {
-      // La Sentencia: pilares de luz sobre cada uno (más cuanto más dura).
+      // Judgment: pillars of light on everyone (more the longer it lasts).
       const n = 4 + Math.min(6, Math.floor(arenaT / 10));
       for (const p of G.Game.everyone()) {
         if (p.dead) continue;
@@ -375,7 +375,7 @@ G.Judgment = (() => {
       }
       A.anim.play('Shoot', { speed: 0.9 });
     } else if (id === 'cross') {
-      // Rayos en cruz que barren la arena.
+      // Cross beams sweeping the arena.
       const a0 = Math.atan2(tg.y - A.y, tg.x - A.x) + (Math.random() < 0.5 ? 0 : Math.PI / 4);
       const n = arenaT > 30 ? 8 : 4;
       for (let i = 0; i < n; i++)
@@ -383,7 +383,7 @@ G.Judgment = (() => {
       c.wind = 1.1;
       A.anim.play('Charge', { speed: 0.9 });
     } else {
-      // Onda alrededor de él (si estás demasiado cerca).
+      // Wave around it (if you're too close).
       H({ kind: 'zone', x: A.x, y: A.y, r: 170, delay: 0.85, pct: 0.4 });
       c.wind = 0.85;
       A.anim.play('Charge', { speed: 1.2 });
@@ -405,7 +405,7 @@ G.Judgment = (() => {
     }
   }
 
-  /** Invitado: Arceus va a donde dice el anfitrión. */
+  /** Guest: Arceus goes where the host says. */
   function netTick(dt) {
     const n = A.net;
     if (!n) return;
@@ -427,7 +427,7 @@ G.Judgment = (() => {
     A.anim.loop(Math.abs(A.x - ox) + Math.abs(A.y - oy) > 0.5 ? 'Walk' : 'Idle');
   }
 
-  /** Tocar a Arceus (cada uno mira el suyo). */
+  /** Touching Arceus (each player checks their own). */
   function touch(pl) {
     if (!pl || pl.dead || A.touchCd > 0) return;
     const rr = A.r + pl.r;
@@ -440,7 +440,7 @@ G.Judgment = (() => {
     if (authority()) A.anim.play('Attack', { speed: 1.4 });
   }
 
-  /** Nadie sale de la arena (Arceus, los legendarios y tú). */
+  /** Nobody leaves the arena (Arceus, the legendaries and you). */
   function keepInside() {
     const ts = TS(),
       max = (ARENA_R - 1.4) * ts;
@@ -457,7 +457,7 @@ G.Judgment = (() => {
     for (const e of G.EnemyMgr.all()) if (!e.remote) clampIn(e);
   }
 
-  // ---------------- legendarios ----------------
+  // ---------------- legendaries ----------------
 
   function spawnBoss() {
     const dex = cfg.q[bossN % cfg.q.length];
@@ -465,7 +465,7 @@ G.Judgment = (() => {
     if (!mon) return;
     const t = G.Game.st.time,
       ts = TS();
-    // Lejos de todos (en el borde de la arena).
+    // Far from everyone (at the edge of the arena).
     let x = center.x,
       y = center.y;
     for (let i = 0; i < 16; i++) {
@@ -475,7 +475,7 @@ G.Judgment = (() => {
       y = center.y + Math.sin(a) * d;
       if (G.Game.everyone().every(p => G.U.dist2(p.x, p.y, x, y) > 280 * 280)) break;
     }
-    const k = Math.pow(2, bossN); // cada uno, el doble que el anterior
+    const k = Math.pow(2, bossN); // each one twice the previous
     const def = {
       dex,
       name: mon.name,
@@ -498,18 +498,18 @@ G.Judgment = (() => {
     G.Sprites.preload([cfg.q[(bossN + 4) % cfg.q.length]], 8000);
     G.FX.ring(x, y, 8, 120, GOLD, 0.6, 5);
     G.FX.burst(x, y - 30, '#fff3c8', 24, 200);
-    G.Spawner.say('¡' + e.name + ' acude a la Sentencia!', 1.8);
+    G.Spawner.say(`${e.name} answers the Judgment!`, 1.8);
     G.Audio.sfx('rift');
   }
 
-  /** Ha caído un legendario de la arena (en cada ordenador). */
+  /** An arena legendary has fallen (on each computer). */
   function bossDown() {
     if (phase === 'fight') downs++;
   }
 
-  // ---------------- dibujo ----------------
+  // ---------------- drawing ----------------
 
-  /** Arceus, ordenado por Y con el resto de la escena. */
+  /** Arceus, Y-sorted with the rest of the scene. */
   function drawable() {
     if (!A || !ported) return null;
     return { y: A.y, draw: drawArceus };
@@ -518,7 +518,7 @@ G.Judgment = (() => {
   function drawArceus(ctx) {
     const lift = A.lift;
     const now = performance.now() / 1000;
-    // Sombra que crece mientras baja.
+    // Shadow that grows as it descends.
     const near = G.U.clamp(1 - lift / 900, 0, 1);
     ctx.save();
     ctx.globalAlpha = 0.15 + near * 0.3;
@@ -526,7 +526,7 @@ G.Judgment = (() => {
     ctx.beginPath();
     ctx.ellipse(A.x, A.y, 44 * (0.4 + near * 0.6), 16 * (0.4 + near * 0.6), 0, 0, 6.2832);
     ctx.fill();
-    // Aura dorada en el suelo.
+    // Golden aura on the ground.
     if (lift < 40) {
       ctx.globalAlpha = 0.22 + Math.sin(now * 3) * 0.06;
       ctx.fillStyle = GOLD;
@@ -535,12 +535,12 @@ G.Judgment = (() => {
       ctx.fill();
     }
     ctx.restore();
-    // La rueda dorada detrás de él.
+    // The golden wheel behind it.
     wheel(ctx, A.x, A.y - lift - A.bodyH * 0.55, A.bodyH * 0.62, A.spin * 0.6, 0.55);
     A.anim.draw(ctx, A.x, A.y - lift);
   }
 
-  /** La rueda de Arceus: aro dorado con 12 joyas que gira. */
+  /** Arceus's wheel: a spinning golden ring with 12 jewels. */
   function wheel(ctx, x, y, R, rot, alpha) {
     ctx.save();
     ctx.translate(x, y);
@@ -575,7 +575,7 @@ G.Judgment = (() => {
     ctx.restore();
   }
 
-  /** Por encima de todo (en el mundo): el pilar de luz por el que baja. */
+  /** Above everything (in the world): the pillar of light it descends through. */
   function drawAir(ctx) {
     if (!A || !ported) return;
     const cam = G.Camera;
@@ -594,7 +594,7 @@ G.Judgment = (() => {
     ctx.globalAlpha = a;
     ctx.fillStyle = g;
     ctx.fillRect(A.x - w, top, w * 2, Math.max(0, bot - top));
-    // Resplandor en el suelo, donde va a caer.
+    // Glow on the ground where it will land.
     ctx.globalAlpha = a * (0.35 + near * 0.55);
     ctx.translate(A.x, A.y);
     ctx.scale(1, 0.36);
@@ -611,7 +611,7 @@ G.Judgment = (() => {
 
   const F = (wt, s) => `${wt} ${s}px Pixelify,"Segoe UI",system-ui,sans-serif`;
 
-  /** En pantalla: la animación, o el aviso de la pelea. */
+  /** On screen: the cutscene, or the fight overlay. */
   function drawOverlay(ctx, w, h) {
     if (phase === 'cine') drawCine(ctx, w, h);
     else if (phase === 'fight') drawFight(ctx, w, h);
@@ -619,20 +619,20 @@ G.Judgment = (() => {
 
   function drawCine(ctx, w, h) {
     const t = ct;
-    G.Touch.clearButtons(); // (el HUD no se dibuja durante la animación)
+    G.Touch.clearButtons(); // (the HUD isn't drawn during the cutscene)
     ctx.save();
-    // Se oscurece todo (hasta el viaje).
+    // Everything darkens (until the trip).
     if (t < T_PORT + 0.1) {
       ctx.fillStyle = `rgba(10,6,2,${(G.U.clamp(t / 1.1, 0, 1) * 0.86).toFixed(3)})`;
       ctx.fillRect(0, 0, w, h);
     }
-    // "LA SENTENCIA DE ARCEUS"
+    // "THE JUDGMENT OF ARCEUS"
     const a = G.U.clamp((t - T_TITLE + 0.3) / 0.5, 0, 1) * G.U.clamp((T_FLASH + 0.2 - t) / 0.35, 0, 1);
     if (a > 0) {
       const cx = w / 2,
         cy = h * 0.34,
         R = Math.min(w, h) * 0.24;
-      // Rayos de luz que giran.
+      // Spinning rays of light.
       ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate(t * 0.18);
@@ -651,11 +651,11 @@ G.Judgment = (() => {
         ctx.fill();
       }
       ctx.restore();
-      // Arceus en silueta de luz, detrás de su rueda.
+      // Arceus as a silhouette of light, behind its wheel.
       wheel(ctx, cx, cy - R * 0.05, R, t * 0.35, a * 0.9);
       const idle = G.Sprites.sheet(ARCEUS, 'Idle');
       if (cineAnim && idle && idle.ready) {
-        // Silueta de luz que llena la rueda (en múltiplos de 0,5: píxeles enteros).
+        // Light silhouette filling the wheel (in multiples of 0.5: whole pixels).
         const body = (G.Sprites.animMeta(ARCEUS, 'Idle').ay || 47) * G.Sprites.PX;
         cineAnim.scale = Math.max(1, Math.round(((R * 1.7) / body) * 2) / 2);
         const rise = (1 - G.U.clamp((t - T_TITLE + 0.3) / 0.8, 0, 1)) * R * 0.3;
@@ -666,18 +666,18 @@ G.Judgment = (() => {
         cineAnim.draw(ctx, cx, cy + body * cineAnim.scale * 0.5 + rise, { flash: true });
         ctx.restore();
       }
-      // El título, letra a letra, debajo de la rueda.
+      // The title, letter by letter, below the wheel.
       const size = Math.round(G.U.clamp(Math.min(w / 13, h / 9), 24, 64));
       const ty = cy + R + size * 1.15;
-      title(ctx, 'LA SENTENCIA', cx, ty, size, T_TITLE, a);
-      title(ctx, 'DE ARCEUS', cx, ty + size * 0.95, Math.round(size * 0.8), T_TITLE + 0.75, a);
+      title(ctx, 'THE JUDGMENT', cx, ty, size, T_TITLE, a);
+      title(ctx, 'OF ARCEUS', cx, ty + size * 0.95, Math.round(size * 0.8), T_TITLE + 0.75, a);
       ctx.globalAlpha = a * G.U.clamp((t - T_TITLE - 1.6) / 0.6, 0, 1);
       ctx.font = F(700, Math.round(size * 0.32));
       ctx.textAlign = 'center';
       ctx.fillStyle = '#f3e2b0';
-      ctx.fillText('El tiempo se ha agotado…', cx, ty + size * 1.7);
+      ctx.fillText('Time has run out…', cx, ty + size * 1.7);
     }
-    // Franjas negras de cine durante la bajada.
+    // Black cinema bars during the descent.
     if (t > T_PORT) {
       const k = G.U.clamp((t - T_PORT) / 0.5, 0, 1) * G.U.clamp((T_END - t) / 0.6, 0, 1);
       const bh = Math.round(h * 0.11 * k);
@@ -686,7 +686,7 @@ G.Judgment = (() => {
       ctx.fillRect(0, 0, w, bh);
       ctx.fillRect(0, h - bh, w, bh);
     }
-    // ¡Ha descendido!
+    // It has descended!
     const b = G.U.clamp((t - T_LAND - 0.15) / 0.3, 0, 1) * G.U.clamp((T_END - t) / 0.5, 0, 1);
     if (b > 0) {
       const size = Math.round(G.U.clamp(w / 20, 20, 40));
@@ -695,14 +695,14 @@ G.Judgment = (() => {
       ctx.globalAlpha = b;
       ctx.translate(w / 2, h * 0.24);
       ctx.scale(pop, pop);
-      goldText(ctx, '¡ARCEUS HA DESCENDIDO!', 0, 0, size);
+      goldText(ctx, 'ARCEUS HAS DESCENDED!', 0, 0, size);
       ctx.restore();
       ctx.globalAlpha = b;
       ctx.font = F(700, Math.round(size * 0.45));
       ctx.textAlign = 'center';
       ctx.lineWidth = 4;
       ctx.strokeStyle = 'rgba(0,0,0,.8)';
-      const sub = 'Es invencible: huye y aguanta todo lo que puedas';
+      const sub = 'It is invincible: run and survive as long as you can';
       ctx.strokeText(sub, w / 2, h * 0.24 + size * 1.1);
       ctx.fillStyle = '#ffe9b0';
       ctx.fillText(sub, w / 2, h * 0.24 + size * 1.1);
@@ -712,14 +712,14 @@ G.Judgment = (() => {
       ctx.font = F(700, 11);
       ctx.textAlign = 'right';
       ctx.fillStyle = '#f3e2b0';
-      ctx.fillText(G.Touch.active ? 'Toca la pantalla para saltar' : 'Pulsa Espacio para saltar', w - 16, h - 14);
-      // Toda la pantalla es un botón (móvil y ratón).
+      ctx.fillText(G.Touch.active ? 'Tap the screen to skip' : 'Press Space to skip', w - 16, h - 14);
+      // The whole screen is a button (mobile and mouse).
       G.Touch.addButton(0, 0, w, h, skip, 0);
     }
     ctx.restore();
   }
 
-  /** Texto dorado con borde y brillo. */
+  /** Golden text with outline and glow. */
   function goldText(ctx, s, x, y, size) {
     ctx.font = F(800, size);
     ctx.textAlign = 'center';
@@ -738,7 +738,7 @@ G.Judgment = (() => {
     ctx.shadowBlur = 0;
   }
 
-  /** Título que aparece letra a letra (cada una cae y se asienta). */
+  /** Title that appears letter by letter (each one drops and settles). */
   function title(ctx, raw, cx, y, size, t0, alpha) {
     const s = G.I18n ? G.I18n.t(raw) : raw;
     ctx.save();
@@ -764,7 +764,7 @@ G.Judgment = (() => {
     ctx.restore();
   }
 
-  /** Pelea: cielo rojizo, ceniza, flecha a Arceus y el contador. */
+  /** Fight: reddish sky, ash, arrow to Arceus and the counter. */
   function drawFight(ctx, w, h) {
     ctx.save();
     const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.3, w / 2, h / 2, Math.max(w, h) * 0.75);
@@ -778,17 +778,17 @@ G.Judgment = (() => {
       ctx.fillRect(Math.round(e.x), Math.round(e.y), e.s, e.s);
     }
     ctx.globalAlpha = 1;
-    // Contador bajo el reloj.
+    // Counter below the clock.
     const boss = G.EnemyMgr.all().some(e => e.boss && !e.dead);
     ctx.textAlign = 'center';
     ctx.font = F(800, 12);
     ctx.lineWidth = 3;
     ctx.strokeStyle = 'rgba(0,0,0,.7)';
-    const txt = 'SENTENCIA · ' + G.U.mmss(arenaT) + ' · JEFES ' + downs;
+    const txt = `JUDGMENT · ${G.U.mmss(arenaT)} · BOSSES ${downs}`;
     ctx.strokeText(txt, w / 2, boss ? 98 : 76);
     ctx.fillStyle = GOLD;
     ctx.fillText(txt, w / 2, boss ? 98 : 76);
-    // Flecha hacia Arceus si no se ve.
+    // Arrow toward Arceus if it's off screen.
     const cam = G.Camera;
     const sx = (A.x - cam.left()) * cam.scale,
       sy = (A.y - A.bodyH * 0.5 - cam.top()) * cam.scale;
@@ -815,7 +815,7 @@ G.Judgment = (() => {
       ctx.fill();
       ctx.font = F(800, 11);
       ctx.textAlign = Math.cos(an) > 0.3 ? 'right' : Math.cos(an) < -0.3 ? 'left' : 'center';
-      const lbl = 'ARCEUS · ' + Math.round(G.U.dist(pl.x, pl.y, A.x, A.y) / 32) + ' m';
+      const lbl = `ARCEUS · ${Math.round(G.U.dist(pl.x, pl.y, A.x, A.y) / 32)} m`;
       ctx.lineWidth = 4;
       ctx.strokeStyle = 'rgba(0,0,0,.85)';
       ctx.strokeText(lbl, -Math.cos(an) * 30, -Math.sin(an) * 26 + 4);
@@ -825,7 +825,7 @@ G.Judgment = (() => {
     ctx.restore();
   }
 
-  /** Ceniza y chispas que caen (en pantalla). */
+  /** Falling ash and sparks (screen space). */
   function ember(dt) {
     const cv = document.getElementById('game');
     const w = cv ? cv.clientWidth : 800,
@@ -852,14 +852,14 @@ G.Judgment = (() => {
     }
   }
 
-  // ---------------- red ----------------
+  // ---------------- network ----------------
 
   function onEvent(ev) {
     if (ev[0] === 'jd') begin(ev[1]);
     else if (ev[0] === 'jk') doSkip();
   }
 
-  /** Anfitrión: dónde está Arceus (va en cada envío). */
+  /** Host: where Arceus is (sent in every update). */
   function netState() {
     if (phase !== 'fight' || !A) return null;
     const a = G.Coop.ANIMS.indexOf(A.anim.cur);
@@ -890,19 +890,19 @@ G.Judgment = (() => {
     get cinematic() {
       return phase === 'cine';
     },
-    /** Lo que suena: nada en la animación hasta que aterriza. */
+    /** What plays: nothing in the cutscene until it lands. */
     get music() {
       return phase === 'cine' && ct < T_LAND ? null : 'judgment';
     },
-    /** Para el resumen de la partida: { time, bosses } o null. */
+    /** For the run summary: { time, bosses } or null. */
     summary() {
       return phase === 'fight' ? { time: arenaT, bosses: downs } : null;
     },
-    /** Para pruebas: vida del primer legendario y daño medido. */
+    /** For tests: first legendary's HP and measured damage. */
     get debug() {
       return { base, single: singleDps(), samples: samples.length };
     },
-    /** Para pruebas: la Sentencia ya. */
+    /** For tests: Judgment right now. */
     debugStart() {
       if (!phase && authority()) start();
     }

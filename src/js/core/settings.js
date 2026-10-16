@@ -1,18 +1,18 @@
-/* ============ settings.js — ajustes de este dispositivo ============
- * Se guardan en el navegador (no en la cuenta): cada PC o móvil tiene los
- * suyos. El volumen lo guarda audio.js aparte.
+/* ============ settings.js — this device's settings ============
+ * Stored in the browser (not in the account): each PC or phone has its
+ * own. The volume is stored separately by audio.js.
  *
- *   quality     'auto' | 'high' | 'mid' | 'low'   efectos y partículas
- *   dmgNumbers  true/false                        números de daño
- *   calm        true/false                        menos sacudidas y destellos
- *   fps         true/false                        contador de FPS
- *   stick       0.8 | 1 | 1.25                    tamaño del joystick táctil
- *   stickMode   'float' | 'fixed'                 joystick donde pones el dedo, o siempre en su sitio
- *   pad         { bar, pause, stick } | null      dónde van los botones en móvil (centro, en
- *                                                 proporción a la pantalla); lo pone layout-ui.js
+ *   quality     'auto' | 'high' | 'mid' | 'low'   effects and particles
+ *   dmgNumbers  true/false                        damage numbers
+ *   calm        true/false                        less shaking and flashing
+ *   fps         true/false                        FPS counter
+ *   stick       0.8 | 1 | 1.25                    touch joystick size
+ *   stickMode   'float' | 'fixed'                 joystick where you put your finger, or always in place
+ *   pad         { bar, pause, stick } | null      where the buttons go on mobile (centre, relative
+ *                                                 to the screen); set by layout-ui.js
  *
  *   G.Settings.get('quality')  ·  G.Settings.set('fps', true)  ·  G.Settings.on(fn)
- *   G.Settings.fx   nivel efectivo 0 (bajo) .. 2 (alto), ya resuelto el 'auto'
+ *   G.Settings.fx   effective level 0 (low) .. 2 (high), with 'auto' already resolved
  */
 G.Settings = (() => {
   const KEY = 'ps.settings';
@@ -21,11 +21,11 @@ G.Settings = (() => {
   try {
     Object.assign(s, JSON.parse(localStorage.getItem(KEY) || '{}'));
   } catch (e) {
-    /* nada */
+    /* nothing */
   }
   const fns = new Set();
 
-  // Calidad automática: empieza alta (media en móvil) y baja si va a tirones.
+  // Automatic quality: starts high (medium on mobile) and drops if it stutters.
   const touchy = matchMedia('(pointer: coarse)').matches;
   let autoLevel = touchy ? 1 : 2;
   let acc = 0,
@@ -37,7 +37,7 @@ G.Settings = (() => {
     try {
       localStorage.setItem(KEY, JSON.stringify(s));
     } catch (e) {
-      /* nada */
+      /* nothing */
     }
   }
   function get(k) {
@@ -50,12 +50,12 @@ G.Settings = (() => {
       try {
         fn(k, v);
       } catch (e) {
-        /* nada */
+        /* nothing */
       }
     });
   }
 
-  /** Lo llama el bucle del juego en cada fotograma (sólo durante la partida). */
+  /** Called by the game loop every frame (only during a run). */
   function sample(dt) {
     if (s.quality !== 'auto' || dt <= 0) return;
     acc += dt;
@@ -64,7 +64,7 @@ G.Settings = (() => {
     const fps = frames / acc;
     acc = 0;
     frames = 0;
-    // 3 s seguidos por debajo de 45 FPS: baja un nivel; 8 s por encima de 57: sube.
+    // 3 s in a row below 45 FPS: drop a level; 8 s above 57: raise it.
     if (fps < 45) {
       slowT++;
       fastT = 0;

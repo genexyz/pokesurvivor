@@ -1,7 +1,7 @@
-/* ============ input.js — teclado y ratón (el táctil está en touch.js) ============ */
+/* ============ input.js — keyboard and mouse (touch is in touch.js) ============ */
 G.Input = (() => {
   const down = new Set();
-  const pressed = new Set(); // se limpia cada frame
+  const pressed = new Set(); // cleared every frame
   let mx = 0,
     my = 0,
     mdown = false;
@@ -21,7 +21,7 @@ G.Input = (() => {
     const c = code(e);
     if (!down.has(c)) pressed.add(c);
     down.add(c);
-    // Evita que el navegador haga scroll con flechas/espacio durante el juego.
+    // Keep the browser from scrolling with arrows/space during the game.
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'space', 'tab'].includes(c)) e.preventDefault();
   });
   addEventListener('keyup', e => down.delete(code(e)));
@@ -36,7 +36,7 @@ G.Input = (() => {
   addEventListener('mouseup', () => (mdown = false));
 
   return {
-    /** Vector de movimiento del jugador (teclado o joystick táctil). */
+    /** Player movement vector (keyboard or touch joystick). */
     axis() {
       const t = G.Touch && G.Touch.vector();
       if (t && (t[0] || t[1])) return t;
@@ -51,7 +51,7 @@ G.Input = (() => {
     held(c) {
       return down.has(c);
     },
-    /** true sólo en el frame en que se pulsó. */
+    /** true only on the frame it was pressed. */
     tap(c) {
       return pressed.has(c);
     },

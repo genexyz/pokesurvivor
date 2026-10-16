@@ -1,40 +1,45 @@
-# PokéSurvivor — cómo se trabaja y se publica
+# PokéSurvivor — how we work and publish
 
-Normas fijas del dueño del proyecto. Se aplican SIEMPRE.
+Fixed rules from the project owner. They ALWAYS apply.
 
-## Publicar una versión
+## Language
 
-1. Se edita `src/` (la página es `src/index.html`; lo estático va en `public/`). `dist/` se genera y no se sube.
-2. `npm run build` (o `npm run build:force` para una actualización obligatoria); `npm start` para verlo.
-   - `scripts/build.js` genera `dist/index.html`, `dist/js/app.min.js` y **`dist/version.json`** (la huella de esta versión);
-     luego `scripts/export_data.js` y `scripts/make_seo_pages.py` generan las páginas web.
-3. Commit (sin "Co-Authored-By" ni ninguna firma de IA) y `git push origin main` sólo cuando el dueño lo pida.
-   Coolify reconstruye la imagen (`Dockerfile`) y publica solo. Ver `docs/PUBLICAR.md`.
+The codebase (code, comments, docs, logs, identifiers) is in English. Spanish exists only as a UI
+translation in `src/js/data/lang-es.js`: any new on-screen English text needs its Spanish entry there.
 
-## Actualización automática de los jugadores (obligatorio)
+## Publishing a version
 
-Al publicar, todos los jugadores deben pasar a la versión nueva sin perder nada
-(`src/js/core/updater.js`, mira `version.json` cada 5 min):
+1. Edit `src/` (the page is `src/index.html`; static files go in `public/`). `dist/` is generated and never committed.
+2. `npm run build` (or `npm run build:force` for a mandatory update); `npm start` to see it.
+   - `scripts/build.js` generates `dist/index.html`, `dist/js/app.min.js` and **`dist/version.json`** (this version's fingerprint);
+     then `scripts/export_data.js` and `scripts/make_seo_pages.py` generate the web pages.
+3. Commit (no "Co-Authored-By" or any AI signature) and `git push origin main` only when the owner asks.
+   Coolify rebuilds the image (`Dockerfile`) and publishes on its own. See `docs/PUBLISHING.md`.
 
-- **Fuera de partida** (menú, sala de cooperativo incluida): aviso de 5 s y la página se recarga.
-  Si está en el gacha, la tienda de mejoras, los ajustes o escribiendo en un campo, espera a que termine.
-- **En partida**: no se toca. Al acabar, la run se guarda como siempre y, al volver al menú, se recarga.
-- Antes de recargar se sube a la nube lo pendiente.
-  No quitar `updater.js` ni la escritura de `version.json` en `scripts/build.js`.
+## Automatic player updates (mandatory)
 
-## Novedades (changelog)
+When a version is published, every player must move to the new version without losing anything
+(`src/js/core/updater.js`, checks `version.json` every 5 min):
 
-Cada cambio de juego o arreglo de fallos va también en `src/js/data/changelog.js`
-(español e inglés, en `new` / `chg` / `fix` de la fecha de hoy). Los cambios de
-servidores, base de datos o costes NO van ahí.
+- **Outside a run** (menu, including the co-op lobby): 5 s notice and the page reloads.
+  If the player is in the gacha, the upgrade shop, the settings or typing in a field, it waits until they finish.
+- **In a run**: left alone. When it ends, the run is saved as usual and the page reloads on returning to the menu.
+- Anything pending is uploaded to the cloud before reloading.
+  Do not remove `updater.js` or the writing of `version.json` in `scripts/build.js`.
 
-## Servidores
+## What's new (changelog)
 
-- Todo en Coolify, sin servicios de pago: la web en **https://survivor.preciostcg.com** y su servidor
-  (`server/`: Node + Postgres de Coolify, `DATABASE_URL`). Firebase se quitó el 16-10-2026.
-- Cuentas: SÓLO con Google (better-auth, `server/auth.mjs`), con el cliente OAuth de precios-tcg.
-  Nada de usuario y contraseña. Variables de entorno en `.env.example`.
-- Cooperativo: las salas, invitaciones, amigos en línea y la señalización de WebRTC van por el
-  WebSocket `/ws` (`server/live.mjs`); la partida va directa entre navegadores (STUN gratis de
-  Google). Si hiciera falta un TURN, uno propio (coturn) en Coolify, nunca de pago.
-- Mantenimiento: `MAINTENANCE` en `src/js/main.js` (con `?dev` se puede entrar para probar).
+Each game change or bug fix also goes in `src/js/data/changelog.js`, in English and Spanish
+(`[en, es]` pairs), in `new` / `chg` / `fix` of today's date. Server, database or cost changes
+do NOT go there.
+
+## Servers
+
+- Everything on Coolify, no paid services: the website at **https://survivor.preciostcg.com** and its server
+  (`server/`: Node + Coolify's Postgres, `DATABASE_URL`). Firebase was removed on 2026-10-16.
+- Accounts: Google ONLY (better-auth, `server/auth.mjs`), using the precios-tcg OAuth client.
+  No username and password. Environment variables in `.env.example`.
+- Co-op: lobbies, invitations, online friends and WebRTC signaling go through the
+  `/ws` WebSocket (`server/live.mjs`); the match runs directly between browsers (Google's free
+  STUN). If a TURN server were ever needed, a self-hosted one (coturn) on Coolify, never a paid one.
+- Maintenance: `MAINTENANCE` in `src/js/main.js` (`?dev` lets you in to test).

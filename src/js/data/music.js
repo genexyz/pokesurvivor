@@ -1,17 +1,17 @@
-/* ============ music.js — partituras de los temas del juego ============
- * Compuestas para el juego (no son temas de Nintendo). Las toca el
- * sintetizador de core/audio.js.
+/* ============ music.js — scores of the game's themes ============
+ * Composed for the game (they are not Nintendo themes). Played by the
+ * synthesizer in core/audio.js.
  *
- * melody: compases como "A4:4 C5:2 -:2" — nota:duración en semicorcheas
- *         (16 por compás), "-" = silencio.
- * parts:  generadas desde `chords` con un patrón de 16 caracteres por compás:
- *           R raíz (bajo del acorde con useBass) · F quinta · O octava · T tercera
- *           0-5 notas del acorde (0 raíz, 1 tercera, 2 quinta, 3 octava...)
- *           C acorde entero · "-" alarga la nota anterior · "." silencio
- * drums:  X fuerte · x medio · o suave · . nada
+ * melody: bars like "A4:4 C5:2 -:2" — note:duration in sixteenth notes
+ *         (16 per bar), "-" = rest.
+ * parts:  generated from `chords` with a 16-character pattern per bar:
+ *           R root (chord bass with useBass) · F fifth · O octave · T third
+ *           0-5 chord notes (0 root, 1 third, 2 fifth, 3 octave...)
+ *           C whole chord · "-" extends the previous note · "." rest
+ * drums:  X loud · x medium · o soft · . nothing
  */
 G.MUSIC = {
-  // ---------------- Menú: una aldea tranquila ----------------
+  // ---------------- Menu: a quiet village ----------------
   village: {
     bpm: 100,
     swing: 0.18,
@@ -48,7 +48,7 @@ G.MUSIC = {
     drums: { kick: 'x.......x.......', snare: '....o.......o...', shaker: 'o.x.o.x.o.x.o.x.' }
   },
 
-  // ---------------- Run: Bosque Umbrío ----------------
+  // ---------------- Run: Shadow Forest ----------------
   forest: {
     bpm: 122,
     chords: ['Dm', 'C', 'Bb', 'A', 'Dm', 'C', 'Bb', 'A', 'Bb', 'C', 'Dm', 'Dm', 'Bb', 'C', 'A', 'A'],
@@ -84,7 +84,7 @@ G.MUSIC = {
     drums: { kick: 'X.....x.X.......', snare: '....X.......X...', hat: 'x.o.x.o.x.o.x.o.' }
   },
 
-  // ---------------- Run: Cueva Cristal ----------------
+  // ---------------- Run: Crystal Cave ----------------
   cave: {
     bpm: 92,
     swing: 0.1,
@@ -121,7 +121,7 @@ G.MUSIC = {
     drums: { kick: 'o.......o.......', hat: '..o...o...o...o.' }
   },
 
-  // ---------------- Run: Volcán Ceniza ----------------
+  // ---------------- Run: Ash Volcano ----------------
   volcano: {
     bpm: 132,
     chords: ['Em', 'F', 'Em', 'D', 'Em', 'F', 'G', 'F'],
@@ -149,7 +149,7 @@ G.MUSIC = {
     drums: { kick: 'X..x..X.X..x..X.', snare: '....X.......X..x', hat: 'xoxoxoxoxoxoxoxo' }
   },
 
-  // ---------------- Combate contra jefe ----------------
+  // ---------------- Boss battle ----------------
   boss: {
     bpm: 150,
     chords: ['Em', 'C', 'D', 'B', 'Em', 'C', 'D', 'B'],
@@ -177,10 +177,10 @@ G.MUSIC = {
   }
 };
 
-// Se añade fuera del objeto para no tocar los demás temas.
-/* ---------------- Grieta: duelo contra el legendario ----------------
- * Más rápido y más tenso que el de jefe: La menor, bajo galopando y la
- * melodía subiendo a la octava alta en la segunda mitad. */
+// Added outside the object so the other themes are left untouched.
+/* ---------------- Rift: duel against the legendary ----------------
+ * Faster and tenser than the boss theme: A minor, galloping bass and the
+ * melody climbing to the high octave in the second half. */
 G.MUSIC.rift = {
   bpm: 164,
   chords: ['Am', 'F', 'G', 'E', 'Am', 'F', 'Dm', 'E', 'F', 'G', 'Am', 'Am', 'Dm', 'E', 'Am', 'E'],
@@ -216,9 +216,9 @@ G.MUSIC.rift = {
   drums: { kick: 'X.x.X.x.X.x.X.xx', snare: '....X.......X..X', hat: 'xoxoxoxoxoxoxoxo' }
 };
 
-/* ---------------- La Sentencia de Arceus (minuto 30) ----------------
- * Solemne y sin salida: Re menor con un Mi bemol (frigio) que oscurece,
- * campanas graves en cada compás y la melodía subiendo hasta el final. */
+/* ---------------- Arceus's Judgment (minute 30) ----------------
+ * Solemn and inescapable: D minor with a darkening E flat (Phrygian),
+ * low bells on every bar and the melody rising to the end. */
 G.MUSIC.judgment = {
   bpm: 140,
   chords: ['Dm', 'Bb', 'Gm', 'A', 'Dm', 'Eb', 'C', 'A', 'Bb', 'C', 'Dm', 'Dm', 'Gm', 'A', 'Dm', 'A'],
@@ -254,5 +254,5 @@ G.MUSIC.judgment = {
   drums: { kick: 'X..xX..xX..xX.xx', snare: '....X.......X..X', hat: 'x.x.x.x.x.x.x.x.' }
 };
 
-/** Tema de cada bioma durante la run. */
+/** Theme of each biome during the run. */
 G.BIOME_MUSIC = ['forest', 'cave', 'volcano'];

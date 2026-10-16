@@ -1,22 +1,22 @@
-/* ============ events.js — eventos a mitad de partida y duendes del tesoro ============
+/* ============ events.js — mid-run events and treasure goblins ============
  *
- * Cada 4-5 minutos (nunca con un jefe vivo ni en la grieta) pasa uno de estos:
+ * Every 4-5 minutes (never with a boss alive or in the rift) one of these happens:
  *
- *   horde   Horda de un tipo: 30 s en los que todos los que salen son de un
- *           mismo tipo (si tu tipo les gana, es tu momento)
- *   gold    Hora dorada: 30 s de enemigos dorados que dan el doble de
- *           experiencia y a veces sueltan monedas
- *   lost    Pokémon perdido: lo tocas, te sigue y lo llevas hasta la marca.
- *           Los enemigos le hacen daño; si cae (o tardas más de 2 min), se va.
- *           Premio: cura la mitad de la vida, monedas, un ticket y, 1 de cada
- *           5 veces, se une a tu colección.
+ *   horde   Type horde: 30 s in which everything that spawns is of a
+ *           single type (if your type beats it, it's your moment)
+ *   gold    Golden hour: 30 s of golden enemies that give double
+ *           experience and sometimes drop coins
+ *   lost    Lost Pokémon: touch it, it follows you and you lead it to the marker.
+ *           Enemies damage it; if it faints (or you take over 2 min), it leaves.
+ *           Reward: heals half your HP, coins, a ticket and, 1 time in
+ *           5, it joins your collection.
  *
- * Duendes del tesoro (1-2 por partida, ver Enemy behavior 'thief'): un
- * Meowth cargado de monedas (o, 1 de cada 4, un Gholdengo con un ticket ×10)
- * que huye y se escapa a los 15 s si no lo atrapas.
+ * Treasure goblins (1-2 per run, see Enemy behavior 'thief'): a
+ * Meowth loaded with coins (or, 1 in 4, a Gholdengo with a ×10 ticket)
+ * that runs away and escapes after 15 s if you don't catch it.
  *
- * Cooperativo: decide el anfitrión y avisa con 'ev' (ver coop.js). Todos ven lo
- * mismo y el premio es para todos.
+ * Co-op: the host decides and announces with 'ev' (see coop.js). Everyone sees the
+ * same thing and the reward is for everyone.
  */
 G.Events = (() => {
   const EVERY = [240, 300],
@@ -43,7 +43,7 @@ G.Events = (() => {
     thieves = 0;
   }
 
-  // ---------------- ciclo ----------------
+  // ---------------- cycle ----------------
 
   function update(dt, players, time) {
     if (cur) {
@@ -100,9 +100,9 @@ G.Events = (() => {
 
   function announce() {
     if (!cur) return;
-    if (cur.id === 'horde') say('¡Horda de tipo ' + G.U.TYPE_NAME[cur.type] + '!', 3, G.U.TYPE_COLOR[cur.type]);
-    else if (cur.id === 'gold') say('¡Hora dorada! Doble de experiencia', 3, '#ffd23f');
-    else if (lost) say('¡Un ' + lost.name + ' se ha perdido! Búscalo y llévalo a la marca', 3.4, '#7dffb0');
+    if (cur.id === 'horde') say(`A ${G.U.TYPE_NAME[cur.type]}-type horde!`, 3, G.U.TYPE_COLOR[cur.type]);
+    else if (cur.id === 'gold') say('Golden hour! Double experience', 3, '#ffd23f');
+    else if (lost) say(`A ${lost.name} is lost! Find it and take it to the marker`, 3.4, '#7dffb0');
     G.Audio.sfx(cur.id === 'gold' ? 'shiny' : 'surge');
   }
 
@@ -116,12 +116,12 @@ G.Events = (() => {
     if (G.Coop.isHost) G.Coop.broadcast(['ev', 'e']);
   }
 
-  /** Lo que sale durante una horda (lo usa G.Enemies.bagAt). */
+  /** What spawns during a horde (used by G.Enemies.bagAt). */
   function bag() {
     return cur && cur.id === 'horde' && cur.defs.length ? cur.defs : null;
   }
 
-  // ---------------- duende del tesoro ----------------
+  // ---------------- treasure goblin ----------------
 
   function spawnThief(players, time) {
     const gold = Math.random() < 0.25;
@@ -152,8 +152,8 @@ G.Events = (() => {
       G.FX.ring(x, y, 4, 40, '#ffd23f', 0.5, 3);
       G.Spawner.say(
         gold
-          ? '¡Un ' + mon.name + ' con un ticket ×10! ¡Atrápalo antes de que huya!'
-          : '¡Un ' + mon.name + ' cargado de monedas! ¡Atrápalo antes de que huya!',
+          ? `A ${mon.name} with a ×10 ticket! Catch it before it runs away!`
+          : `A ${mon.name} loaded with coins! Catch it before it runs away!`,
         3.2
       );
       G.Audio.sfx('shiny');
@@ -161,7 +161,7 @@ G.Events = (() => {
     }
   }
 
-  // ---------------- Pokémon perdido ----------------
+  // ---------------- lost Pokémon ----------------
 
   function spawnLost(players) {
     const alive = players.filter(p => !p.dead);
@@ -221,7 +221,7 @@ G.Events = (() => {
       if (p) {
         L.state = 'follow';
         L.follow = p;
-        say('¡' + L.name + ' te sigue! Llévalo a la marca verde', 3, '#7dffb0');
+        say(`${L.name} is following you! Take it to the green marker`, 3, '#7dffb0');
         G.Audio.sfx('confirm');
       }
       L.moving = false;
@@ -242,7 +242,7 @@ G.Events = (() => {
     }
     L.anim.loop(L.moving ? 'Walk' : 'Idle');
 
-    // Los enemigos que lo tocan le hacen daño.
+    // Enemies touching it damage it.
     if ((L.hitCd -= dt) <= 0) {
       const hits = G.EnemyMgr.queryCircle(L.x, L.y, L.r).filter(e => !e.dead && e.behavior !== 'thief');
       if (hits.length) {
@@ -253,11 +253,11 @@ G.Events = (() => {
         );
         L.flash = 0.1;
         G.FX.burst(L.x, L.y - 10, '#ff5f6d', 4, 60);
-        if (L.hp <= 0) return gone('¡' + L.name + ' se ha asustado y ha huido…!');
+        if (L.hp <= 0) return gone(`${L.name} got scared and ran away…!`);
       }
     }
     if (L.flash > 0) L.flash -= dt;
-    if (L.t > LOST_TIME) return gone(L.name + ' se ha cansado de esperar y se ha ido…');
+    if (L.t > LOST_TIME) return gone(`${L.name} got tired of waiting and left…`);
 
     if (G.Coop.isHost && (L.netT -= dt) <= 0) {
       L.netT = 0.1;
@@ -287,7 +287,7 @@ G.Events = (() => {
     end();
   }
 
-  /** En cada ordenador: cura, y si toca, el Pokémon se une a tu colección. */
+  /** On each computer: heal and, if it rolled so, the Pokémon joins your collection. */
   function reward(dex, grant) {
     const pl = G.Game.player;
     if (pl && !pl.dead) {
@@ -298,7 +298,7 @@ G.Events = (() => {
     G.FX.burst(lost ? lost.tx : pl.x, lost ? lost.ty - 10 : pl.y, '#7dffb0', 24, 180);
     G.Audio.sfx('legend');
     if (grant && G.onRescue) G.onRescue(dex, name);
-    else say('¡Has llevado a ' + name + ' a casa! Te lo agradece', 3.2, '#7dffb0');
+    else say(`You brought ${name} home! It thanks you`, 3.2, '#7dffb0');
   }
 
   function gone(msg) {
@@ -308,7 +308,7 @@ G.Events = (() => {
     end();
   }
 
-  // ---------------- red ----------------
+  // ---------------- network ----------------
 
   function onNet(ev) {
     switch (ev[1]) {
@@ -336,15 +336,15 @@ G.Events = (() => {
     }
   }
 
-  // ---------------- dibujo ----------------
+  // ---------------- drawing ----------------
 
-  /** El Pokémon perdido y la marca, para ordenarlos por Y con el resto. */
+  /** The lost Pokémon and the marker, so they are Y-sorted with the rest. */
   function drawables() {
     if (!lost) return [];
     const L = lost;
     const now = performance.now() / 1000;
     const goal = {
-      y: L.ty - 4000, // en el suelo, debajo de todo
+      y: L.ty - 4000, // on the ground, below everything
       draw(ctx) {
         const k = 0.5 + Math.sin(now * 4) * 0.5;
         ctx.save();
@@ -378,7 +378,7 @@ G.Events = (() => {
         L.anim.draw(ctx, L.x, L.y, { flash: L.flash > 0 });
         const h = G.Sprites.bodyHeight(L.dex, 1);
         if (L.state === 'wait') {
-          // "!" que bota encima: está esperando a que lo toques.
+          // Bouncing "!" above it: it is waiting for you to touch it.
           const by = L.y - h - 14 - Math.abs(Math.sin(now * 5)) * 6;
           ctx.save();
           ctx.font = '700 16px Pixelify, monospace';
@@ -401,7 +401,7 @@ G.Events = (() => {
     return [goal, mon];
   }
 
-  /** Flecha en el borde hacia el Pokémon perdido (o hacia la marca, si ya te sigue). */
+  /** Edge arrow toward the lost Pokémon (or toward the marker, once it follows you). */
   function drawHud(ctx, w, h, pl, F) {
     const cam = G.Camera;
     if (lost) {
@@ -415,7 +415,7 @@ G.Events = (() => {
         to[0],
         to[1],
         '#7dffb0',
-        (L.state === 'wait' ? L.name : 'Marca') + ' · ' + Math.round(G.U.dist(pl.x, pl.y, to[0], to[1]) / 32) + ' m',
+        `${L.state === 'wait' ? L.name : 'Marker'} · ${Math.round(G.U.dist(pl.x, pl.y, to[0], to[1]) / 32)} m`,
         F
       );
     }
@@ -424,7 +424,7 @@ G.Events = (() => {
     }
     if (cur && cur.id !== 'lost') {
       const left = Math.max(0, Math.ceil(cur.dur - cur.t));
-      const txt = (cur.id === 'gold' ? 'HORA DORADA' : 'HORDA ' + G.U.TYPE_NAME[cur.type].toUpperCase()) + ' · ' + left + ' s';
+      const txt = cur.id === 'gold' ? `GOLDEN HOUR · ${left} s` : `${G.U.TYPE_NAME[cur.type].toUpperCase()} HORDE · ${left} s`;
       ctx.save();
       ctx.font = F(800, 12);
       ctx.textAlign = 'center';
@@ -485,7 +485,7 @@ G.Events = (() => {
     get current() {
       return cur ? cur.id : null;
     },
-    /** Para pruebas. */
+    /** For tests. */
     debugStart(id) {
       start(id, G.Game.st.time, G.Game.everyone());
     },

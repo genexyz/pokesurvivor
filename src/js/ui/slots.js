@@ -1,14 +1,14 @@
-/* ============ slots.js — tragaperras pixel art del gacha ============
- * Se dibuja entera en un <canvas> a resolución de arte (176×170) y se escala
- * sin suavizado, como el resto del juego.
+/* ============ slots.js — the gacha's pixel art slot machine ============
+ * Drawn entirely on a <canvas> at art resolution (176×170) and scaled up
+ * without smoothing, like the rest of the game.
  *
- *   palanca → giran los 3 rodillos → paran uno a uno en el símbolo de la
- *   rareza que ha salido (Poké, Super, Ultra, Lujo y Master Ball, como en
- *   G.Icons.rarity; la estrella roja es el shiny). Si es Épica, Legendaria o shiny, el
- *   último rodillo se hace esperar y las luces se vuelven locas.
- *   La ×10 son 10 tiradas rápidas; cada premio cae como una bola a la bandeja.
+ *   lever → the 3 reels spin → they stop one by one on the symbol of the
+ *   rarity that came out (Poké, Great, Ultra, Luxury and Master Ball, as in
+ *   G.Icons.rarity; the red star is shiny). If it's Epic, Legendary or shiny, the
+ *   last reel keeps you waiting and the lights go wild.
+ *   The ×10 is 10 quick pulls; each prize drops into the tray as a ball.
  *
- * Un clic acelera la animación.
+ * A click speeds up the animation.
  */
 G.Slots = (() => {
   const W = 176,
@@ -58,7 +58,7 @@ G.Slots = (() => {
     });
   }
 
-  /** Anima las tiradas. → Promise que se resuelve al terminar. */
+  /** Animates the pulls. → Promise that resolves when done. */
   async function play(canvas, results) {
     cv = canvas;
     ctx = cv.getContext('2d');
@@ -72,7 +72,7 @@ G.Slots = (() => {
       reels: REEL_X.map(() => ({ off: Math.random() * 400, spin: false, sym: 'ball', bounce: 0, speed: 0 })),
       ten: results.length === 10,
       tray: [],
-      led: results.length === 10 ? 'TIRADA ×10' : '¡SUERTE!',
+      led: results.length === 10 ? 'PULL ×10' : 'GOOD LUCK!',
       ledCol: C.bulbOn,
       win: null,
       frenzy: 0,
@@ -85,8 +85,8 @@ G.Slots = (() => {
     const ten = results.length === 10;
     for (let i = 0; i < results.length; i++) {
       const r = results[i];
-      if (ten) st.led = 'TIRADA ' + (i + 1) + '/10';
-      // Palanca.
+      if (ten) st.led = 'PULL ' + (i + 1) + '/10';
+      // Lever.
       G.Audio.sfx('ball');
       await tween(
         v => {
@@ -113,9 +113,9 @@ G.Slots = (() => {
       const big = r.rarity >= 4 || r.shiny;
       for (let k = 0; k < 3; k++) {
         if (k === 2 && big) {
-          // Suspense: el último rodillo frena despacio y las luces parpadean.
+          // Suspense: the last reel slows down and the lights blink.
           st.frenzy = 1;
-          st.led = r.shiny ? '¡¿SHINY?!' : r.rarity === 5 ? '¡¿LEGENDARIO?!' : '¡¿ÉPICO?!';
+          st.led = r.shiny ? 'SHINY?!' : r.rarity === 5 ? 'LEGENDARY?!' : 'EPIC?!';
           st.ledCol = colOf(r);
           await tween(
             v => {
@@ -131,7 +131,7 @@ G.Slots = (() => {
         await wait(ten ? 0.08 : 0.32);
       }
       st.frenzy = 0;
-      // Premio.
+      // Prize.
       st.win = { col: colOf(r), t: 0 };
       st.led = (r.shiny ? 'SHINY · ' : '') + G.Gacha.RARITY_NAME[r.rarity].toUpperCase();
       st.ledCol = colOf(r);
@@ -188,7 +188,7 @@ G.Slots = (() => {
     }
   }
 
-  // ---------------- dibujo ----------------
+  // ---------------- drawing ----------------
 
   function frame(now) {
     if (!st) return;
@@ -238,7 +238,7 @@ G.Slots = (() => {
     ctx.clearRect(0, 0, W, H);
     const t = st.t;
 
-    // --- mueble ---
+    // --- cabinet ---
     R(10, 30, 142, 132, C.dark);
     R(11, 31, 140, 130, C.body);
     R(11, 31, 6, 130, C.bodyL);
@@ -246,7 +246,7 @@ G.Slots = (() => {
     R(11, 155, 140, 6, C.bodyD);
     R(10, 162, 142, 3, C.dark);
 
-    // --- cartel con bombillas ---
+    // --- sign with bulbs ---
     R(14, 4, 134, 28, C.dark);
     R(15, 5, 132, 26, C.trimD);
     R(18, 8, 126, 20, C.led);
@@ -267,12 +267,12 @@ G.Slots = (() => {
     ctx.fillStyle = C.trim;
     ctx.fillText('POKé SLOTS', W / 2, 22);
 
-    // --- ventana de rodillos ---
+    // --- reel window ---
     R(20, 38, 122, 58, C.dark);
     R(21, 39, 120, 56, C.trimD);
     R(23, 41, 116, 52, C.glass);
     st.reels.forEach((rl, k) => drawReel(rl, REEL_X[k]));
-    // Línea de premio.
+    // Pay line.
     const lineCol = st.win ? st.win.col : '#ff5f6d';
     R(22, MID - 1, 3, 2, lineCol);
     R(137, MID - 1, 3, 2, lineCol);
@@ -284,19 +284,19 @@ G.Slots = (() => {
       ctx.globalAlpha = 1;
     }
 
-    // --- marcador ---
+    // --- display ---
     R(36, 100, 90, 16, C.dark);
     R(37, 101, 88, 14, C.led);
     ctx.font = '700 8px Pixelify,"Segoe UI",sans-serif';
     ctx.fillStyle = st.ledCol || C.bulbOn;
     if (!st.frenzy || Math.floor(t * 10) % 2 === 0) ctx.fillText(st.led, 81, 111);
-    // Botoncitos decorativos.
+    // Little decorative buttons.
     R(132, 102, 8, 6, C.trim);
     R(132, 108, 8, 2, C.trimD);
     R(22, 102, 8, 6, '#5fe08a');
     R(22, 108, 8, 2, '#2f9a52');
 
-    // --- bandeja ---
+    // --- tray ---
     R(26, 122, 110, 26, C.dark);
     R(28, 124, 106, 22, '#0a0712');
     R(28, 144, 106, 2, C.chromeD);
@@ -307,7 +307,7 @@ G.Slots = (() => {
       G.Icons.draw(ctx, b.sym, x, Math.round(b.y - (n === 1 ? 10 : 0)), size);
     });
 
-    // --- palanca ---
+    // --- lever ---
     R(152, 74, 14, 24, C.dark);
     R(153, 75, 12, 22, C.chrome);
     R(160, 75, 5, 22, C.chromeD);
@@ -320,7 +320,7 @@ G.Slots = (() => {
     disc(159, knobY, 5, '#ff4d4d');
     R(156, knobY - 3, 2, 2, '#ffd0d0');
 
-    // --- chispas del premio ---
+    // --- prize sparks ---
     for (const p of st.sparks) R(Math.round(p.x), Math.round(p.y), 2, 2, p.col);
   }
 
@@ -366,7 +366,7 @@ G.Slots = (() => {
       ctx.globalAlpha = 1;
       G.Icons.draw(ctx, rl.sym, x + 6, MID - 12 + by, 24);
     }
-    // Sombra curva del rodillo (arriba y abajo más oscuro).
+    // Curved reel shading (darker at top and bottom).
     ctx.globalAlpha = 0.28;
     R(x, REEL_Y, REEL_W, 6, C.reelD);
     R(x, REEL_Y + REEL_H - 6, REEL_W, 6, C.reelD);

@@ -1,10 +1,10 @@
-/* Cuentas: sólo con Google (better-auth, como precios-tcg).
- * Variables de entorno:
- *   BETTER_AUTH_URL       https://survivor.preciostcg.com (en local, http://localhost:3000)
- *   BETTER_AUTH_SECRET    secreto largo al azar (openssl rand -base64 32)
- *   GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET   el cliente OAuth de Google
- *   ADMIN_EMAILS          correos de moderación, separados por comas
- * La sesión va en una cookie httpOnly (pokesurvivor.session_token).
+/* Accounts: Google only (better-auth, like precios-tcg).
+ * Environment variables:
+ *   BETTER_AUTH_URL       https://survivor.preciostcg.com (locally, http://localhost:3000)
+ *   BETTER_AUTH_SECRET    long random secret (openssl rand -base64 32)
+ *   GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET   the Google OAuth client
+ *   ADMIN_EMAILS          moderator emails, comma-separated
+ * The session lives in an httpOnly cookie (pokesurvivor.session_token).
  */
 import { betterAuth } from 'better-auth';
 import { getMigrations } from 'better-auth/db/migration';
@@ -37,7 +37,7 @@ const options = {
       }
     : undefined,
   session: {
-    expiresIn: 60 * 60 * 24 * 60, // 60 días
+    expiresIn: 60 * 60 * 24 * 60, // 60 days
     updateAge: 60 * 60 * 24,
     cookieCache: { enabled: true, maxAge: 60 * 5 }
   },
@@ -47,13 +47,13 @@ const options = {
 export const auth = pool ? betterAuth(options) : null;
 export const authHandler = auth ? toNodeHandler(auth) : null;
 
-/** Crea o actualiza las tablas de better-auth. */
+/** Creates or updates the better-auth tables. */
 export async function migrateAuth() {
   const { runMigrations } = await getMigrations(options);
   await runMigrations();
 }
 
-/** El usuario de la petición (cookie de sesión) → { id, email, name, admin } o null. */
+/** The request's user (session cookie) → { id, email, name, admin } or null. */
 export async function userOf(req) {
   if (!auth) return null;
   try {

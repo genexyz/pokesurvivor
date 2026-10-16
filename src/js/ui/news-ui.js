@@ -1,6 +1,6 @@
-/* ============ news-ui.js — "Novedades" ============
- * Botón en la barra de arriba que abre la lista de cambios del juego
- * (js/data/changelog.js). Lleva un punto mientras haya algo que no has visto.
+/* ============ news-ui.js — "What's new" ============
+ * Button in the top bar that opens the list of game changes
+ * (js/data/changelog.js). It shows a dot while there is something you haven't seen.
  */
 G.NewsUI = (() => {
   const $ = G.UI.$;
@@ -17,7 +17,7 @@ G.NewsUI = (() => {
 
   function init() {
     const b = $('btn-news');
-    b.innerHTML = G.Icons.html('book', 18) + ' <span>Novedades</span><i class="dot"></i>';
+    b.innerHTML = G.Icons.html('book', 18) + ' <span>What\'s new</span><i class="dot"></i>';
     b.onclick = open;
     $('news-close').onclick = close;
     refresh();
@@ -28,7 +28,7 @@ G.NewsUI = (() => {
 
   function fmt(d) {
     const [y, m, day] = d.split('-').map(Number);
-    return new Date(y, m - 1, day).toLocaleDateString(G.I18n.lang === 'en' ? 'en-GB' : 'es-ES', {
+    return new Date(y, m - 1, day).toLocaleDateString(G.I18n.locale, {
       day: 'numeric',
       month: 'long',
       year: 'numeric'
@@ -36,20 +36,21 @@ G.NewsUI = (() => {
   }
 
   function open() {
-    const en = G.I18n.lang === 'en' ? 1 : 0;
-    // Cada texto ya va en su idioma: translate="no" para que no lo toque i18n.
+    // Each entry is [English, Spanish].
+    const li = G.I18n.lang === 'es' ? 1 : 0;
+    // Every text is already in its language: translate="no" so i18n leaves it alone.
     const PARTS = [
-      ['new', ['Nuevo', 'New']],
-      ['chg', ['Cambios', 'Changes']],
-      ['fix', ['Arreglos', 'Fixes']]
+      ['new', ['New', 'Nuevo']],
+      ['chg', ['Changes', 'Cambios']],
+      ['fix', ['Fixes', 'Arreglos']]
     ];
     $('news-body').innerHTML = G.CHANGELOG.map(
       v =>
-        `<div class="news-day" translate="no"><h3>${esc(v.title ? v.title[en] : '')}<small>${fmt(v.d)}</small></h3>` +
+        `<div class="news-day" translate="no"><h3>${esc(v.title ? v.title[li] : '')}<small>${fmt(v.d)}</small></h3>` +
         PARTS.filter(([k]) => v[k] && v[k].length)
           .map(
             ([k, lbl]) =>
-              `<div class="news-part"><span class="news-tag ${k}">${lbl[en]}</span><ul>${v[k].map(t => `<li>${esc(t[en])}</li>`).join('')}</ul></div>`
+              `<div class="news-part"><span class="news-tag ${k}">${lbl[li]}</span><ul>${v[k].map(t => `<li>${esc(t[li])}</li>`).join('')}</ul></div>`
           )
           .join('') +
         '</div>'
@@ -59,7 +60,7 @@ G.NewsUI = (() => {
     try {
       localStorage.setItem(KEY, latest());
     } catch (e) {
-      /* nada */
+      /* nothing */
     }
     refresh();
   }

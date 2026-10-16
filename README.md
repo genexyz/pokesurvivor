@@ -1,19 +1,13 @@
-# PokéSurvivor · Mundo Misterioso
+# PokéSurvivor · Mystery Dungeon
 
-Bullet-heaven con Pokémon al estilo de Survivor.io y Megabonk, con sprites de
-_Pokémon Mundo Misterioso_, capa roguelike, **966 Pokémon de las 9 generaciones**,
-shinies y gacha por región. Música y efectos compuestos para el juego.
+A Pokémon bullet-heaven in the style of Survivor.io and Megabonk, with
+_Pokémon Mystery Dungeon_ sprites, a roguelike layer, **966 Pokémon from all 9 generations**,
+shinies and a gacha per region. Music and sound effects composed for the game.
 
-HTML + CSS + JavaScript vanilla sobre Canvas 2D. Sin build, sin dependencias y
-**todo local**: no necesita internet para jugar.
+Vanilla HTML + CSS + JavaScript on Canvas 2D. No framework, no runtime
+dependencies, and the game itself runs **entirely locally**: no internet needed to play.
 
-> **Aviso sobre criptomonedas / Crypto disclaimer**
->
-> PokéSurvivor **no tiene ninguna criptomoneda, token ni NFT oficial**, y yo no
-> he creado ninguno. Cualquier token que use el nombre del juego lo han creado
-> terceros. **No me hago cargo de ninguna compra, venta o inversión** que hagas
-> con ellos y nada de lo que hay aquí es una recomendación de inversión. El
-> juego es gratis y lo seguirá siendo.
+> **Crypto disclaimer**
 >
 > PokéSurvivor has **no official cryptocurrency, token or NFT**, and I have not
 > created any. Any token using the game's name was created by third parties.
@@ -21,185 +15,187 @@ HTML + CSS + JavaScript vanilla sobre Canvas 2D. Sin build, sin dependencias y
 > with them, and nothing here is investment advice. The game is free and will
 > stay free.
 
-## Jugar
+## Playing
 
-Necesitas [Node.js](https://nodejs.org) 20 o más:
+You need [Node.js](https://nodejs.org) 22 or later:
 
 ```
 npm install
-npm run dev        # http://localhost:3000 (y /en/ en inglés)
+npm run dev        # http://localhost:3000
 ```
 
-Crea una cuenta o entra como invitado, haz el test de personalidad y a la
-mazmorra. Con `npm run dev` la partida se guarda sólo en el navegador (no toca la
-nube); ver [Desarrollo](#desarrollo).
+The game starts in your browser's language (Spanish for Spanish browsers, English
+otherwise); you can change it in **Settings**.
 
-| Tecla                     | Acción                      |
-| ------------------------- | --------------------------- |
-| `W` `A` `S` `D` / flechas | Moverse                     |
-| `1` `2` `3` `4`           | Elegir el movimiento activo |
-| `Q` / `E`                 | Ciclar movimientos          |
-| `Esc` / `P`               | Pausa                       |
+Sign in with Google or play as a guest, take the personality quiz and head into
+the dungeon. Without a `DATABASE_URL`, `npm run dev` saves only in the browser
+(no cloud); see [Development](#development).
 
-**En móvil o tablet** (en horizontal): pon el dedo en cualquier sitio y arrastra
-para moverte (el joystick aparece donde tocas), toca un ataque de abajo para
-cambiarlo y el botón de arriba a la derecha para pausar. Se puede instalar como
-app ("Añadir a pantalla de inicio"). En **Ajustes** hay sonido, calidad gráfica
-(con modo automático), números de daño, menos sacudidas, FPS y la cuenta.
+| Key                      | Action               |
+| ------------------------ | -------------------- |
+| `W` `A` `S` `D` / arrows | Move                 |
+| `1` `2` `3` `4`          | Pick the active move |
+| `Q` / `E`                | Cycle moves          |
+| `Esc` / `P`              | Pause                |
 
-El Pokémon ataca solo con el movimiento activo (o con todos los de un
-**vínculo**: cada legendario vencido deja fusionar movimientos para lanzarlos a
-la vez desde un solo hueco, hasta 4). Las rocas, cofres y la hierba
-alta se rompen; las paredes y los árboles bloquean los disparos enemigos; el
-agua frena y la lava quema (también a los enemigos).
+**On phone or tablet** (landscape): put your finger anywhere and drag to move
+(the joystick appears where you touch), tap an attack at the bottom to switch to
+it and the top-right button to pause. It can be installed as an app ("Add to Home
+Screen"). **Settings** has sound, graphics quality (with an automatic mode),
+damage numbers, reduced screen shake, FPS and the account.
 
-En el mapa hay **altares de poder**, **manantiales** que curan, **cofres con
-candado** (quédate a su lado unos segundos) y **trampas** que también dañan a
-los enemigos. A veces se abre una **grieta**: entra y lucharás contra un
-**legendario** en una arena aparte.
+Your Pokémon attacks on its own with the active move (or with all the moves of a
+**bond**: each defeated legendary lets you fuse moves so they fire together from
+a single slot, up to 4). Rocks, chests and tall grass can be broken; walls and
+trees block enemy shots; water slows you down and lava burns (enemies too).
 
-Hay **tabla de tipos** (un Rayo Burbuja le quita más a un Charmander) y,
-de vez en cuando, **climas** (sol, lluvia, arena, nieve, niebla) que potencian
-unos tipos y debilitan otros.
+The map has **power altars**, healing **springs**, **locked chests** (stand next
+to them for a few seconds) and **traps** that also hurt enemies. Sometimes a
+**rift** opens: step in and you fight a **legendary** in a separate arena.
 
-Cada día hay **misiones** (y semanales) que dan tickets y monedas; los
-**logros** dan medallas y títulos, y tu **perfil** enseña tus 3 Pokémon
-favoritos, tus marcas y tus medallas. En las runs encuentras **objetos** (Restos,
-Cinta Elección...) y tus movimientos **evolucionan** al máximo nivel. Los
-enemigos tienen personalidad: curan, ponen escudos, llaman a su manada o atacan
-con aviso en el suelo.
+There is a **type chart** (a Bubble Beam hurts a Charmander more) and, every so
+often, **weather** (sun, rain, sandstorm, snow, fog) that boosts some types and
+weakens others.
 
-Las **mejoras** son de cada Pokémon. El **gacha** va con **tickets** que se
-ganan jugando (×1 de algunos Pokémon, ×10 de jefes y legendarios), y se tira
-en una tragaperras pixel art.
+Every day there are **missions** (and weekly ones) that give tickets and coins;
+**achievements** give medals and titles, and your **profile** shows your 3
+favorite Pokémon, your records and your medals. During runs you find **items**
+(Leftovers, Choice Band...) and your moves **evolve** at max level. Enemies have
+personalities: they heal, shield, call their pack or attack with a warning on the
+ground.
 
-Cada enemigo tiene 1/4096 de salir **shiny**: brilla, una flecha en el borde de
-la pantalla te dice dónde está, y si lo derrotas te lo quedas. En el gacha sale
-shiny 1 de cada 100 tiradas. En la colección eliges tu compañero en versión
-normal o shiny.
+**Upgrades** belong to each Pokémon. The **gacha** uses **tickets** earned by
+playing (×1 from some Pokémon, ×10 from bosses and legendaries), and you pull on
+a pixel-art slot machine.
 
-La música suena tras el primer clic (los navegadores no dejan reproducir sonido
-antes). Volumen y silencio: botón del altavoz arriba a la derecha, o en la pausa.
+Every enemy has a 1/4096 chance of being **shiny**: it sparkles, an arrow at the
+edge of the screen tells you where it is, and if you defeat it you keep it. In the
+gacha, 1 in 100 pulls is shiny. In the collection you choose your partner in its
+normal or shiny version.
 
-El guardado vive en el `localStorage` del navegador: si borras los datos del
-sitio, se pierde.
+Music starts after the first click (browsers do not allow sound before that).
+Volume and mute: the speaker button at the top right, or in the pause menu.
 
-En `videos/` hay grabaciones del juego (con su música): un combate contra un
-jefe, la captura de un shiny salvaje y un shiny en el gacha.
+Without a cloud account, the save lives in the browser's `localStorage`: if you
+clear the site's data, it is lost.
 
-## Guardado en la nube y publicación
+`videos/` holds gameplay recordings (with their music): a boss fight, catching a
+wild shiny and a shiny in the gacha.
 
-- **Nube propia (`server/`: Node + Postgres):** se entra sólo con Google y la
-  partida se sigue en cualquier aparato. Variables en [.env.example](.env.example).
-  Sin `DATABASE_URL`, el juego guarda sólo en el navegador.
-- **Jugar con amigos (hasta 4) y ranking:** con cuenta en la nube, menú
-  **Amigos** (añadir por apodo, invitar a tu sala) y **Ranking** (tiempo
-  aguantado: solo o grupo, de hoy a histórico, amigos, por Pokémon).
-- **Publicar (Docker / Coolify):** [docs/PUBLICAR.md](docs/PUBLICAR.md).
-- Si se juega en dos ordenadores a la vez o sin conexión, las partidas se
-  **fusionan**: las colecciones se unen (nunca se pierde un Pokémon ni un
-  shiny), mejoras y estadísticas se quedan con el máximo, y monedas y
-  monedas y tickets con la libreta de cada aparato (`src/js/core/save-merge.js`,
-  la misma fusión en el navegador y en el servidor).
+## Cloud saves and publishing
 
-## Licencia
+- **Self-hosted cloud (`server/`: Node + Postgres):** sign-in is Google only and
+  your save follows you on any device. Variables in [.env.example](.env.example).
+  Without `DATABASE_URL`, the game saves only in the browser.
+- **Playing with friends (up to 4) and leaderboard:** with a cloud account, the
+  **Friends** menu (add by nickname, invite to your lobby) and **Leaderboard** (time
+  survived: solo or group, from today to all-time, friends, per Pokémon).
+- **Publishing (Docker / Coolify):** [docs/PUBLISHING.md](docs/PUBLISHING.md).
+- If you play on two computers at once or offline, the saves are **merged**:
+  collections are combined (a Pokémon or a shiny is never lost), upgrades and
+  stats keep the maximum, and coins and tickets use each device's own ledger
+  (`src/js/core/save-merge.js`, the same merge in the browser and on the server).
 
-Código bajo [PolyForm Noncommercial 1.0.0](LICENSE-NONCOMMERCIAL.md) desde el
-14-10-2026: se puede usar, estudiar y modificar, pero **no con fines
-comerciales** (ni vender el juego ni cobrar nada dentro de él). Las versiones
-hasta el commit `b297089` se publicaron bajo MIT. Los sprites (CC BY-NC 4.0),
-la fuente (OFL) y las marcas de Pokémon tienen sus propias condiciones: ver
-[LICENSE](LICENSE) y [CREDITS.md](CREDITS.md). Proyecto de fan sin ánimo de
-lucro.
+## License
 
-**La única web oficial es [survivor.preciostcg.com](https://survivor.preciostcg.com).** El
-juego es y será gratis: si alguien te pide pagar, no somos nosotros.
+Code under [PolyForm Noncommercial 1.0.0](LICENSE-NONCOMMERCIAL.md) since
+2026-10-14: it may be used, studied and modified, but **not for commercial
+purposes** (neither selling the game nor charging for anything inside it). Versions
+up to commit `b297089` were published under MIT. The sprites (CC BY-NC 4.0),
+the font (OFL) and the Pokémon trademarks have their own terms: see
+[LICENSE](LICENSE) and [CREDITS.md](CREDITS.md). Non-profit fan project.
 
-## Desarrollo
+**The only official website is [survivor.preciostcg.com](https://survivor.preciostcg.com).** The
+game is and will remain free: if someone asks you to pay, it is not us.
 
-| Comando                               | Qué hace                                                                                                                    |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `npm run dev`                         | Servidor local en http://localhost:3000 con `src/` + `public/`; se recarga al guardar. Con `.env` (DATABASE_URL), con nube. |
-| `npm run db:up`                       | Postgres local en Docker (`docker-compose.dev.yml`).                                                                        |
-| `npm run build`                       | Genera `dist/`: el juego empaquetado (`js/app.min.js`), `version.json` y las páginas web. Necesita Python 3.                |
-| `npm run build:force`                 | Igual, pero es una actualización obligatoria para los jugadores.                                                            |
-| `npm run build:debug`                 | Igual, sin ofuscar (`G` accesible en la consola).                                                                           |
-| `npm start`                           | Sirve `dist/` como en producción (antes, `npm run build`).                                                                  |
-| `npm run clean`                       | Borra `dist/` y `.cache/`.                                                                                                  |
-| `npm run lint` / `lint:fix`           | Revisa el código con ESLint (y arregla lo automático).                                                                      |
-| `npm run format` / `format:check`     | Formatea con Prettier / comprueba que todo está formateado.                                                                 |
-| `npm run docker:build` / `docker:run` | Imagen de producción (servidor Node) en http://localhost:8080.                                                              |
-| `npm run data:*`                      | Regenera datos: `pokedex`, `sprites`, `credits`, `hover`, `icons`, `font` (Python).                                         |
+## Development
 
-Puerto: `PORT=4000 npm run dev`. Python: si no está en el PATH, `PYTHON=/ruta/a/python`.
+| Command                               | What it does                                                                                                            |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                         | Local server at http://localhost:3000 with `src/` + `public/`; reloads on save. With `.env` (DATABASE_URL), with cloud. |
+| `npm run db:up`                       | Local Postgres in Docker (`docker-compose.dev.yml`).                                                                    |
+| `npm run build`                       | Generates `dist/`: the bundled game (`js/app.min.js`), `version.json` and the web pages. Needs Python 3.                |
+| `npm run build:force`                 | Same, but as a mandatory update for players.                                                                            |
+| `npm run build:debug`                 | Same, without obfuscation (`G` reachable from the console).                                                             |
+| `npm start`                           | Serves `dist/` as in production (run `npm run build` first).                                                            |
+| `npm run clean`                       | Deletes `dist/` and `.cache/`.                                                                                          |
+| `npm run lint` / `lint:fix`           | Checks the code with ESLint (and fixes what it can automatically).                                                      |
+| `npm run format` / `format:check`     | Formats with Prettier / checks that everything is formatted.                                                            |
+| `npm run docker:build` / `docker:run` | Production image (Node server) at http://localhost:8080.                                                                |
+| `npm run data:*`                      | Regenerates data: `pokedex`, `sprites`, `credits`, `hover`, `icons`, `font` (Python).                                   |
 
-## Estructura
+Port: `PORT=4000 npm run dev`. Python: if it is not on the PATH, `PYTHON=/path/to/python`.
+
+All code, comments and docs are in English. Spanish is only a UI translation: any
+new on-screen text needs its Spanish entry in `src/js/data/lang-es.js`.
+
+## Structure
 
 ```
 src/
-  index.html            la página: pantallas + orden de carga de los scripts (se edita aquí)
-  css/                  style.css (juego, estilo Mundo Misterioso) y pages.css (páginas web)
+  index.html            the page: screens + script load order (edit it here)
+  css/                  style.css (game, Mystery Dungeon style) and pages.css (web pages)
   js/
-    core/     util, db (guardado), audio (sintetizador + efectos), input,
-              sprites (animador PMD), camera, updater (actualización automática)
-    data/     pokedex*, sprites-meta*, moves, starters (+ test), enemies,
-              upgrades, music (partituras), changelog, lang-en
-    world/    tiles (pixel art en código), world (terreno, objetos, colisiones)
+    core/     util, db (saving), audio (synthesizer + effects), input, i18n,
+              sprites (PMD animator), camera, updater (automatic updates)
+    data/     pokedex*, sprites-meta*, moves, starters (+ quiz), enemies,
+              upgrades, music (scores), changelog, lang-es (Spanish UI)
+    world/    tiles (pixel art in code), world (terrain, objects, collisions)
     entities/ player, enemy, projectile, pickup, fx
     systems/  combat, spawner, levelup, gacha...
-    net/      live (WebSocket), social (apodo, amigos, salas), net (WebRTC), coop, ranking
+    net/      live (WebSocket), social (nickname, friends, lobbies), net (WebRTC), coop, ranking
     ui/       icons (pixel art), ui, hud, login, test, menu, gacha-ui, run-ui...
-    game.js   flujo y bucle principal
-    main.js   arranque
-public/                 se copia tal cual a dist/
-  assets/pokemon/{dex}/ hojas de sprites PMD* (Idle, Walk, Attack, Shoot, Charge, Hurt, Faint); s/ = shiny
-  assets/icons/         iconos de la app*
-  assets/fonts/         Pixelify Sans (OFL) y su versión con números redibujados*
-  contacto/  favicon.ico  manifest.webmanifest  sw.js
-scripts/                build y scripts que regeneran los ficheros marcados con *
-server/                 servidor (web, cuentas de Google, partidas, ranking, salas y señalización del cooperativo)
-docs/                   publicar, SEO, dominio, GDD
-dist/                   generado por npm run build (no se sube)
+    game.js   flow and main loop
+    main.js   startup
+public/                 copied as-is to dist/
+  assets/pokemon/{dex}/ PMD sprite sheets* (Idle, Walk, Attack, Shoot, Charge, Hurt, Faint); s/ = shiny
+  assets/icons/         app icons*
+  assets/fonts/         Pixelify Sans (OFL) and its version with redrawn digits*
+  contact/  favicon.ico  manifest.webmanifest  sw.js
+scripts/                build and the scripts that regenerate the files marked with *
+server/                 server (website, Google accounts, saves, leaderboard, co-op lobbies and signaling)
+docs/                   publishing, SEO, domain, GDD
+dist/                   generated by npm run build (not committed)
 ```
 
-`*` = generado. Para rehacerlos (necesita Python 3 + Pillow e internet, sólo esa vez):
+`*` = generated. To rebuild them (needs Python 3 + Pillow and internet, only that once):
 
 ```
-npm run data:sprites    # sprites normal y shiny + src/js/data/sprites-meta.js
-                        # (~20 min; se puede cortar y relanzar: usa .cache/)
+npm run data:sprites    # normal and shiny sprites + src/js/data/sprites-meta.js
+                        # (~20 min; can be interrupted and restarted: uses .cache/)
 npm run data:pokedex    # src/js/data/pokedex.js
 npm run data:credits    # CREDITS.md
 ```
 
-## Notas de implementación
+## Implementation notes
 
-- **Sprites PMD.** Columnas = fotogramas, filas = 8 direcciones (Down, DownRight,
-  Right, UpRight, Up, UpLeft, Left, DownLeft — verificado con los `-Offsets.png`).
-  Cada animación tiene su propio tamaño de fotograma, así que se alinean por el
-  **ancla al suelo** sacada del `-Shadow.png`; sin eso el sprite saltaría al atacar.
-- **Coordenadas.** `(x, y)` de una entidad son sus **pies**. Las colisiones
-  ocurren en el plano del suelo; los proyectiles vuelan en ese plano y se dibujan
-  elevados con su sombra debajo.
-- **Mundo.** Chunks de 16×16 tiles: los _datos_ (terreno, objetos) son baratos y
-  se generan siempre; la _imagen_ se hornea a resolución de arte escribiendo en un
-  `ImageData` (~4 ms por chunk en Chrome) y sólo para los visibles.
-- **Rendimiento.** Rejilla espacial de enemigos reconstruida cada frame. Con 420
-  enemigos, simulación + render completo ≈ 3 ms por frame en Chrome.
-- **Metadatos en `.js`, no `.json`**, porque `fetch()` está bloqueado en `file://`.
-- **Shiny.** Los shiny de SpriteCollab son el mismo dibujo con otra paleta; están
-  en `s/` y sólo 30 tienen geometría distinta (campo `sa` en los metadatos).
-  Las hojas se guardan como PNG con paleta exacta: misma imagen, la mitad de peso.
-- **Audio.** Sintetizador Web Audio con planificador anticipado (programa las
-  notas 150 ms por delante) y reverb por convolución con un impulso generado.
-  Las partituras están en `js/data/music.js` en un formato de texto propio.
-  Los efectos tienen separación mínima entre repeticiones y un tope de voces,
-  para que 400 enemigos golpeados a la vez no saturen.
-- **Iconos.** Mapas de caracteres convertidos a canvas y data URLs; siempre a
-  múltiplos enteros de su tamaño para que el píxel quede limpio.
+- **PMD sprites.** Columns = frames, rows = 8 directions (Down, DownRight,
+  Right, UpRight, Up, UpLeft, Left, DownLeft — verified with the `-Offsets.png` files).
+  Each animation has its own frame size, so they are aligned by the
+  **ground anchor** taken from `-Shadow.png`; without it the sprite would jump when attacking.
+- **Coordinates.** An entity's `(x, y)` is its **feet**. Collisions happen on the
+  ground plane; projectiles fly on that plane and are drawn raised with their
+  shadow underneath.
+- **World.** 16×16-tile chunks: the _data_ (terrain, objects) is cheap and always
+  generated; the _image_ is baked at art resolution by writing into an
+  `ImageData` (~4 ms per chunk in Chrome) and only for the visible ones.
+- **Performance.** Spatial grid of enemies rebuilt every frame. With 420
+  enemies, simulation + full render ≈ 3 ms per frame in Chrome.
+- **Metadata in `.js`, not `.json`**, because `fetch()` is blocked on `file://`.
+- **Shiny.** SpriteCollab shinies are the same drawing with another palette; they
+  live in `s/` and only 30 have different geometry (the `sa` field in the metadata).
+  Sheets are stored as PNG with an exact palette: same image, half the size.
+- **Audio.** Web Audio synthesizer with a look-ahead scheduler (it schedules notes
+  150 ms ahead) and convolution reverb with a generated impulse.
+  The scores are in `js/data/music.js` in a custom text format.
+  Effects have a minimum gap between repeats and a voice cap,
+  so 400 enemies hit at once do not saturate the output.
+- **Icons.** Character maps converted to canvas and data URLs; always at
+  integer multiples of their size so pixels stay crisp.
 
-## Créditos y licencia
+## Credits and license
 
-Sprites de [SpriteCollab](https://github.com/PMDCollab/SpriteCollab) bajo
-**CC BY-NC 4.0** — uso **no comercial** y con atribución; la lista de artistas
-está en [`CREDITS.md`](CREDITS.md). Pokémon es propiedad de Nintendo, Creatures
-Inc. y GAME FREAK. Proyecto de fan sin ánimo de lucro.
+Sprites from [SpriteCollab](https://github.com/PMDCollab/SpriteCollab) under
+**CC BY-NC 4.0** — **non-commercial** use with attribution; the list of artists
+is in [`CREDITS.md`](CREDITS.md). Pokémon is the property of Nintendo, Creatures
+Inc. and GAME FREAK. Non-profit fan project.

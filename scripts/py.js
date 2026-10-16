@@ -1,7 +1,7 @@
-/* Ejecuta un script de Python 3 con el intérprete que haya (Windows, Mac, Linux, Docker).
+/* Runs a Python 3 script with whatever interpreter is available (Windows, Mac, Linux, Docker).
  *   node scripts/py.js scripts/make_seo_pages.py [args...]
- * Orden: $PYTHON, python3, python, py y, en Windows, las instalaciones normales
- * aunque no estén en el PATH. Se salta el "python" falso de la Microsoft Store.
+ * Order: $PYTHON, python3, python, py and, on Windows, the usual install locations
+ * even if they are not on the PATH. Skips the fake Microsoft Store "python".
  */
 const { spawnSync } = require('child_process'),
   fs = require('fs'),
@@ -19,7 +19,7 @@ function candidates() {
           .reverse())
           list.push(path.join(base, d, 'python.exe'));
       } catch {
-        /* no existe */
+        /* does not exist */
       }
     }
   }
@@ -31,7 +31,7 @@ const python = candidates().find(py => {
   return !r.error && r.status === 0 && /Python 3/.test(r.stdout + r.stderr);
 });
 if (!python) {
-  console.error('No se encontró Python 3. Instálalo (y ponlo en el PATH) o indica dónde está con PYTHON=/ruta/a/python.');
+  console.error('Python 3 not found. Install it (and add it to the PATH) or point to it with PYTHON=/path/to/python.');
   process.exit(1);
 }
 const r = spawnSync(python, process.argv.slice(2), { stdio: 'inherit', env: { ...process.env, PYTHONIOENCODING: 'utf-8' } });

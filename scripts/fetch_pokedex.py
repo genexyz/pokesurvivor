@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Baja una sola vez los datos de PokeAPI y los deja en js/data/pokedex.js.
-A partir de ahi el juego no toca internet: todo es local.
+Downloads the PokeAPI data once and stores it in js/data/pokedex.js.
+From then on the game never touches the internet: everything is local.
 
     python scripts/fetch_pokedex.py
 
-Trae nombre en espanol, tipos, stats base y altura, y de ahi deriva los stats
-del juego y la rareza para el gacha.
+Fetches the English name, types, base stats and height, and derives the game
+stats and the gacha rarity from them.
 """
 import io
 import json
@@ -22,7 +22,7 @@ OUT = os.path.join(ROOT, 'src', 'js', 'data', 'pokedex.js')
 
 STARTERS = {1, 4, 7, 152, 155, 158, 252, 255, 258, 387, 390, 393, 495, 498, 501,
             650, 653, 656, 722, 725, 728, 810, 813, 816, 906, 909, 912, 54, 79}
-# Último Pokémon de cada generación.
+# Last Pokémon of each generation.
 GEN_END = [151, 251, 386, 493, 649, 721, 809, 905, 1025]
 
 
@@ -34,7 +34,7 @@ def gen_of(dex):
 
 
 def dexes_with_sprites():
-    """Sólo los que tienen sprite de Mundo Misterioso (según SpriteCollab)."""
+    """Only those with a Mystery Dungeon sprite (according to SpriteCollab)."""
     url = 'https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/tracker.json'
     req = urllib.request.Request(url, headers={'User-Agent': 'pokesurvivor/1.0'})
     t = json.load(urllib.request.urlopen(req, timeout=120))
@@ -57,7 +57,7 @@ def get(url, retries=3):
 
 
 def rarity(bst, dex, is_legendary, is_mythical):
-    """5 estrellas = legendarios y pseudolegendarios; 1 = los mas comunes."""
+    """5 stars = legendaries and pseudo-legendaries; 1 = the most common."""
     if is_mythical or is_legendary:
         return 5
     if bst >= 580:
@@ -75,26 +75,26 @@ def one(dex):
     p = get(f'{API}/pokemon/{dex}')
     s = get(f'{API}/pokemon-species/{dex}')
     if not p or not s:
-        print(f'  ! {dex} no disponible')
+        print(f'  ! {dex} not available')
         return None
 
     base = {st['stat']['name']: st['base_stat'] for st in p['stats']}
     bst = sum(base.values())
 
-    name_es = p['name'].capitalize()
+    name_en = p['name'].capitalize()
     for n in s.get('names', []):
-        if n['language']['name'] == 'es':
-            name_es = n['name']
+        if n['language']['name'] == 'en':
+            name_en = n['name']
             break
 
-    # --- stats del juego a partir de los stats base ---
+    # --- game stats derived from the base stats ---
     hp = round(70 + base['hp'] * 0.45)
     spd = round(78 + base['speed'] * 0.42)
     atk = round(0.70 + max(base['attack'], base['special-attack']) / 100 * 0.55, 2)
 
     return {
         'dex': dex,
-        'name': name_es,
+        'name': name_en,
         'slug': p['name'],
         'types': [t['type']['name'] for t in p['types']],
         'hp': hp,
@@ -111,7 +111,7 @@ def one(dex):
 
 def main():
     DEXES = dexes_with_sprites()
-    print(f'Bajando {len(DEXES)} Pokemon de PokeAPI...')
+    print(f'Downloading {len(DEXES)} Pokemon from PokeAPI...')
     rows = []
     with ThreadPoolExecutor(max_workers=10) as ex:
         for i, r in enumerate(ex.map(one, DEXES), 1):
@@ -123,13 +123,13 @@ def main():
     rows.sort(key=lambda r: r['dex'])
 
     lines = [
-        '/* ============ pokedex.js — GENERADO, no editar a mano ============',
-        ' * Lo produce scripts/fetch_pokedex.py. Los datos se bajaron una vez de',
-        ' * PokeAPI y viven aqui: el juego no hace ninguna peticion a internet.',
+        '/* ============ pokedex.js — GENERATED, do not edit by hand ============',
+        ' * Produced by scripts/fetch_pokedex.py. The data was downloaded once from',
+        ' * PokeAPI and lives here: the game makes no requests to the internet.',
         ' *',
-        ' * hp/spd/atk son stats de juego derivados de los stats base.',
-        ' * rarity 1-5 para el gacha · gen = generación (banner) · starter = test',
-        ' * leg = legendario o singular (sólo salen en las grietas)',
+        ' * hp/spd/atk are game stats derived from the base stats.',
+        ' * rarity 1-5 for the gacha · gen = generation (banner) · starter = test',
+        ' * leg = legendary or mythical (they only appear in rifts)',
         ' */',
         'G.DEX = [',
     ]
@@ -154,8 +154,8 @@ def main():
     with io.open(OUT, 'w', encoding='utf-8', newline='\n') as f:
         f.write('\n'.join(lines))
 
-    print(f'\n{len(rows)} Pokemon escritos en js/data/pokedex.js')
-    print('\nrareza por generacion (1* 2* 3* 4* 5*):')
+    print(f'\n{len(rows)} Pokemon written to js/data/pokedex.js')
+    print('\nrarity by generation (1* 2* 3* 4* 5*):')
     for g in range(1, 10):
         c = [sum(1 for x in rows if x['gen'] == g and x['rarity'] == r) for r in range(1, 6)]
         print(f'  gen {g}: {c}  total {sum(c)}')

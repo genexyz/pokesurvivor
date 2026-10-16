@@ -1,17 +1,17 @@
-/* ============ icons.js — iconos pixel art (sustituyen a los emojis) ============
- * Todo se dibuja desde mapas de caracteres, igual que los tiles: así la
- * interfaz comparte estilo con los sprites de Mundo Misterioso.
+/* ============ icons.js — pixel art icons (they replace emojis) ============
+ * Everything is drawn from character maps, just like the tiles, so the
+ * interface shares its style with the Mystery Dungeon sprites.
  *
- *   G.Icons.html('coin', 18)     <img> para el DOM
- *   G.Icons.draw(ctx, 'coin', x, y, 18)   en el canvas
- *   G.Icons.url('star')          data URL (para CSS)
- *   'move:<id>'                  emblema del tipo + insignia de la familia
- *   'type:<tipo>'                sólo el emblema
+ *   G.Icons.html('coin', 18)     <img> for the DOM
+ *   G.Icons.draw(ctx, 'coin', x, y, 18)   on the canvas
+ *   G.Icons.url('star')          data URL (for CSS)
+ *   'move:<id>'                  type emblem + family badge
+ *   'type:<type>'                emblem only
  */
 G.Icons = (() => {
-  const K = '#1b1528'; // contorno
+  const K = '#1b1528'; // outline
 
-  // ---------------- iconos de interfaz (12×12) ----------------
+  // ---------------- interface icons (12×12) ----------------
   const MEDAL = [
     '.kkk....kkk.',
     '.krk....kqk.',
@@ -79,7 +79,7 @@ G.Icons = (() => {
         '...kkkkkk...'
       ]
     },
-    // Banderita: reportar una marca del ranking.
+    // Little flag: report a leaderboard record.
     flag: {
       pal: { r: '#ff5f6d', w: '#c9cfdc' },
       rows: [
@@ -97,7 +97,7 @@ G.Icons = (() => {
         'kkkkk.......'
       ]
     },
-    // Prohibido (Veto: movimiento bloqueado).
+    // Forbidden (Veto: banned move).
     ban: {
       pal: { r: '#ff5f6d' },
       rows: [
@@ -183,7 +183,7 @@ G.Icons = (() => {
         '............'
       ]
     },
-    // Vínculo (premio de los legendarios): dos eslabones enlazados.
+    // Bond (legendary reward): two linked chain links.
     bond: {
       pal: { y: '#ffd23f', w: '#fff3b0', p: '#ff8ad8', q: '#ffd3f1' },
       rows: [
@@ -371,7 +371,7 @@ G.Icons = (() => {
         '.kk......kk.'
       ]
     },
-    // Marca de shiny: la estrella roja de la ficha de los juegos, con un destello.
+    // Shiny mark: the red star from the games' summary screen, with a sparkle.
     shiny: {
       pal: { y: '#ff4d5e', w: '#ffd0d6', o: '#b8283a', x: '#fff6b0' },
       rows: [
@@ -593,7 +593,7 @@ G.Icons = (() => {
         '............'
       ]
     },
-    // Bolas del tragaperras del gacha (una por rareza).
+    // Gacha slot machine balls (one per rarity).
     ball2: {
       pal: { r: '#3d7bff', s: '#2a56b8', w: '#cfe0ff', b: '#f4f4f4' },
       rows: [
@@ -662,7 +662,7 @@ G.Icons = (() => {
         '....kkkk....'
       ]
     },
-    // ---------- objetos equipables (data/items.js) ----------
+    // ---------- held items (data/items.js) ----------
     leftovers: {
       pal: { r: '#ff5f6d', d: '#b8283a', w: '#ffd8d8', g: '#5fe08a' },
       rows: [
@@ -850,7 +850,7 @@ G.Icons = (() => {
         '............'
       ]
     },
-    // ---------- medallas de logros (bronce, plata, oro) ----------
+    // ---------- achievement medals (bronze, silver, gold) ----------
     medal1: { pal: { r: '#ff5f6d', q: '#b8283a', m: '#d08a4a', n: '#8a5226', w: '#ffd0a0', s: '#ffe8c8' }, rows: MEDAL },
     medal2: { pal: { r: '#4fb4ff', q: '#2a6fb0', m: '#c9d2de', n: '#7d8899', w: '#ffffff', s: '#ffffff' }, rows: MEDAL },
     medal3: { pal: { r: '#c47bff', q: '#7a3fb0', m: '#ffd23f', n: '#c08a10', w: '#fff3b0', s: '#fffbe0' }, rows: MEDAL },
@@ -907,10 +907,10 @@ G.Icons = (() => {
       ]
     }
   };
-  // Variantes de paleta.
+  // Palette variants.
   UI.starDim = { rows: UI.star.rows, pal: { y: '#3a4870', o: '#2a3458', w: '#4a5a88' } };
 
-  // ---------------- glifos de tipo (8×8, blancos sobre el emblema) ----------------
+  // ---------------- type glyphs (8×8, white on the emblem) ----------------
   const TYPE_GLYPH = {
     normal: ['..####..', '.#....#.', '#......#', '#..##..#', '#..##..#', '#......#', '.#....#.', '..####..'],
     fire: ['...#....', '...##...', '..###.#.', '.#####..', '.######.', '##.####.', '##..###.', '.######.'],
@@ -932,7 +932,7 @@ G.Icons = (() => {
     fairy: ['...#....', '...#....', '..###...', '#######.', '..###...', '..#.#...', '.#...#..', '........']
   };
 
-  // Insignia de la familia de movimiento (5×5).
+  // Move family badge (5×5).
   const KIND_GLYPH = {
     projectile: ['..#..', '...#.', '#####', '...#.', '..#..'],
     melee: ['....#', '...#.', '..#..', '.#...', '#....'],
@@ -953,7 +953,7 @@ G.Icons = (() => {
 
   // ---------------- render ----------------
 
-  const cache = new Map(); // clave -> canvas a 1×
+  const cache = new Map(); // key -> canvas at 1×
   const urls = new Map();
 
   function shade(hex, k) {
@@ -969,7 +969,7 @@ G.Icons = (() => {
     const cv = document.createElement('canvas');
     cv.width = w + pad * 2;
     cv.height = h + pad * 2;
-    const c = cv.getContext('2d', { willReadFrequently: true }); // se lee en svgOf()
+    const c = cv.getContext('2d', { willReadFrequently: true }); // read in svgOf()
     const pal = Object.assign({ k: K }, def.pal);
     if (def.outline) {
       c.fillStyle = K;
@@ -996,16 +996,16 @@ G.Icons = (() => {
     return cv;
   }
 
-  /** Emblema circular de un tipo (16×16), con insignia de familia opcional. */
+  /** Round type emblem (16×16), with an optional family badge. */
   function emblem(type, kind) {
     const S = 16;
     const cv = document.createElement('canvas');
     cv.width = cv.height = S;
-    const c = cv.getContext('2d', { willReadFrequently: true }); // se lee en svgOf()
+    const c = cv.getContext('2d', { willReadFrequently: true }); // read in svgOf()
     const col = G.U.TYPE_COLOR[type] || '#b0a99f';
     const dark = shade(col, 0.55),
       lite = shade(col, 1.3);
-    // Disco con contorno, sombra abajo-derecha y brillo arriba-izquierda.
+    // Disc with outline, shadow bottom-right and highlight top-left.
     for (let y = 0; y < S; y++)
       for (let x = 0; x < S; x++) {
         const d = Math.hypot(x - 7.5, y - 7.5);
@@ -1018,7 +1018,7 @@ G.Icons = (() => {
         c.fillRect(x, y, 1, 1);
       }
     const g = TYPE_GLYPH[type] || TYPE_GLYPH.normal;
-    // Sombra del glifo y glifo.
+    // Glyph shadow and glyph.
     c.fillStyle = dark;
     g.forEach((row, y) =>
       [...row].forEach((ch, x) => {
@@ -1065,7 +1065,7 @@ G.Icons = (() => {
   function url(name) {
     let u = urls.get(name);
     if (!u) {
-      // Los de interfaz, directamente de su dibujo; los emblemas (tipos, movimientos), del canvas.
+      // Interface icons straight from their drawing; emblems (types, moves) from the canvas.
       const plain = !name.startsWith('move:') && !name.startsWith('type:');
       u = plain ? svgOfRows(UI[name] || UI.star) : svgOf(canvas(name));
       urls.set(name, u);
@@ -1074,9 +1074,9 @@ G.Icons = (() => {
   }
 
   /**
-   * El icono como SVG de texto (un rectángulo por tramo de píxeles iguales).
-   * toDataURL() hacía lo mismo en PNG, pero la primera vez el navegador tarda
-   * ~175 ms en prepararlo y eso bloqueaba la carga de la página (Lighthouse).
+   * The icon as text SVG (one rectangle per run of equal pixels).
+   * toDataURL() did the same as PNG, but the first time the browser takes
+   * ~175 ms to set it up, and that blocked page load (Lighthouse).
    */
   function svgDoc(W, H, rects) {
     return (
@@ -1087,7 +1087,7 @@ G.Icons = (() => {
     );
   }
 
-  /** Igual que fromRows() pero sin canvas (ni lectura de píxeles). */
+  /** Same as fromRows() but without a canvas (or pixel reads). */
   function svgOfRows(def) {
     const h = def.rows.length,
       w = Math.max(...def.rows.map(r => r.length));
@@ -1152,15 +1152,15 @@ G.Icons = (() => {
   }
 
   /**
-   * Ajusta el tamaño a un múltiplo entero de la resolución del icono: un
-   * icono de 16 px pintado a 24 duplicaría unos píxeles sí y otros no.
+   * Snaps the size to an integer multiple of the icon's resolution: a 16 px
+   * icon drawn at 24 would double some pixels and not others.
    */
   function snap(name, size) {
     const w = canvas(name).width;
     return w * Math.max(1, Math.round(size / w));
   }
 
-  /** <img> pixelado para el DOM. */
+  /** Pixelated <img> for the DOM. */
   function html(name, size = 20, cls = '') {
     const cv = canvas(name),
       w = snap(name, size),
@@ -1181,9 +1181,9 @@ G.Icons = (() => {
   }
 
   /**
-   * Centelleo de shiny, dibujado píxel a píxel (no es un icono): una cruz que
-   * nace, crece, echa puntas en diagonal y se apaga, como en los juegos.
-   * phase 0..1 · px = tamaño de píxel en pantalla.
+   * Shiny twinkle, drawn pixel by pixel (not an icon): a cross that appears,
+   * grows, sprouts diagonal tips and fades out, like in the games.
+   * phase 0..1 · px = on-screen pixel size.
    */
   function twinkle(ctx, x, y, phase, px = 2) {
     const st = phase < 0.15 ? 0 : phase < 0.32 ? 1 : phase < 0.62 ? 2 : phase < 0.82 ? 1 : 0;
@@ -1230,15 +1230,15 @@ G.Icons = (() => {
   }
 
   /**
-   * Rareza como Poké Ball: Poké (Común), Super (Poco común), Ultra (Rara),
-   * Lujo (Épica) y Master (Legendaria).
+   * Rarity as a Poké Ball: Poké (Common), Great (Uncommon), Ultra (Rare),
+   * Luxury (Epic) and Master (Legendary).
    */
   const RARITY_BALL = { 1: 'ball', 2: 'ball2', 3: 'ball3', 4: 'ballLux', 5: 'ball4' };
   function rarity(n, size = 12) {
     return `<span class="rarity-ball" title="${(G.Gacha && G.Gacha.RARITY_NAME[n]) || ''}">${html(RARITY_BALL[n] || 'ball', size)}</span>`;
   }
 
-  /** Publica en CSS los iconos que usan las hojas de estilo. */
+  /** Exposes to CSS the icons used by the stylesheets. */
   function installCss() {
     const r = document.documentElement.style;
     r.setProperty('--ico-coin', `url("${url('coin')}")`);
