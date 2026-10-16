@@ -19,12 +19,8 @@
  * same thing and the reward is for everyone.
  */
 G.Events = (() => {
-  const EVERY = [240, 300],
-    DUR = 30,
-    LOST_TIME = 120;
-  const THIEF_FIRST = [120, 240],
-    THIEF_NEXT = [240, 360],
-    THIEF_LIFE = 15;
+  const B = G.Balance.events;
+  const R = G.RNG.stream('events');
   const authority = () => !G.Coop.active || G.Coop.isHost;
 
   let nextT = 0,
@@ -35,11 +31,11 @@ G.Events = (() => {
   let lost = null; // { dex, name, x, y, hp, maxHp, state, follow, tx, ty, t, anim, r, hitCd, netT, grant }
 
   function reset() {
-    nextT = G.U.rand(EVERY[0], EVERY[1]);
+    nextT = R.range(B.every[0], B.every[1]);
     cur = null;
     last = null;
     lost = null;
-    thiefT = G.U.rand(THIEF_FIRST[0], THIEF_FIRST[1]);
+    thiefT = R.range(B.thief.first[0], B.thief.first[1]);
     thieves = 0;
   }
 
@@ -53,14 +49,14 @@ G.Events = (() => {
     if (lost) lostTick(dt, players);
     if (!authority() || G.Rift.inArena || G.Judgment.active) return;
 
-    if (thieves < 2) {
+    if (thieves < B.thief.max) {
       thiefT -= dt;
       if (thiefT <= 0) {
-        if (G.EnemyMgr.bossAlive()) thiefT = 8;
+        if (G.EnemyMgr.bossAlive()) thiefT = B.thief.bossRetry;
         else {
           spawnThief(players, time);
           thieves++;
-          thiefT = G.U.rand(THIEF_NEXT[0], THIEF_NEXT[1]);
+          thiefT = R.range(B.thief.next[0], B.thief.next[1]);
         }
       }
     }
@@ -69,12 +65,12 @@ G.Events = (() => {
     nextT -= dt;
     if (nextT > 0) return;
     if (G.EnemyMgr.bossAlive()) {
-      nextT = 10;
+      nextT = B.bossRetry;
       return;
     }
-    nextT = G.U.rand(EVERY[0], EVERY[1]);
-    const ids = ['horde', 'gold', 'lost'].filter(id => id !== last);
-    start(G.U.pick(ids), time, players);
+    nextT = R.range(B.every[0], B.every[1]);
+    const ids = B.ids.filter(id => id !== last);
+    start(R.pick(ids), time, players);
   }
 
   function start(id, time, players) {
@@ -82,13 +78,13 @@ G.Events = (() => {
     if (id === 'horde') {
       const types = G.Enemies.hordeTypes(time);
       if (!types.length) return start('gold', time, players);
-      const type = G.U.pick(types);
+      const type = R.pick(types);
       const defs = G.Enemies.hordeDefs(type, time);
       G.Sprites.preload(defs.map(d => d.dex));
-      cur = { id, t: 0, dur: DUR, type, defs };
-      G.Spawner.burst(Math.round(6 * G.Coop.scaleRate(players.length)));
+      cur = { id, t: 0, dur: B.horde.dur, type, defs };
+      G.Spawner.burst(Math.round(B.horde.burst * G.Coop.scaleRate(players.length)));
     } else if (id === 'gold') {
-      cur = { id, t: 0, dur: DUR };
+      cur = { id, t: 0, dur: B.gold.dur };
       for (const e of G.EnemyMgr.all()) if (!e.remote) e.makeGolden();
     } else {
       if (!spawnLost(players)) return;
@@ -124,30 +120,31 @@ G.Events = (() => {
   // ---------------- treasure goblin ----------------
 
   function spawnThief(players, time) {
-    const gold = Math.random() < 0.25;
-    const dex = gold ? 1000 : 52;
+    const T = B.thief;
+    const gold = R.chance(T.goldChance);
+    const dex = gold ? T.goldDex : T.dex;
     const mon = G.DEX_BY[dex];
     if (!mon || !G.SPRITE_META[dex]) return;
-    const pl = G.U.pick(players.filter(p => !p.dead).length ? players.filter(p => !p.dead) : players);
+    const pl = R.pick(players.filter(p => !p.dead).length ? players.filter(p => !p.dead) : players);
     G.Sprites.preload([dex]);
     const def = {
       dex,
       name: mon.name,
       behavior: 'thief',
-      hp: Math.round(60 * (1 + time / 95) * (gold ? 1.5 : 1)),
-      spd: 92,
+      hp: Math.round(T.hp(time, gold)),
+      spd: T.spd,
       dmg: 0,
-      xp: 10,
+      xp: T.xp,
       loot: gold ? 'ticket10' : 'coins'
     };
     for (let i = 0; i < 12; i++) {
-      const a = Math.random() * 6.2832,
-        d = G.U.rand(230, 300);
+      const a = R.angle(),
+        d = R.range(T.spawnDist[0], T.spawnDist[1]);
       const x = pl.x + Math.cos(a) * d,
         y = pl.y + Math.sin(a) * d * 0.8;
       if (!G.World.isFree(x, y, 14)) continue;
       const e = new G.Enemy(def, x, y, { hp: 1, spd: 1, dmg: 1 });
-      e.life = THIEF_LIFE;
+      e.life = T.life;
       G.EnemyMgr.add(e);
       G.FX.ring(x, y, 4, 40, '#ffd23f', 0.5, 3);
       G.Spawner.say(
@@ -165,27 +162,27 @@ G.Events = (() => {
 
   function spawnLost(players) {
     const alive = players.filter(p => !p.dead);
-    const pl = G.U.pick(alive.length ? alive : players);
-    const pool = G.DEX.filter(p => p.rarity <= 3 && !p.leg && G.SPRITE_META[p.dex] && !G.Sprites.hovers(p.dex));
-    const mon = G.U.pick(pool);
+    const pl = R.pick(alive.length ? alive : players);
+    const pool = G.DEX.filter(p => p.rarity <= B.lost.maxRarity && !p.leg && G.SPRITE_META[p.dex] && !G.Sprites.hovers(p.dex));
+    const mon = R.pick(pool);
     let at = null,
       to = null;
     for (let i = 0; i < 20 && !at; i++) {
-      const a = Math.random() * 6.2832,
-        d = G.U.rand(220, 300);
+      const a = R.angle(),
+        d = R.range(B.lost.spawnDist[0], B.lost.spawnDist[1]);
       const x = pl.x + Math.cos(a) * d,
         y = pl.y + Math.sin(a) * d * 0.8;
       if (G.World.isFree(x, y, 16)) at = [x, y];
     }
     for (let i = 0; i < 30 && at && !to; i++) {
-      const a = Math.random() * 6.2832,
-        d = G.U.rand(700, 850);
+      const a = R.angle(),
+        d = R.range(B.lost.goalDist[0], B.lost.goalDist[1]);
       const x = at[0] + Math.cos(a) * d,
         y = at[1] + Math.sin(a) * d * 0.85;
       if (G.World.isFree(x, y, 30)) to = [x, y];
     }
     if (!at || !to) return false;
-    makeLost({ dex: mon.dex, x: at[0], y: at[1], tx: to[0], ty: to[1], state: 'wait', hp: 100, grant: Math.random() < 0.2 });
+    makeLost({ dex: mon.dex, x: at[0], y: at[1], tx: to[0], ty: to[1], state: 'wait', hp: B.lost.hp, grant: R.chance(B.lost.grant) });
     G.Sprites.preload([mon.dex]);
     return true;
   }
@@ -195,7 +192,7 @@ G.Events = (() => {
     lost = Object.assign(
       {
         name: mon ? mon.name : '',
-        maxHp: 100,
+        maxHp: B.lost.hp,
         t: 0,
         hitCd: 0,
         netT: 0,
@@ -208,7 +205,8 @@ G.Events = (() => {
   }
 
   function lostTick(dt, players) {
-    const L = lost;
+    const L = lost,
+      C = B.lost;
     L.t += dt;
     L.anim.update(dt);
     if (!authority()) {
@@ -217,7 +215,7 @@ G.Events = (() => {
     }
 
     if (L.state === 'wait') {
-      const p = players.find(o => !o.dead && G.U.dist2(o.x, o.y, L.x, L.y) < (o.r + L.r + 18) ** 2);
+      const p = players.find(o => !o.dead && G.U.dist2(o.x, o.y, L.x, L.y) < (o.r + L.r + C.touchPad) ** 2);
       if (p) {
         L.state = 'follow';
         L.follow = p;
@@ -228,17 +226,17 @@ G.Events = (() => {
     } else {
       const p = L.follow && !L.follow.dead ? L.follow : players.find(o => !o.dead) || L.follow;
       const d = G.U.dist(L.x, L.y, p.x, p.y),
-        keep = p.r + L.r + 14;
+        keep = p.r + L.r + C.keepPad;
       L.moving = d > keep;
       if (L.moving) {
-        const sp = Math.min(d - keep, Math.max(120, p.spd * 1.15) * dt);
+        const sp = Math.min(d - keep, Math.max(C.minSpd, p.spd * C.spdMul) * dt);
         const [nx, ny] = G.U.norm(p.x - L.x, p.y - L.y);
         L.x += nx * sp;
         L.y += ny * sp;
         G.World.collide(L);
         L.anim.dir = G.Sprites.dirFromAngle(Math.atan2(ny, nx));
       }
-      if (G.U.dist2(L.x, L.y, L.tx, L.ty) < 56 * 56) return rescued();
+      if (G.U.dist2(L.x, L.y, L.tx, L.ty) < C.goalR * C.goalR) return rescued();
     }
     L.anim.loop(L.moving ? 'Walk' : 'Idle');
 
@@ -246,10 +244,10 @@ G.Events = (() => {
     if ((L.hitCd -= dt) <= 0) {
       const hits = G.EnemyMgr.queryCircle(L.x, L.y, L.r).filter(e => !e.dead && e.behavior !== 'thief');
       if (hits.length) {
-        L.hitCd = 0.5;
+        L.hitCd = C.hitCd;
         L.hp -= Math.min(
-          30,
-          hits.reduce((a, e) => a + 4 + e.dmg * 0.12, 0)
+          C.hitCap,
+          hits.reduce((a, e) => a + C.hitBase + e.dmg * C.hitDmgMul, 0)
         );
         L.flash = 0.1;
         G.FX.burst(L.x, L.y - 10, '#ff5f6d', 4, 60);
@@ -257,7 +255,7 @@ G.Events = (() => {
       }
     }
     if (L.flash > 0) L.flash -= dt;
-    if (L.t > LOST_TIME) return gone(`${L.name} got tired of waiting and left…`);
+    if (L.t > C.time) return gone(`${L.name} got tired of waiting and left…`);
 
     if (G.Coop.isHost && (L.netT -= dt) <= 0) {
       L.netT = 0.1;
@@ -279,8 +277,9 @@ G.Events = (() => {
 
   function rescued() {
     const L = lost;
-    for (let i = 0; i < 12; i++) G.Pickups.drop('coin', L.tx + G.U.rand(-40, 40), L.ty + G.U.rand(-30, 30), 5);
-    G.Pickups.drop('ticket', L.tx, L.ty - 12, 1);
+    // (Where each coin lands is cosmetic.)
+    for (let i = 0; i < B.lost.coins; i++) G.Pickups.drop('coin', L.tx + G.U.rand(-40, 40), L.ty + G.U.rand(-30, 30), B.lost.coinValue);
+    G.Pickups.drop('ticket', L.tx, L.ty - 12, B.lost.tickets);
     if (G.Coop.isHost) G.Coop.broadcast(['ev', 'rw', L.dex, L.grant ? 1 : 0]);
     reward(L.dex, L.grant);
     lost = null;
@@ -291,7 +290,7 @@ G.Events = (() => {
   function reward(dex, grant) {
     const pl = G.Game.player;
     if (pl && !pl.dead) {
-      pl.heal(pl.maxHp * 0.5);
+      pl.heal(pl.maxHp * B.lost.heal);
       G.FX.ring(pl.x, pl.y, 6, 70, '#5fe08a', 0.5, 3);
     }
     const name = (G.DEX_BY[dex] || {}).name || '';
@@ -310,10 +309,11 @@ G.Events = (() => {
 
   // ---------------- network ----------------
 
+  G.Sync.on('ev', ev => onNet(ev));
   function onNet(ev) {
     switch (ev[1]) {
       case 's':
-        cur = { id: ev[2], t: 0, dur: ev[2] === 'lost' ? Infinity : DUR, type: ev[3] || null };
+        cur = { id: ev[2], t: 0, dur: ev[2] === 'lost' ? Infinity : B[ev[2]].dur, type: ev[3] || null };
         break;
       case 'e':
         cur = null;
@@ -351,14 +351,14 @@ G.Events = (() => {
         ctx.globalAlpha = 0.25 + k * 0.15;
         ctx.fillStyle = '#5fe08a';
         ctx.beginPath();
-        ctx.ellipse(L.tx, L.ty, 56, 40, 0, 0, 6.2832);
+        ctx.ellipse(L.tx, L.ty, B.lost.goalR, B.lost.goalR * (40 / 56), 0, 0, 6.2832);
         ctx.fill();
         ctx.globalAlpha = 0.9;
         ctx.strokeStyle = '#7dffb0';
         ctx.lineWidth = 2;
         ctx.setLineDash([6, 5]);
         ctx.beginPath();
-        ctx.ellipse(L.tx, L.ty, 56, 40, 0, 0, 6.2832);
+        ctx.ellipse(L.tx, L.ty, B.lost.goalR, B.lost.goalR * (40 / 56), 0, 0, 6.2832);
         ctx.stroke();
         ctx.restore();
         G.Icons.draw(ctx, 'heart', Math.round(L.tx - 8), Math.round(L.ty - 30 - k * 6), 16);
@@ -415,12 +415,11 @@ G.Events = (() => {
         to[0],
         to[1],
         '#7dffb0',
-        `${L.state === 'wait' ? L.name : 'Marker'} · ${Math.round(G.U.dist(pl.x, pl.y, to[0], to[1]) / 32)} m`,
-        F
+        `${L.state === 'wait' ? L.name : 'Marker'} · ${Math.round(G.U.dist(pl.x, pl.y, to[0], to[1]) / 32)} m`
       );
     }
     for (const e of G.EnemyMgr.all()) {
-      if (e.behavior === 'thief' && !e.dead) edgeArrow(ctx, w, h, cam, e.x, e.y - 10, '#ffd23f', e.name, F);
+      if (e.behavior === 'thief' && !e.dead) edgeArrow(ctx, w, h, cam, e.x, e.y - 10, '#ffd23f', e.name);
     }
     if (cur && cur.id !== 'lost') {
       const left = Math.max(0, Math.ceil(cur.dur - cur.t));
@@ -437,39 +436,13 @@ G.Events = (() => {
     }
   }
 
-  function edgeArrow(ctx, w, h, cam, x, y, col, label, F) {
-    const sx = (x - cam.left()) * cam.scale,
-      sy = (y - cam.top()) * cam.scale;
-    if (sx > 0 && sx < w && sy > 0 && sy < h) return;
-    const M = 44,
-      ex = G.U.clamp(sx, M, w - M),
-      ey = G.U.clamp(sy, M + 70, h - M - 80);
-    const a = Math.atan2(sy - ey, sx - ex),
-      ca = Math.cos(a),
-      sa = Math.sin(a);
-    const pulse = 0.65 + Math.sin(performance.now() / 160) * 0.35;
-    ctx.save();
-    ctx.translate(ex, ey);
-    ctx.globalAlpha = pulse;
-    ctx.beginPath();
-    ctx.moveTo(ca * 30, sa * 30);
-    ctx.lineTo(Math.cos(a + 2.45) * 15, Math.sin(a + 2.45) * 15);
-    ctx.lineTo(Math.cos(a - 2.45) * 15, Math.sin(a - 2.45) * 15);
-    ctx.closePath();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = '#000';
-    ctx.stroke();
-    ctx.fillStyle = col;
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.font = F(800, 11);
-    ctx.textAlign = ca > 0.3 ? 'right' : ca < -0.3 ? 'left' : 'center';
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = 'rgba(0,0,0,.85)';
-    ctx.strokeText(label, -ca * 26, -sa * 24 + 4);
-    ctx.fillStyle = col;
-    ctx.fillText(label, -ca * 26, -sa * 24 + 4);
-    ctx.restore();
+  function edgeArrow(ctx, w, h, cam, x, y, col, label) {
+    G.HUD.edgeArrow(ctx, w, h, (x - cam.left()) * cam.scale, (y - cam.top()) * cam.scale, {
+      color: col,
+      label,
+      outline: '#000',
+      alpha: 0.65 + Math.sin(performance.now() / 160) * 0.35
+    });
   }
 
   return {

@@ -9,113 +9,90 @@
  * by the player with pl.hasItem(id).
  */
 G.Items = (() => {
+  const pct = G.U.pct;
+  /**
+   * An item that multiplies a stat while held: by (1 + val), or by (1 - val)
+   * with `down`. The factor applied is kept on the player, so a live balance
+   * change never leaves the stat wrong when the item comes off.
+   */
+  function mult(id, name, stat, val, text, down = false) {
+    const it = {
+      id,
+      name,
+      val,
+      get desc() {
+        return text(pct(it.val));
+      },
+      on: p => {
+        p._itemK = down ? 1 - it.val : 1 + it.val;
+        p[stat] *= p._itemK;
+      },
+      off: p => {
+        p[stat] /= p._itemK || 1;
+      }
+    };
+    return it;
+  }
+  const SASH = G.Balance.items.focusSash;
   const LIST = [
     {
       id: 'leftovers',
       name: 'Leftovers',
-      desc: 'You recover 1.5% of your HP per second.',
+      val: 0.015, // fraction of max HP healed per second
+      get desc() {
+        return `You recover ${pct(this.val)}% of your HP per second.`;
+      },
       on: p => {
-        p.regenFlat += p.maxHp * 0.015;
-        p._itemRegen = p.maxHp * 0.015;
+        p._itemRegen = p.maxHp * BY.leftovers.val;
+        p.regenFlat += p._itemRegen;
       },
       off: p => {
         p.regenFlat -= p._itemRegen || 0;
       }
     },
-    {
-      id: 'choiceband',
-      name: 'Choice Band',
-      desc: "+40% damage, but you can't switch moves.",
-      on: p => {
-        p.atkMul *= 1.4;
-      },
-      off: p => {
-        p.atkMul /= 1.4;
-      }
-    },
-    {
-      id: 'quickclaw',
-      name: 'Quick Claw',
-      desc: '-20% cooldown on all your moves.',
-      on: p => {
-        p.cdMul *= 0.8;
-      },
-      off: p => {
-        p.cdMul /= 0.8;
-      }
-    },
+    mult('choiceband', 'Choice Band', 'atkMul', 0.4, x => `+${x}% damage, but you can't switch moves.`),
+    mult('quickclaw', 'Quick Claw', 'cdMul', 0.2, x => `-${x}% cooldown on all your moves.`, true),
     {
       id: 'focussash',
       name: 'Focus Sash',
-      desc: 'A hit that would knock you out leaves you at 1 HP (every 60 s).',
+      get desc() {
+        return `A hit that would knock you out leaves you at 1 HP (every ${G.U.num(SASH.cooldown)} s).`;
+      },
       on: () => {},
       off: () => {}
     },
     { id: 'shellbell', name: 'Shell Bell', desc: 'You heal from the damage you deal.', on: () => {}, off: () => {} },
-    {
-      id: 'amuletcoin',
-      name: 'Amulet Coin',
-      desc: '+50% PokéCoins at the end of the run.',
-      on: p => {
-        p.coinMul *= 1.5;
-      },
-      off: p => {
-        p.coinMul /= 1.5;
-      }
-    },
-    {
-      id: 'luckyegg',
-      name: 'Lucky Egg',
-      desc: '+30% experience.',
-      on: p => {
-        p.xpMul *= 1.3;
-      },
-      off: p => {
-        p.xpMul /= 1.3;
-      }
-    },
-    {
-      id: 'lifeorb',
-      name: 'Life Orb',
-      desc: '+30% damage, but each attack costs a little HP.',
-      on: p => {
-        p.atkMul *= 1.3;
-      },
-      off: p => {
-        p.atkMul /= 1.3;
-      }
-    },
-    {
-      id: 'choicescarf',
-      name: 'Choice Scarf',
-      desc: '+35% speed.',
-      on: p => {
-        p.spdMul *= 1.35;
-      },
-      off: p => {
-        p.spdMul /= 1.35;
-      }
-    },
+    mult('amuletcoin', 'Amulet Coin', 'coinMul', 0.5, x => `+${x}% PokéCoins at the end of the run.`),
+    mult('luckyegg', 'Lucky Egg', 'xpMul', 0.3, x => `+${x}% experience.`),
+    mult('lifeorb', 'Life Orb', 'atkMul', 0.3, x => `+${x}% damage, but each attack costs a little HP.`),
+    mult('choicescarf', 'Choice Scarf', 'spdMul', 0.35, x => `+${x}% speed.`),
     { id: 'rockyhelmet', name: 'Rocky Helmet', desc: 'Foes that hit you in melee take damage.', on: () => {}, off: () => {} },
     {
       id: 'assaultvest',
       name: 'Assault Vest',
-      desc: '+20% damage reduction.',
+      val: 0.2, // damage reduction while held
+      get desc() {
+        return `+${pct(this.val)}% damage reduction.`;
+      },
       on: p => {
-        p.dmgReduce += 0.2;
+        p._itemDef = BY.assaultvest.val;
+        p.dmgReduce += p._itemDef;
       },
       off: p => {
-        p.dmgReduce -= 0.2;
+        p.dmgReduce -= p._itemDef || 0;
       }
     }
   ];
   const BY = {};
   for (const it of LIST) BY[it.id] = it;
 
+  // Item drops and chest rolls use the seeded 'loot' stream.
+  const R = G.RNG.stream('loot');
+
   /** A random one, different from the one you already hold. */
   function roll(except) {
     const pool = LIST.filter(i => i.id !== except);
-    return G.U.pick(pool).id;
+    return R.pick(pool).id;
   }
 
   return { LIST, BY, roll };

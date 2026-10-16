@@ -1038,14 +1038,16 @@
     }
   ];
 
-  // Melee (12-10-2026): +20 % damage and +25 % range and arc
-  // (and -25 % damage taken while it is your active attack, in player.js).
+  // Melee (12-10-2026): extra damage, range and arc (G.Balance.combat.meleeBoost)
+  // (and less damage taken while it is your active attack: G.Balance.player.meleeGuard).
   // They hit hard, but you had to take far more risk than with ranged ones.
+  // Applied once at load time: changing the boost live needs a reload.
+  const MB = G.Balance.combat.meleeBoost;
   for (const m of RAW) {
     if (m.kind !== 'melee') continue;
-    m.dmg = Math.round(m.dmg * 1.2);
-    m.radius = Math.round(m.radius * 1.25);
-    if (m.arc) m.arc = Math.min(3, +(m.arc * 1.25).toFixed(2));
+    m.dmg = Math.round(m.dmg * MB.dmg);
+    m.radius = Math.round(m.radius * MB.radius);
+    if (m.arc) m.arc = Math.min(MB.arcMax, +(m.arc * MB.arc).toFixed(2));
   }
 
   // Move pool per type. Everyone has the `normal` pool.

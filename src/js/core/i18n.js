@@ -35,7 +35,6 @@ G.I18n = (() => {
     exactLow = new Map();
   let patterns = [],
     frag = null,
-    fragLow = null,
     fragMap = new Map();
   const cache = new Map();
   const L = '\\p{L}\\p{N}';

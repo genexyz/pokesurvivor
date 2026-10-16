@@ -155,10 +155,7 @@ G.UI = (() => {
 
   // ---------------- legal notice ----------------
 
-  let legalBack = null;
-
   function openLegal() {
-    legalBack = SCREENS.find(s => isOpen(s)) || null;
     const canDelete = G.DB.loggedIn && !G.DB.guest;
     $('legal-delete').disabled = !canDelete;
     $('legal-del-msg').textContent = canDelete ? '' : 'Log in to be able to delete your account.';

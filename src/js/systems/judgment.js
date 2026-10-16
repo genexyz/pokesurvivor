@@ -29,12 +29,9 @@
  *   and in every host update, ja: Arceus's [x, y, animation, direction].
  */
 G.Judgment = (() => {
-  const AT = 30 * 60;
-  const ARENA_R = 24; // in tiles (the rift arena: 11)
-  const BOSS_EVERY = 5; // no cap: they keep coming as long as you last
-  const TOUCH = 0.4; // HP fraction lost by touching Arceus
-  const ARCEUS = 493,
-    SCALE = 1.5;
+  const B = G.Balance.judgment;
+  const R = G.RNG.stream('judgment');
+  const ARCEUS = 493;
   // Cutscene timeline (seconds).
   const T_TITLE = 1.3,
     T_FLASH = 4.7,
@@ -45,15 +42,13 @@ G.Judgment = (() => {
     T_END = 10.1;
   const GOLD = '#ffd25e';
   const authority = () => !G.Coop.active || G.Coop.isHost;
-  const TS = () => G.Tiles.T * G.Sprites.PX;
 
   let phase = null; // null | 'cine' | 'fight'
   let ct = 0; // cutscene clock
   let cfg = null; // { tx, ty, q: [legendaries' dex] }
   let ported = false,
     landed = false,
-    canSkip = false,
-    cues = {};
+    canSkip = false;
   let A = null; // Arceus
   let center = null; // arena center (world)
   let arenaT = 0,
@@ -63,7 +58,7 @@ G.Judgment = (() => {
     downs = 0;
   // Damage to a single enemy per second (the one taking the most each second; with
   // area attacks, summing everything would give huge HP). The last
-  // 30 s are kept and the average of the best 6 is used.
+  // B.dpsWindow s are kept and the average of the best B.dpsTop is used.
   let hits = new Map(),
     hitT = 0,
     samples = [];
@@ -75,7 +70,6 @@ G.Judgment = (() => {
     ct = 0;
     cfg = null;
     ported = landed = canSkip = false;
-    cues = {};
     A = null;
     center = null;
     arenaT = bossT = 0;
@@ -100,7 +94,7 @@ G.Judgment = (() => {
     let best = 0;
     for (const v of hits.values()) if (v > best) best = v;
     samples.push(best / hitT);
-    if (samples.length > 30) samples.shift();
+    if (samples.length > B.dpsWindow) samples.shift();
     hits.clear();
     hitT = 0;
   }
@@ -108,7 +102,7 @@ G.Judgment = (() => {
     const top = samples
       .slice()
       .sort((a, b) => b - a)
-      .slice(0, 6);
+      .slice(0, B.dpsTop);
     return top.length ? top.reduce((a, b) => a + b, 0) / top.length : 0;
   }
 
@@ -118,8 +112,8 @@ G.Judgment = (() => {
   function start() {
     const pool = G.DEX.filter(p => p.leg && p.dex !== ARCEUS && G.SPRITE_META[p.dex]);
     const q = [];
-    for (let i = 0; i < 40; i++) q.push(G.U.pick(pool).dex);
-    const c = { tx: -6000 - Math.floor(Math.random() * 2000), ty: -6000 - Math.floor(Math.random() * 2000), q };
+    for (let i = 0; i < B.queue; i++) q.push(R.pick(pool).dex);
+    const c = { tx: -6000 - Math.floor(R.next() * 2000), ty: -6000 - Math.floor(R.next() * 2000), q };
     if (G.Coop.isHost) G.Coop.broadcast(['jd', c]);
     begin(c);
   }
@@ -130,7 +124,6 @@ G.Judgment = (() => {
     cfg = c;
     phase = 'cine';
     ct = 0;
-    cues = {};
     const s = G.DB.save;
     // The first time it plays in full; in a group the host skips it.
     canSkip = !!(s && s.stats && s.stats.judged > 0) && authority();
@@ -157,7 +150,7 @@ G.Judgment = (() => {
   function port() {
     ported = true;
     const pl = G.Game.player,
-      ts = TS();
+      ts = G.World.TS;
     G.Rift.reset();
     if (authority()) G.EnemyMgr.stash();
     else G.EnemyMgr.clearRemote();
@@ -167,25 +160,22 @@ G.Judgment = (() => {
     G.Pickups.clear();
     G.Events.reset();
     G.Weather.clear();
-    G.World.setArena({ tx: cfg.tx, ty: cfg.ty, r: ARENA_R, type: 'judgment' });
+    G.World.setArena({ tx: cfg.tx, ty: cfg.ty, r: B.arenaR, type: 'judgment' });
     G.World.setBiome(G.Tiles.arenaBiome('judgment'), true);
     center = { x: cfg.tx * ts + ts / 2, y: cfg.ty * ts + ts / 2 };
-    const ps = G.Game.everyone();
-    ps.forEach((p, i) => {
-      p.x = center.x + (i - (ps.length - 1) / 2) * 34;
-      p.y = center.y + ts * 3;
-    });
+    G.Rift.lineUp(center.x, center.y);
     G.Camera.x = pl.x;
     G.Camera.y = pl.y;
-    const anim = new G.Sprites.Animator(ARCEUS, SCALE);
+    const scale = B.arceus.scale;
+    const anim = new G.Sprites.Animator(ARCEUS, scale);
     A = {
       x: center.x,
-      y: center.y - ts * 5,
+      y: center.y - ts * B.arceus.startNorth,
       lift: 900,
       anim,
-      r: G.Sprites.bodyRadius(ARCEUS, SCALE) * 0.9,
-      bodyH: G.Sprites.bodyHeight(ARCEUS, SCALE),
-      cd: 2.2,
+      r: G.Sprites.bodyRadius(ARCEUS, scale) * 0.9,
+      bodyH: G.Sprites.bodyHeight(ARCEUS, scale),
+      cd: B.arceus.firstCd,
       cast: null,
       touchCd: 0,
       spin: 0,
@@ -216,15 +206,15 @@ G.Judgment = (() => {
     if (!ported) port();
     land(true);
     arenaT = 0;
-    bossT = 1.2;
+    bossT = B.firstBoss;
     bossN = 0;
     downs = 0;
     G.Progress.event('judge');
-    // First legendary's HP: about 3 s of your damage to one enemy (with a minimum).
+    // First legendary's HP: a few seconds of your damage to one enemy (with a minimum).
     const n = G.Game.everyone().length,
       t = G.Game.st.time;
-    const floor = (3200 + t * 9) * 0.35 * G.Coop.scaleHp(n);
-    base = Math.max(floor, singleDps() * 3);
+    const floor = G.Balance.rift.legend.hp(t) * B.floorFrac * G.Coop.scaleHp(n);
+    base = Math.max(floor, singleDps() * B.firstSecs);
     G.Spawner.say('Run from Arceus! It is invincible', 3, true);
   }
 
@@ -285,7 +275,7 @@ G.Judgment = (() => {
   function update(dt, pl, time) {
     if (!phase) {
       sampleDps(dt); // (for the first legendary's HP)
-      if (authority() && time >= AT && !G.Rift.inArena) start();
+      if (authority() && time >= B.at && !G.Rift.inArena) start();
       return;
     }
     if (phase !== 'fight') return;
@@ -297,7 +287,7 @@ G.Judgment = (() => {
       keepInside();
       bossT -= dt;
       if (bossT <= 0) {
-        bossT = BOSS_EVERY;
+        bossT = B.bossEvery;
         spawnBoss();
       }
     } else netTick(dt);
@@ -333,8 +323,8 @@ G.Judgment = (() => {
       return;
     }
     // Slower than you at first; after ~35 s it catches up.
-    const k = Math.min(1.22, 0.74 + arenaT * 0.013);
-    const spd = Math.max(70, (tg.spd || 100) * k);
+    const k = B.arceus.spd(arenaT);
+    const spd = Math.max(B.arceus.minSpd, (tg.spd || 100) * k);
     const [dx, dy] = G.U.norm(tg.x - A.x, tg.y - A.y);
     A.x += dx * spd * dt;
     A.y += dy * spd * dt;
@@ -344,7 +334,7 @@ G.Judgment = (() => {
     A.cd -= dt;
     if (A.cd <= 0) {
       const d = G.U.dist(A.x, A.y, tg.x, tg.y);
-      const id = d < 210 && Math.random() < 0.6 ? 'nova' : A.last === 'rain' ? 'cross' : 'rain';
+      const id = d < B.nova.near && R.chance(B.nova.chance) ? 'nova' : A.last === 'rain' ? 'cross' : 'rain';
       cast(id, tg);
     }
   }
@@ -352,23 +342,24 @@ G.Judgment = (() => {
   /** Arceus's attacks: all are telegraphed on the ground and take a % of max HP. */
   function cast(id, tg) {
     A.last = id;
-    const c = (A.cast = { id, t: 0, wind: 0.7 });
+    const c = (A.cast = { id, t: 0, wind: B[id].wind });
     const H = o => G.Hazards.add(Object.assign({ type: null, pure: true, dmg: 1, color: GOLD }, o));
     if (id === 'rain') {
       // Judgment: pillars of light on everyone (more the longer it lasts).
-      const n = 4 + Math.min(6, Math.floor(arenaT / 10));
+      const S = B.rain;
+      const n = S.n(arenaT);
       for (const p of G.Game.everyone()) {
         if (p.dead) continue;
         for (let i = 0; i < n; i++) {
-          const a = Math.random() * 6.2832,
-            d = i ? G.U.rand(40, 150) : 0;
+          const a = R.angle(),
+            d = i ? R.range(S.spread[0], S.spread[1]) : 0;
           H({
             kind: 'zone',
             x: p.x + Math.cos(a) * d,
             y: p.y + Math.sin(a) * d * 0.8,
-            r: 44,
-            delay: 1.25 + i * 0.09,
-            pct: 0.3,
+            r: S.r,
+            delay: S.delay + i * S.stagger,
+            pct: S.pct,
             vis: 'pillar'
           });
         }
@@ -376,16 +367,16 @@ G.Judgment = (() => {
       A.anim.play('Shoot', { speed: 0.9 });
     } else if (id === 'cross') {
       // Cross beams sweeping the arena.
-      const a0 = Math.atan2(tg.y - A.y, tg.x - A.x) + (Math.random() < 0.5 ? 0 : Math.PI / 4);
-      const n = arenaT > 30 ? 8 : 4;
+      const S = B.cross;
+      const a0 = Math.atan2(tg.y - A.y, tg.x - A.x) + (R.chance(S.tilt) ? Math.PI / 4 : 0);
+      const n = S.n(arenaT);
       for (let i = 0; i < n; i++)
-        H({ kind: 'beam', x: A.x, y: A.y, angle: a0 + (i * 6.2832) / n, len: 1700, w: 34, delay: 1.1, pct: 0.35, color: '#fff3b0' });
-      c.wind = 1.1;
+        H({ kind: 'beam', x: A.x, y: A.y, angle: a0 + (i * 6.2832) / n, len: S.len, w: S.w, delay: S.delay, pct: S.pct, color: '#fff3b0' });
       A.anim.play('Charge', { speed: 0.9 });
     } else {
       // Wave around it (if you're too close).
-      H({ kind: 'zone', x: A.x, y: A.y, r: 170, delay: 0.85, pct: 0.4 });
-      c.wind = 0.85;
+      const S = B.nova;
+      H({ kind: 'zone', x: A.x, y: A.y, r: S.r, delay: S.delay, pct: S.pct });
       A.anim.play('Charge', { speed: 1.2 });
     }
     G.FX.ring(A.x, A.y, A.r, A.r * 3, GOLD, c.wind, 3);
@@ -399,9 +390,9 @@ G.Judgment = (() => {
       c.done = true;
       A.anim.play(c.id === 'nova' ? 'Attack' : 'Shoot', { speed: 1.2 });
     }
-    if (c.t >= c.wind + 0.35) {
+    if (c.t >= c.wind + B.arceus.recover) {
       A.cast = null;
-      A.cd = Math.max(1.4, 3.2 - arenaT * 0.025);
+      A.cd = B.arceus.cd(arenaT);
     }
   }
 
@@ -432,9 +423,9 @@ G.Judgment = (() => {
     if (!pl || pl.dead || A.touchCd > 0) return;
     const rr = A.r + pl.r;
     if (G.U.dist2(A.x, A.y, pl.x, pl.y) > rr * rr) return;
-    A.touchCd = 0.9;
+    A.touchCd = B.arceus.touchCd;
     pl.invuln = 0;
-    pl.hurt(pl.maxHp * TOUCH, null, true);
+    pl.hurt(pl.maxHp * B.arceus.touch, null, true);
     G.Camera.kick(0.6);
     G.FX.ring(pl.x, pl.y, 6, 70, GOLD, 0.4, 4);
     if (authority()) A.anim.play('Attack', { speed: 1.4 });
@@ -442,19 +433,8 @@ G.Judgment = (() => {
 
   /** Nobody leaves the arena (Arceus, the legendaries and you). */
   function keepInside() {
-    const ts = TS(),
-      max = (ARENA_R - 1.4) * ts;
-    const clampIn = o => {
-      const dx = o.x - center.x,
-        dy = o.y - center.y,
-        d = Math.hypot(dx, dy);
-      if (d > max) {
-        o.x = center.x + (dx / d) * max;
-        o.y = center.y + (dy / d) * max;
-      }
-    };
-    clampIn(A);
-    for (const e of G.EnemyMgr.all()) if (!e.remote) clampIn(e);
+    G.Rift.keepIn(A, center.x, center.y, B.arenaR);
+    for (const e of G.EnemyMgr.all()) if (!e.remote) G.Rift.keepIn(e, center.x, center.y, B.arenaR);
   }
 
   // ---------------- legendaries ----------------
@@ -464,32 +444,19 @@ G.Judgment = (() => {
     const mon = G.DEX_BY[dex];
     if (!mon) return;
     const t = G.Game.st.time,
-      ts = TS();
+      ts = G.World.TS;
     // Far from everyone (at the edge of the arena).
     let x = center.x,
       y = center.y;
     for (let i = 0; i < 16; i++) {
-      const a = Math.random() * 6.2832,
-        d = (ARENA_R - G.U.rand(3, 6)) * ts;
+      const a = R.angle(),
+        d = (B.arenaR - R.range(B.bossEdge[0], B.bossEdge[1])) * ts;
       x = center.x + Math.cos(a) * d;
       y = center.y + Math.sin(a) * d;
-      if (G.Game.everyone().every(p => G.U.dist2(p.x, p.y, x, y) > 280 * 280)) break;
+      if (G.Game.everyone().every(p => G.U.dist2(p.x, p.y, x, y) > B.bossSafeDist * B.bossSafeDist)) break;
     }
-    const k = Math.pow(2, bossN); // each one twice the previous
-    const def = {
-      dex,
-      name: mon.name,
-      hp: Math.round(base * k),
-      spd: Math.round(G.U.clamp(48 + (mon.spd - 78) * 0.6, 48, 105)),
-      dmg: Math.round((36 + t / 20) * k),
-      xp: Math.round(500 + t * 1.2),
-      behavior: mon.types.some(x => ['psychic', 'electric', 'ghost', 'fairy', 'fire', 'water', 'ice', 'dragon'].includes(x))
-        ? 'ranged'
-        : 'charger',
-      shotDmg: Math.round((18 + t / 40) * k),
-      shotCd: 0.9,
-      range: 300
-    };
+    const k = Math.pow(B.growth, bossN); // each one stronger than the previous
+    const def = G.Rift.legendDef(mon, t, base * k, k);
     const e = new G.Enemy(def, x, y, { hp: 1, spd: 1, dmg: 1 }, true);
     e.judge = true;
     e.flying = false;
@@ -789,39 +756,19 @@ G.Judgment = (() => {
     ctx.fillStyle = GOLD;
     ctx.fillText(txt, w / 2, boss ? 98 : 76);
     // Arrow toward Arceus if it's off screen.
-    const cam = G.Camera;
-    const sx = (A.x - cam.left()) * cam.scale,
-      sy = (A.y - A.bodyH * 0.5 - cam.top()) * cam.scale;
-    if (sx < 0 || sx > w || sy < 0 || sy > h) {
-      const M = 46,
-        ex = G.U.clamp(sx, M, w - M),
-        ey = G.U.clamp(sy, M + 70, h - M - 80);
-      const an = Math.atan2(sy - ey, sx - ex);
-      const pl = G.Game.player;
-      const beat = 0.5 + Math.sin(performance.now() / 120) * 0.5;
-      ctx.translate(ex, ey);
-      ctx.globalAlpha = 0.2 + beat * 0.25;
-      ctx.fillStyle = '#ff6a3d';
-      ctx.beginPath();
-      ctx.arc(0, 0, 26 + beat * 6, 0, 6.2832);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = beat > 0.5 ? '#fff3c8' : GOLD;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(an) * 34, Math.sin(an) * 34);
-      ctx.lineTo(Math.cos(an + 2.45) * 17, Math.sin(an + 2.45) * 17);
-      ctx.lineTo(Math.cos(an - 2.45) * 17, Math.sin(an - 2.45) * 17);
-      ctx.closePath();
-      ctx.fill();
-      ctx.font = F(800, 11);
-      ctx.textAlign = Math.cos(an) > 0.3 ? 'right' : Math.cos(an) < -0.3 ? 'left' : 'center';
-      const lbl = `ARCEUS · ${Math.round(G.U.dist(pl.x, pl.y, A.x, A.y) / 32)} m`;
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = 'rgba(0,0,0,.85)';
-      ctx.strokeText(lbl, -Math.cos(an) * 30, -Math.sin(an) * 26 + 4);
-      ctx.fillStyle = GOLD;
-      ctx.fillText(lbl, -Math.cos(an) * 30, -Math.sin(an) * 26 + 4);
-    }
+    const cam = G.Camera,
+      pl = G.Game.player;
+    const beat = 0.5 + Math.sin(performance.now() / 120) * 0.5;
+    G.HUD.edgeArrow(ctx, w, h, (A.x - cam.left()) * cam.scale, (A.y - A.bodyH * 0.5 - cam.top()) * cam.scale, {
+      margin: 46,
+      tip: 34,
+      base: 17,
+      halo: { color: '#ff6a3d', r: 26 + beat * 6, a: 0.2 + beat * 0.25 },
+      color: beat > 0.5 ? '#fff3c8' : GOLD,
+      label: `ARCEUS · ${Math.round(G.U.dist(pl.x, pl.y, A.x, A.y) / 32)} m`,
+      labelColor: GOLD,
+      labelAt: [30, 26]
+    });
     ctx.restore();
   }
 
@@ -854,6 +801,9 @@ G.Judgment = (() => {
 
   // ---------------- network ----------------
 
+  G.Sync.on(['jd', 'jk'], ev => onEvent(ev));
+  // Arceus' position and animation, in every host frame during the fight.
+  G.Sync.field('ja', { send: () => netState(), apply: a => netApply(a) });
   function onEvent(ev) {
     if (ev[0] === 'jd') begin(ev[1]);
     else if (ev[0] === 'jk') doSkip();
@@ -871,7 +821,10 @@ G.Judgment = (() => {
   }
 
   return {
-    AT,
+    /** Run time when it starts (s). */
+    get AT() {
+      return B.at;
+    },
     reset,
     noteDmg,
     update,

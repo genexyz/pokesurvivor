@@ -59,6 +59,15 @@ G.U = {
     return (h >>> 0) / 4294967296;
   },
 
+  /** A number for on-screen text, in the game's language (1.5 / 1,5). */
+  num(v) {
+    return (+v).toLocaleString(G.I18n ? G.I18n.locale : 'en-US', { maximumFractionDigits: 2 });
+  },
+  /** A fraction as a percentage number for text: 0.4 -> "40". */
+  pct(v) {
+    return G.U.num(Math.round(v * 10000) / 100);
+  },
+
   /** "3:07" from seconds. */
   mmss(s) {
     const m = Math.floor(s / 60);

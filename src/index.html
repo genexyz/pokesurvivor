@@ -457,6 +457,7 @@
     <p class="sub kbd-hint"><kbd>WASD</kbd> move · <kbd>1</kbd>–<kbd>4</kbd> attack · <kbd>Q</kbd>/<kbd>E</kbd> cycle · <kbd>Esc</kbd> pause</p>
     <p class="sub touch-hint">Drag your finger to move · tap a move to switch</p>
     <p id="pause-coop" class="note hidden">Group game: the game keeps running while you're here.</p>
+    <p id="pause-seed" class="sub" translate="no"></p>
     <div id="pause-sound" class="sound-inline"></div>
     <div class="row" style="justify-content:center">
       <button id="btn-resume" class="btn gold">Continue</button>
@@ -477,6 +478,9 @@
 <!-- generated data -->
 <!-- scripts:begin -->
 <script defer src="js/core/util.js"></script>
+<script defer src="js/core/rng.js"></script>
+<script defer src="js/net/sync.js"></script>
+<script defer src="js/data/balance.js"></script>
 <script defer src="js/core/i18n.js"></script>
 <script defer src="js/data/lang-es.js"></script>
 <script defer src="js/core/settings.js"></script>
@@ -551,6 +555,8 @@
 <!-- game -->
 <script defer src="js/game.js"></script>
 <script defer src="js/main.js"></script>
+<!-- Development only: scripts/build.js leaves out every data-dev script. -->
+<script defer data-dev src="js/ui/dev-ui.js"></script>
 <!-- scripts:end -->
 </body>
 </html>

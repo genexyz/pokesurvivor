@@ -1,7 +1,7 @@
 /* ============ rift.js — rifts and the legendary arena ============
  *
  * Every now and then (a few times per run) a RIFT opens near a
- * player. It lasts GRIETA_TTL seconds; if you enter, it takes you (with the whole group)
+ * player. It lasts G.Balance.rift.ttl seconds; if you enter, it takes you (with the whole group)
  * to a closed arena in the Distortion World, against a LEGENDARY Pokémon.
  *
  *   win      the legendary drops tickets (the ×10 one, half of the time) and coins, and everyone gets a
@@ -18,29 +18,23 @@
  *   and from guest to host 're' (I entered the rift).
  */
 G.Rift = (() => {
-  // (0.14 until 11-10-2026: more rifts so bonds get seen)
-  // Less randomness (12-10-2026): each time it fails, the next one is more
+  // Tuning in G.Balance.rift. Each failed attempt makes the next one more
   // likely (20%, 40%, 60%, 80%, 100%): at most 2.5 min without a rift.
   // From 2 min before Arceus's Judgment (minute 30) they no longer open.
-  const CHECK = 30,
-    CHANCE = 0.2,
-    TTL = 45;
-  const ARENA_R = 11,
-    ARENA_TIME = 120,
-    FROM = 75;
+  const B = G.Balance.rift;
+  const R = G.RNG.stream('rift');
   let rift = null; // { x, y, ttl, t }
   let arena = null; // { tx, ty, r, dex, shiny, x, y, back, biome, t, phase, endT, bossId }
-  let checkT = CHECK,
+  let checkT = B.check,
     asked = false,
     downT = 0,
     misses = 0;
   const authority = () => !G.Coop.active || G.Coop.isHost;
-  const TS = () => G.Tiles.T * G.Sprites.PX;
 
   function reset() {
     rift = null;
     arena = null;
-    checkT = CHECK;
+    checkT = B.check;
     asked = false;
     downT = 0;
     misses = 0;
@@ -56,13 +50,13 @@ G.Rift = (() => {
         rift = null;
         return;
       }
-      if (!arena && !pl.dead && G.U.dist2(pl.x, pl.y, rift.x, rift.y - 10) < 30 * 30) enter();
-    } else if (!arena && authority() && time > FROM && time < G.Judgment.AT - 120) {
+      if (!arena && !pl.dead && G.U.dist2(pl.x, pl.y, rift.x, rift.y - 10) < B.enterR * B.enterR) enter();
+    } else if (!arena && authority() && time > B.from && time < G.Judgment.AT - B.stopBeforeJudgment) {
       checkT -= dt;
       if (checkT <= 0) {
-        checkT = CHECK;
+        checkT = B.check;
         if (G.EnemyMgr.bossAlive()) return; // with a boss alive it doesn't count as an attempt
-        if (Math.random() < CHANCE * (1 + misses)) {
+        if (R.chance(B.chance * (1 + misses))) {
           misses = 0;
           open();
         } else misses++;
@@ -73,15 +67,15 @@ G.Rift = (() => {
 
   function open() {
     const alive = G.Game.everyone().filter(p => !p.dead);
-    const near = G.U.pick(alive.length ? alive : [G.Game.player]);
+    const near = R.pick(alive.length ? alive : [G.Game.player]);
     for (let i = 0; i < 24; i++) {
-      const a = Math.random() * 6.2832,
-        d = G.U.rand(380, 560);
+      const a = R.angle(),
+        d = R.range(B.openDist[0], B.openDist[1]);
       const x = near.x + Math.cos(a) * d,
         y = near.y + Math.sin(a) * d * 0.85;
       if (!G.World.isFree(x, y, 22)) continue;
-      show(x, y, TTL);
-      if (G.Coop.isHost) G.Coop.broadcast(['rift', Math.round(x), Math.round(y), TTL]);
+      show(x, y, B.ttl);
+      if (G.Coop.isHost) G.Coop.broadcast(['rift', Math.round(x), Math.round(y), B.ttl]);
       return;
     }
   }
@@ -113,21 +107,17 @@ G.Rift = (() => {
     nextType = null;
     let pool = G.DEX.filter(p => p.leg && G.SPRITE_META[p.dex]);
     if (forceType && pool.some(p => p.types.includes(forceType))) pool = pool.filter(p => p.types.includes(forceType));
-    // Legendaries you haven't beaten yet show up 4 times as often (fewer repeats).
+    // Legendaries you haven't beaten yet show up more often (fewer repeats).
     const beaten = (G.DB.save && G.DB.save.legends) || {};
-    const ws = pool.map(p => (beaten[p.dex] ? 1 : 4));
-    let r = Math.random() * ws.reduce((a, b) => a + b, 0),
-      mi = 0;
-    while (mi < pool.length - 1 && (r -= ws[mi]) > 0) mi++;
-    const mon = pool[mi];
+    const mon = pool[R.weighted(pool.map(p => (beaten[p.dex] ? 1 : B.unbeatenWeight)))];
     const cfg = {
-      tx: 5000 + Math.floor(Math.random() * 3000),
-      ty: 5000 + Math.floor(Math.random() * 3000),
-      r: ARENA_R,
+      tx: 5000 + Math.floor(R.next() * 3000),
+      ty: 5000 + Math.floor(R.next() * 3000),
+      r: B.arenaR,
       dex: mon.dex,
-      shiny: G.Sprites.hasShiny(mon.dex) && Math.random() < 1 / 512,
+      shiny: G.Sprites.hasShiny(mon.dex) && R.chance(B.shinyChance),
       // The arena matches one of its types, at random.
-      type: forceType || G.U.pick(mon.types)
+      type: forceType || R.pick(mon.types)
     };
     if (G.Coop.isHost) G.Coop.broadcast(['arena', cfg]);
     begin(cfg);
@@ -137,7 +127,7 @@ G.Rift = (() => {
   /** On each computer: travel to the arena. */
   function begin(cfg) {
     const pl = G.Game.player;
-    const ts = TS();
+    const ts = G.World.TS;
     arena = Object.assign({}, cfg, {
       x: cfg.tx * ts + ts / 2,
       y: cfg.ty * ts + ts / 2,
@@ -160,13 +150,9 @@ G.Rift = (() => {
     G.World.setBiome(G.Tiles.arenaBiome(cfg.type), true);
     // Each arena brings its weather (volcano: sun; glacier: snow...).
     const th = G.Tiles.ARENA_THEMES[cfg.type];
-    if (th && th.weather) G.Weather.force(th.weather, ARENA_TIME + 15);
+    if (th && th.weather) G.Weather.force(th.weather, B.arenaTime + B.weatherExtra);
     // Everyone lined up at the south of the arena; the legendary appears at the north.
-    const ps = G.Game.everyone();
-    ps.forEach((p, i) => {
-      p.x = arena.x + (i - (ps.length - 1) / 2) * 34;
-      p.y = arena.y + ts * 3;
-    });
+    lineUp(arena.x, arena.y);
     G.Camera.x = pl.x;
     G.Camera.y = pl.y;
     G.Game.flash('#c9a6ff', 0.9);
@@ -178,22 +164,8 @@ G.Rift = (() => {
     const mon = G.DEX_BY[arena.dex];
     const t = G.Game.st.time;
     const n = G.Game.everyone().length;
-    const ts = TS();
-    const def = {
-      dex: mon.dex,
-      name: mon.name,
-      hp: Math.round((3200 + t * 9) * G.Coop.scaleHp(n) * (n > 1 ? 1.4 : 1)),
-      spd: Math.round(G.U.clamp(48 + (mon.spd - 78) * 0.6, 48, 105)),
-      dmg: Math.round(36 + t / 20),
-      xp: Math.round(500 + t * 1.2),
-      behavior: mon.types.some(x => ['psychic', 'electric', 'ghost', 'fairy', 'fire', 'water', 'ice', 'dragon'].includes(x))
-        ? 'ranged'
-        : 'charger',
-      shotDmg: Math.round(18 + t / 40),
-      shotCd: 0.9,
-      range: 300
-    };
-    const e = new G.Enemy(def, arena.x, arena.y - ts * 3.5, { hp: 1, spd: 1, dmg: 1 }, true);
+    const def = legendDef(mon, t, B.legend.hp(t) * G.Coop.scaleHp(n) * (n > 1 ? G.Balance.coop.bossHp : 1), 1);
+    const e = new G.Enemy(def, arena.x, arena.y - G.World.TS * B.legendNorth, { hp: 1, spd: 1, dmg: 1 }, true);
     e.legend = true;
     // It collides with walls and pillars like you: if it flew over the
     // rocks, your shots couldn't reach it (Celebi bug).
@@ -206,20 +178,51 @@ G.Rift = (() => {
     G.Audio.sfx('boss');
   }
 
+  /**
+   * A legendary's enemy definition (the rift's; the Judgment's with `k` > 1).
+   * @param hp  its HP (already scaled)
+   * @param k   multiplier for its damage
+   */
+  function legendDef(mon, t, hp, k) {
+    const L = B.legend;
+    return {
+      dex: mon.dex,
+      name: mon.name,
+      hp: Math.round(hp),
+      spd: Math.round(L.spd(mon)),
+      dmg: Math.round(L.dmg(t) * k),
+      xp: Math.round(L.xp(t)),
+      behavior: mon.types.some(x => L.rangedTypes.includes(x)) ? 'ranged' : 'charger',
+      shotDmg: Math.round(L.shotDmg(t) * k),
+      shotCd: L.shotCd,
+      range: L.range
+    };
+  }
+
+  /** Every player lined up south of an arena center (the rift's and the Judgment's). */
+  function lineUp(cx, cy) {
+    const ps = G.Game.everyone();
+    ps.forEach((p, i) => {
+      p.x = cx + (i - (ps.length - 1) / 2) * B.lineupGap;
+      p.y = cy + G.World.TS * B.lineupSouth;
+    });
+  }
+
+  /** Keeps `o` inside an arena circle of radius `r` tiles (the rift's and the Judgment's). */
+  function keepIn(o, cx, cy, r) {
+    const max = (r - B.wallMargin) * G.World.TS;
+    const dx = o.x - cx,
+      dy = o.y - cy,
+      d = Math.hypot(dx, dy);
+    if (d > max) {
+      o.x = cx + (dx / d) * max;
+      o.y = cy + (dy / d) * max;
+    }
+  }
+
   /** Nobody leaves the arena circle (in case something pushes too hard). */
   function keepInside() {
-    const ts = TS(),
-      max = (arena.r - 1.4) * ts;
-    for (const e of G.EnemyMgr.all()) {
-      if (e.remote) continue;
-      const dx = e.x - arena.x,
-        dy = e.y - arena.y,
-        d = Math.hypot(dx, dy);
-      if (d > max) {
-        e.x = arena.x + (dx / d) * max;
-        e.y = arena.y + (dy / d) * max;
-      }
-    }
+    for (const e of G.EnemyMgr.all()) if (!e.remote) keepIn(e, arena.x, arena.y, arena.r);
   }
 
   function arenaTick(dt, pl) {
@@ -235,7 +238,7 @@ G.Rift = (() => {
       }
       const allDown = G.Game.everyone().every(p => p.dead);
       downT = allDown ? downT + dt : 0;
-      if (downT > 1.4 || arena.t > ARENA_TIME) {
+      if (downT > B.allDownGrace || arena.t > B.arenaTime) {
         G.Coop.isHost && G.Coop.broadcast(['al']);
         lost();
       }
@@ -248,7 +251,7 @@ G.Rift = (() => {
   function won() {
     if (!arena || arena.phase !== 'fight') return;
     arena.phase = 'won';
-    arena.endT = 5;
+    arena.endT = B.wonDelay;
     G.Progress.event('rift', { type: arena.type });
     G.Pickups.pullAll();
     G.Spawner.say(`You defeated ${G.DEX_BY[arena.dex].name}! Grab your reward…`, 3.4, true);
@@ -264,7 +267,7 @@ G.Rift = (() => {
   function lost() {
     if (!arena || arena.phase !== 'fight') return;
     arena.phase = 'lost';
-    arena.endT = 1.2;
+    arena.endT = B.lostDelay;
     G.Spawner.say('The rift threw you out…', 2.6, true);
     G.Audio.sfx('back');
   }
@@ -290,7 +293,7 @@ G.Rift = (() => {
     }
     pl.x = a.back.x;
     pl.y = a.back.y;
-    if (pl.dead) pl.revive(0.3);
+    if (pl.dead) pl.revive(B.revive);
     G.Camera.x = pl.x;
     G.Camera.y = pl.y;
     G.Game.flash('#c9a6ff', 0.8);
@@ -327,6 +330,9 @@ G.Rift = (() => {
 
   // ---------------- network ----------------
 
+  G.Sync.on(['rift', 'riftx', 'arena', 'aw', 'al'], ev => onEvent(ev));
+  // A guest walked into the rift: everyone travels.
+  G.Sync.onGuest('re', () => G.Rift.enterRequest());
   function onEvent(ev) {
     switch (ev[0]) {
       case 'rift':
@@ -352,6 +358,9 @@ G.Rift = (() => {
     update,
     drawable,
     onEvent,
+    legendDef,
+    lineUp,
+    keepIn,
     enterRequest() {
       if (!arena) start();
     },
@@ -365,7 +374,7 @@ G.Rift = (() => {
       return !!arena;
     },
     get timeLeft() {
-      return arena ? Math.max(0, ARENA_TIME - arena.t) : 0;
+      return arena ? Math.max(0, B.arenaTime - arena.t) : 0;
     },
     debugOpen() {
       open();

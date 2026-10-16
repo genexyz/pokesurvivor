@@ -53,7 +53,7 @@ sandbox.window = sandbox;
 vm.createContext(sandbox);
 const load = f => vm.runInContext(fs.readFileSync(path.join(ROOT, 'src', f), 'utf8'), sandbox, { filename: f });
 const ES = {};
-for (const f of ['js/core/util.js', 'js/core/i18n.js']) load(f);
+for (const f of ['js/core/util.js', 'js/core/rng.js', 'js/core/i18n.js']) load(f);
 // Captures the Spanish dictionary (English key -> Spanish).
 const add = G.I18n.add;
 G.I18n.add = d => {
@@ -62,6 +62,7 @@ G.I18n.add = d => {
 };
 for (const f of [
   'js/data/lang-es.js',
+  'js/data/balance.js',
   'js/core/settings.js',
   'js/data/pokedex.js',
   'js/data/sprites-meta.js',
@@ -69,6 +70,7 @@ for (const f of [
   'js/data/types.js',
   'js/data/items.js',
   'js/data/achievements.js',
+  'js/data/changelog.js',
   'js/world/tiles.js'
 ]) {
   try {
@@ -118,6 +120,7 @@ const out = {
       .filter(([k]) => k !== 'judgment')
       .map(([k, v]) => [k, v.name])
   ),
+  changelog: G.CHANGELOG || [],
   es: ES
 };
 fs.mkdirSync(path.join(ROOT, '.cache'), { recursive: true });

@@ -1,7 +1,7 @@
 /* ============ weather.js — weather (rare event) ============
  * Every now and then (from minute 2, ~1 in every 6 minutes) a weather arrives
  * that lasts about a minute. It changes damage by the attack's type,
- * for you and for the enemies:
+ * for you and for the enemies (numbers in G.Balance.weather):
  *
  *   sun      Fire ×1.5 · Water ×0.5
  *   rain     Water ×1.5 · Electric ×1.2 · Fire ×0.5
@@ -21,7 +21,6 @@ G.Weather = (() => {
       icon: 'wsun',
       color: '#ffcb3d',
       tint: [255, 190, 90, 0.07],
-      mult: { fire: 1.5, water: 0.5 },
       hint: 'Fire is boosted and Water is weakened'
     },
     rain: {
@@ -29,7 +28,6 @@ G.Weather = (() => {
       icon: 'wrain',
       color: '#7fb8ff',
       tint: [50, 90, 170, 0.09],
-      mult: { water: 1.5, electric: 1.2, fire: 0.5 },
       hint: 'Water is boosted and Fire is weakened'
     },
     sand: {
@@ -37,8 +35,6 @@ G.Weather = (() => {
       icon: 'wsand',
       color: '#e0bf73',
       tint: [200, 160, 90, 0.09],
-      mult: { rock: 1.3, ground: 1.3, steel: 1.3 },
-      safe: ['rock', 'ground', 'steel'],
       hint: 'Rock, Ground and Steel are boosted; the rest suffer'
     },
     snow: {
@@ -46,9 +42,6 @@ G.Weather = (() => {
       icon: 'wsnow',
       color: '#d8f1ff',
       tint: [210, 230, 255, 0.08],
-      mult: { ice: 1.5 },
-      safe: ['ice'],
-      slow: true,
       hint: 'Ice is boosted; the rest suffer and slow down'
     },
     fog: {
@@ -56,29 +49,22 @@ G.Weather = (() => {
       icon: 'wfog',
       color: '#c9cfdc',
       tint: [190, 195, 210, 0.12],
-      mult: { ghost: 1.3, fairy: 1.3, psychic: 1.3 },
       hint: 'Ghost, Fairy and Psychic are boosted'
     }
   };
-  // Chance of each weather by biome (forest, cave, volcano).
-  const BIOME_W = [
-    { rain: 3, fog: 2, sun: 1.5, snow: 0.5, sand: 0.5 },
-    { fog: 3, snow: 2.5, rain: 1, sand: 1 },
-    { sun: 3, sand: 3, fog: 1 }
-  ];
-  const FROM = 120,
-    CHECK = 60,
-    CHANCE = 0.18;
+  // (Display only: what each weather does is in G.Balance.weather.kinds.)
+  const B = G.Balance.weather;
+  const R = G.RNG.stream('weather');
 
   let cur = null; // { kind, t, dur }
-  let checkT = CHECK,
+  let checkT = B.check,
     chipT = 0;
   let parts = [];
   const authority = () => !G.Coop.active || G.Coop.isHost;
 
   function reset() {
     cur = null;
-    checkT = CHECK;
+    checkT = B.check;
     chipT = 0;
     parts = [];
   }
@@ -86,29 +72,38 @@ G.Weather = (() => {
   function def() {
     return cur ? KINDS[cur.kind] : null;
   }
+  /** The current weather's effects (G.Balance.weather.kinds). */
+  function rules() {
+    return cur ? B.kinds[cur.kind] : null;
+  }
 
   /** Damage multiplier for an attack of this type under the current weather. */
   function mult(type) {
-    const d = def();
-    return d && d.mult[type] ? 1 + (d.mult[type] - 1) * level() : 1;
+    const d = rules();
+    return d && d.mult && d.mult[type] ? 1 + (d.mult[type] - 1) * level() : 1;
   }
 
-  /** Intensity 0..1 (fades in and out over 3 s). */
+  /** Intensity 0..1 (fades in and out over B.fade s). */
   function level() {
     if (!cur) return 0;
-    return Math.min(1, cur.t / 3, (cur.dur - cur.t) / 3);
+    return Math.min(1, cur.t / B.fade, (cur.dur - cur.t) / B.fade);
+  }
+
+  /** Is a Pokémon with these types immune to this weather's chip damage and slowdown? */
+  function safe(d, types) {
+    return !!(d.safe && types.some(t => d.safe.includes(t)));
   }
 
   /** Does sand/snow chip damage affect a Pokémon with these types? */
   function hurts(types) {
-    const d = def();
-    return !!(d && d.safe && !types.some(t => d.safe.includes(t)));
+    const d = rules();
+    return !!(d && d.safe && !safe(d, types));
   }
 
   /** Speed factor (snow) for a Pokémon with these types. */
   function speedFor(types) {
-    const d = def();
-    return d && d.slow && !types.includes('ice') ? 1 - 0.1 * level() : 1;
+    const d = rules();
+    return d && d.slow && !safe(d, types) ? 1 - d.slow * level() : 1;
   }
 
   function start(kind, dur) {
@@ -121,12 +116,12 @@ G.Weather = (() => {
   function stop() {
     if (!cur) return;
     // Let it fade out.
-    cur.dur = Math.min(cur.dur, cur.t + 3);
+    cur.dur = Math.min(cur.dur, cur.t + B.fade);
   }
 
   function pick(biome) {
-    const w = BIOME_W[biome % BIOME_W.length];
-    let r = Math.random() * Object.values(w).reduce((a, b) => a + b, 0);
+    const w = B.biome[biome % B.biome.length];
+    let r = R.next() * Object.values(w).reduce((a, b) => a + b, 0);
     for (const k in w) {
       r -= w[k];
       if (r <= 0) return k;
@@ -138,13 +133,13 @@ G.Weather = (() => {
     if (cur) {
       cur.t += dt;
       if (cur.t >= cur.dur) cur = null;
-    } else if (authority() && time > FROM && !G.Rift.inArena && !G.Judgment.active) {
+    } else if (authority() && time > B.from && !G.Rift.inArena && !G.Judgment.active) {
       checkT -= dt;
       if (checkT <= 0) {
-        checkT = CHECK;
-        if (Math.random() < CHANCE) {
+        checkT = B.check;
+        if (R.chance(B.chance)) {
           const kind = pick(G.World.biome),
-            dur = Math.round(G.U.rand(55, 75));
+            dur = Math.round(R.range(B.dur[0], B.dur[1]));
           start(kind, dur);
           if (G.Coop.isHost) G.Coop.broadcast(['wx', kind, dur]);
         }
@@ -153,19 +148,19 @@ G.Weather = (() => {
     // Sand and snow: they chip a little HP off you (never down to KO).
     chipT -= dt;
     if (chipT <= 0) {
-      chipT = 2;
-      if (pl && !pl.dead && hurts(pl.mon.types) && level() > 0.5) {
-        const d = Math.max(1, pl.maxHp * 0.012);
+      chipT = B.chipEvery;
+      if (pl && !pl.dead && hurts(pl.mon.types) && level() > B.chipLevel) {
+        const d = Math.max(1, pl.maxHp * B.chipPlayer);
         if (pl.hp > d + 1) {
           pl.hp -= d;
           G.FX.dmgText(pl.x, pl.y - pl.bodyH - 4, '-' + Math.round(d), def().color);
         }
       }
-      if (authority() && cur && def().safe && level() > 0.5) {
+      if (authority() && cur && rules().safe && level() > B.chipLevel) {
         for (const e of G.EnemyMgr.all()) {
           if (e.dead || e.remote || e.boss) continue;
           if (!hurts(e.types || [])) continue;
-          e.hp -= e.maxHp * 0.02 + 1;
+          e.hp -= e.maxHp * B.chipEnemy + 1;
           e.flash = 0.05;
           if (e.hp <= 0) e.die();
         }
@@ -178,6 +173,7 @@ G.Weather = (() => {
     if (ev[1]) start(ev[1], ev[2]);
     else stop();
   }
+  G.Sync.on('wx', onEvent);
 
   // ---------------- drawing (screen space) ----------------
 

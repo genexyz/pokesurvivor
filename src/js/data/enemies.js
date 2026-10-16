@@ -31,6 +31,9 @@
  * (systems/rift.js).
  */
 G.Enemies = (() => {
+  const B = G.Balance.enemies;
+  const RC = G.RNG.stream('cast');
+  const RE = G.RNG.stream('events');
   const TIERS = [
     { from: 0, bst: [180, 330], hp: 17, spd: 56, dmg: 6, xp: 3.5, cast: 7 },
     { from: 70, bst: [300, 405], hp: 32, spd: 62, dmg: 8.5, xp: 5, cast: 7 },
@@ -118,31 +121,35 @@ G.Enemies = (() => {
 
   /** Builds the enemy definition of a Pokémon for a tier. */
   function defFor(p, tier, ti) {
-    const hpK = G.U.clamp(baseHp(p) / 65, 0.7, 1.6);
-    const spdK = G.U.clamp(0.75 + baseSpd(p) / 260, 0.75, 1.3);
+    const D = B.def;
+    const hpK = G.U.clamp(baseHp(p) / D.hpK.div, D.hpK.min, D.hpK.max);
+    const spdK = G.U.clamp(D.spdK.base + baseSpd(p) / D.spdK.div, D.spdK.min, D.spdK.max);
     const behavior = behaviorOf(p);
+    const tank = behavior === 'tank';
     const d = {
       dex: p.dex,
       name: p.name,
       behavior,
-      hp: Math.round(tier.hp * hpK * (behavior === 'tank' ? 1.5 : 1)),
-      spd: Math.round(tier.spd * spdK * (behavior === 'tank' ? 0.7 : 1)),
-      dmg: Math.round(tier.dmg * (behavior === 'tank' ? 1.2 : 1)),
-      xp: Math.max(3, Math.round(tier.xp * (behavior === 'tank' ? 1.3 : 1)))
+      hp: Math.round(tier.hp * hpK * (tank ? D.tank.hp : 1)),
+      spd: Math.round(tier.spd * spdK * (tank ? D.tank.spd : 1)),
+      dmg: Math.round(tier.dmg * (tank ? D.tank.dmg : 1)),
+      xp: Math.max(D.minXp, Math.round(tier.xp * (tank ? D.tank.xp : 1)))
     };
     // Ranged fighters: shot damage, cooldown and distance.
-    const CD = { ranged: 2.2 - ti * 0.15, fan: 3.2 - ti * 0.15, beamer: 4.4 - ti * 0.2, zoner: 4.6 - ti * 0.2, healer: 3.5, summoner: 7 };
+    const CD = D.shotCd(ti);
     if (CD[behavior]) {
-      d.shotDmg = Math.round(tier.dmg * (behavior === 'fan' ? 0.7 : 0.8));
+      d.shotDmg = Math.round(tier.dmg * (behavior === 'fan' ? D.shotDmg.fan : D.shotDmg.other));
       d.shotCd = +CD[behavior].toFixed(2);
-      d.range = (behavior === 'beamer' ? 260 : behavior === 'healer' || behavior === 'summoner' ? 230 : 190) + ti * 6;
+      d.range =
+        (behavior === 'beamer' ? D.range.beamer : behavior === 'healer' || behavior === 'summoner' ? D.range.support : D.range.other) +
+        ti * D.range.perTier;
     }
     if (behavior === 'summoner') d.minion = SUMMON[p.dex];
-    if (behavior === 'fan') d.fanN = ti < 2 ? 3 : 5; // wider fan later on
-    if (behavior === 'zoner') d.zones = ti < 2 ? 1 : ti < 4 ? 2 : 3; // more zones later on
+    if (behavior === 'fan') d.fanN = D.fanN(ti); // wider fan later on
+    if (behavior === 'zoner') d.zones = D.zones(ti); // more zones later on
     if (behavior === 'bomber') {
-      d.spd = Math.round(d.spd * 1.25);
-      d.hp = Math.round(d.hp * 0.8);
+      d.spd = Math.round(d.spd * D.bomber.spd);
+      d.hp = Math.round(d.hp * D.bomber.hp);
     }
     return d;
   }
@@ -167,29 +174,29 @@ G.Enemies = (() => {
     const kind = p => behaviorOf(p);
     // First the support kind (equal odds) and then the Pokémon.
     const kinds = SUPPORT.filter(k => all.some(p => kind(p) === k));
-    const sk = kinds.length ? kinds[Math.floor(Math.random() * kinds.length)] : null;
+    const sk = kinds.length ? RC.pick(kinds) : null;
     const pick = sk
-      ? G.U.pickN(
+      ? RC.pickN(
           all.filter(p => kind(p) === sk),
           1
         )
       : [];
     if (tier.from > 0)
       pick.push(
-        ...G.U.pickN(
+        ...RC.pickN(
           all.filter(p => !PLAIN.includes(kind(p)) && !SUPPORT.includes(kind(p))),
           1
         )
       );
     if (tier.from === 0)
       return pick.concat(
-        G.U.pickN(
+        RC.pickN(
           all.filter(p => !pick.includes(p) && PLAIN.includes(kind(p))),
           tier.cast - pick.length
         )
       );
     return pick.concat(
-      G.U.pickN(
+      RC.pickN(
         all.filter(p => !pick.includes(p)),
         tier.cast - pick.length
       )
@@ -210,47 +217,43 @@ G.Enemies = (() => {
       const r = plain.sort((a, b) => b.spd - a.spd)[0];
       if (r) {
         r.behavior = 'runner';
-        r.spd = Math.round(r.spd * 1.6);
-        r.hp = Math.round(r.hp * 0.7);
+        r.spd = Math.round(r.spd * B.def.runner.spd);
+        r.hp = Math.round(r.hp * B.def.runner.hp);
       }
     }
     const used = new Set();
+    const BB = B.boss;
     bosses = BOSS_SLOTS.map(slot => {
       const ok = p => !p.leg && G.SPRITE_META[p.dex] && !used.has(p.dex);
       let pool = G.DEX.filter(p => ok(p) && p.bst >= slot.bst[0] && p.bst <= slot.bst[1]);
-      if (!pool.length) pool = G.DEX.filter(p => ok(p) && p.bst >= 580);
-      const p = G.U.pick(pool);
+      if (!pool.length) pool = G.DEX.filter(p => ok(p) && p.bst >= BB.fallbackBst);
+      const p = RC.pick(pool);
       used.add(p.dex);
       return {
         at: slot.at,
         dex: p.dex,
         name: p.name,
-        // (Tougher since 2026-10-10: ×1.35 HP and ×1.2 damage.)
-        hp: Math.round(slot.hp * 1.35),
-        spd: Math.round(G.U.clamp(40 + baseSpd(p) * 0.5, 40, 100)),
-        dmg: Math.round(slot.dmg * 1.2),
+        hp: Math.round(slot.hp * BB.hp),
+        spd: Math.round(G.U.clamp(BB.spd.base + baseSpd(p) * BB.spd.k, BB.spd.min, BB.spd.max)),
+        dmg: Math.round(slot.dmg * BB.dmg),
         xp: slot.xp,
-        behavior: behaviorOf(p) === 'ranged' ? 'ranged' : baseSpd(p) > 90 ? 'charger' : 'chase',
-        shotDmg: Math.round(slot.dmg * 0.55),
-        shotCd: 1.1,
-        range: 260
+        behavior: behaviorOf(p) === 'ranged' ? 'ranged' : baseSpd(p) > BB.chargerSpd ? 'charger' : 'chase',
+        shotDmg: Math.round(slot.dmg * BB.shotDmg),
+        shotCd: BB.shotCd,
+        range: BB.range
       };
     });
     return { cast, bosses };
   }
 
-  // (The minute-60 "overtime" was removed when Arceus's Judgment arrived,
-  //  which ends every run at minute 30: see systems/judgment.js.)
+  /** Difficulty multipliers at second `t` (curve in G.Balance.enemies.scale). */
   function scale(t) {
-    return { hp: 1 + t / 95, dmg: 1 + t / 420, spd: 1 + Math.min(0.35, t / 1400) };
+    return B.scale(t);
   }
 
-  /**
-   * Bosses already come with increasing base HP (1,400 ... 16,000), so they
-   * scale much more gently: with the normal curve the last one reached 168,000 HP.
-   */
+  /** Boss multipliers at second `t` (much gentler: bosses already have increasing base HP). */
   function bossScale(t) {
-    return { hp: 1 + t / 600, dmg: 1 + t / 600, spd: 1 };
+    return B.bossScale(t);
   }
 
   /** Tier active at second `t`. */
@@ -266,13 +269,13 @@ G.Enemies = (() => {
   /** Types with enough Pokémon in the current tier for a horde (events.js). */
   function hordeTypes(t) {
     const all = candidates(TIERS[tierAt(t)]).filter(p => !NO_HORDE.has(behaviorOf(p)));
-    return Object.keys(G.U.TYPE_COLOR).filter(ty => all.filter(p => p.types.includes(ty)).length >= 3);
+    return Object.keys(G.U.TYPE_COLOR).filter(ty => all.filter(p => p.types.includes(ty)).length >= B.horde.minPerType);
   }
-  /** Up to 4 Pokémon of a type, with the current tier's stats. */
+  /** Up to B.horde.size Pokémon of a type, with the current tier's stats. */
   function hordeDefs(type, t) {
     const ti = tierAt(t);
     const pool = candidates(TIERS[ti]).filter(p => p.types.includes(type) && !NO_HORDE.has(behaviorOf(p)));
-    return G.U.pickN(pool, 4).map(p => defFor(p, TIERS[ti], ti));
+    return RE.pickN(pool, B.horde.size).map(p => defFor(p, TIERS[ti], ti));
   }
 
   /** Bag of enemies available at second `t`. */
@@ -284,7 +287,7 @@ G.Enemies = (() => {
     const bag = [];
     for (const tier of cast) {
       if (t < tier.from) continue;
-      const w = t - tier.from > 260 ? 3 : 10; // old tiers lose weight
+      const w = t - tier.from > B.bag.oldAfter ? B.bag.oldWeight : B.bag.weight; // old tiers lose weight
       for (const e of tier.list) for (let i = 0; i < w; i++) bag.push(e);
     }
     return bag.length ? bag : cast[0].list;

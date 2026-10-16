@@ -6,6 +6,7 @@
  *   here     ×1.6    ×0.6    ×0.3
  *
  * With two types they multiply (×1.6 · ×1.6 = ×2.56), capped to [×0.3, ×2.4].
+ * (The live values are in G.Balance.combat.types.)
  * Used both ways: your attacks against enemies and the enemies' attacks
  * against you (their main type, or the type of their shot).
  */
@@ -31,17 +32,22 @@ G.Types = (() => {
     steel: { fire: 0.5, water: 0.5, electric: 0.5, ice: 2, rock: 2, steel: 0.5, fairy: 2 },
     fairy: { fire: 0.5, fighting: 2, poison: 0.5, dragon: 2, dark: 2, steel: 0.5 }
   };
-  const SOFT = { 2: 1.6, 0.5: 0.6, 0: 0.3 };
-  const MIN = 0.3,
-    MAX = 2.4;
+  // Softening and clamp: G.Balance.combat.types.
+  const B = G.Balance.combat;
 
   /** Multiplier of an `atk`-type attack against a Pokémon with types `def`. */
   function mult(atk, def) {
     const row = CHART[atk];
     if (!row || !def) return 1;
+    const T = B.types;
     let m = 1;
-    for (const t of def) if (row[t] != null) m *= SOFT[row[t]];
-    return G.U.clamp(m, MIN, MAX);
+    for (const t of def) if (row[t] != null) m *= T.soft[row[t]];
+    return G.U.clamp(m, T.min, T.max);
+  }
+
+  /** Full damage multiplier of an attack: type chart × weather (used for every hit, both ways). */
+  function attackMult(atk, def) {
+    return mult(atk, def) * G.Weather.mult(atk);
   }
 
   /** 'super' | 'weak' | null, to show the hint. */
@@ -49,5 +55,5 @@ G.Types = (() => {
     return m > 1.05 ? 'super' : m < 0.95 ? 'weak' : null;
   }
 
-  return { CHART, mult, label };
+  return { CHART, mult, attackMult, label };
 })();

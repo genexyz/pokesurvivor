@@ -8,6 +8,8 @@
  *   - after 70 pulls without a 5★ on that banner, the next one is a guaranteed 5★
  * Shiny: 1 in 100 pulls comes out in its shiny version.
  * Duplicates: turned into Pokécoins (duplicate shinies, triple).
+ * All of these numbers live in G.Balance.gacha. Pulls roll on Math.random on
+ * purpose: a run seed must not make the gacha predictable.
  *
  * Pulls cost TICKETS (earned by playing):
  *   ×1   1 ticket
@@ -21,17 +23,9 @@ G.Gacha = (() => {
     if (n === 10 && use === 't10') return t.t10 >= 1 ? { t1: 0, t10: 1 } : null;
     return t.t1 >= n ? { t1: n, t10: 0 } : null;
   }
-  const RATES = [
-    [1, 45],
-    [2, 30],
-    [3, 17],
-    [4, 6.5],
-    [5, 1.5]
-  ];
-  const PITY_5 = 70;
-  const SHINY_RATE = 1 / 100;
-  const REFUND = { 1: 15, 2: 30, 3: 60, 4: 120, 5: 300 };
-  let forceShiny = 0; // for testing and videos: the next N come out shiny
+  const B = G.Balance.gacha;
+  // Shiny roll with the debug override (for testing and videos), shared with the spawner.
+  const shinies = G.Spawner.shinyRoller(() => B.shinyRate, Math.random);
 
   const RARITY_NAME = { 1: 'Common', 2: 'Uncommon', 3: 'Rare', 4: 'Epic', 5: 'Legendary' };
   const RARITY_COLOR = { 1: '#9fb1c9', 2: '#5fe08a', 3: '#4fb4ff', 4: '#c47bff', 5: '#ffcb3d' };
@@ -69,7 +63,7 @@ G.Gacha = (() => {
   }
 
   function rollRarity(min = 1) {
-    const rates = RATES.filter(([r]) => r >= min);
+    const rates = B.rates.filter(([r]) => r >= min);
     const total = rates.reduce((a, [, w]) => a + w, 0);
     let x = Math.random() * total;
     for (const [r, w] of rates) {
@@ -105,14 +99,14 @@ G.Gacha = (() => {
     for (let i = 0; i < n; i++) {
       save.pity[gen]++;
       let want;
-      if (save.pity[gen] >= PITY_5) want = 5;
-      else if (n === 10 && i === n - 1 && !out.some(r => r.rarity >= 4)) want = rollRarity(4);
+      if (save.pity[gen] >= B.pity5) want = 5;
+      else if (n === 10 && i === n - 1 && !out.some(r => r.rarity >= B.tenMin)) want = rollRarity(B.tenMin);
       else want = rollRarity();
 
       const { rarity, list } = poolNear(want, gen);
       if (rarity === 5) save.pity[gen] = 0;
       let mon = G.U.pick(list);
-      let shiny = G.Sprites.hasShiny(mon.dex) && (forceShiny > 0 ? (forceShiny--, true) : Math.random() < SHINY_RATE);
+      let shiny = G.Sprites.hasShiny(mon.dex) && shinies.roll();
       // Shinies don't repeat: if you already have that one, another of the same rarity
       // whose shiny you're missing comes out; if you have them all, it comes out normal.
       if (shiny && save.shiny[mon.dex]) {
@@ -126,12 +120,12 @@ G.Gacha = (() => {
       if (shiny) {
         isNew = !save.shiny[mon.dex];
         if (isNew) save.shiny[mon.dex] = { at: Date.now(), from: 'gacha' };
-        else refund = REFUND[rarity] * 3;
+        else refund = B.refund[rarity] * B.shinyRefundK;
         if (!save.owned[mon.dex]) save.owned[mon.dex] = { at: Date.now(), from: 'gacha' };
       } else {
         isNew = !save.owned[mon.dex];
         if (isNew) save.owned[mon.dex] = { at: Date.now(), from: 'gacha' };
-        else refund = REFUND[rarity];
+        else refund = B.refund[rarity];
       }
       save.coins += refund;
       out.push({ dex: mon.dex, rarity, shiny, isNew, refund });
@@ -142,13 +136,21 @@ G.Gacha = (() => {
 
   return {
     debugForceShiny(n = 1) {
-      forceShiny = n;
+      shinies.force(n);
     },
     costOf,
-    RATES,
-    PITY_5,
-    SHINY_RATE,
-    REFUND,
+    get RATES() {
+      return B.rates;
+    },
+    get PITY_5() {
+      return B.pity5;
+    },
+    get SHINY_RATE() {
+      return B.shinyRate;
+    },
+    get REFUND() {
+      return B.refund;
+    },
     RARITY_NAME,
     RARITY_COLOR,
     BANNERS,

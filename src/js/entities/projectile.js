@@ -9,6 +9,7 @@
  * objects stop them (see combat.js).
  */
 G.Projectiles = (() => {
+  const B = G.Balance.combat;
   let list = [];
   let nextId = 1;
 
@@ -21,6 +22,7 @@ G.Projectiles = (() => {
 
   /** Player projectile. */
   function spawn(o) {
+    const D = B.projectile;
     const p = Object.assign(
       {
         id: nextId++,
@@ -28,9 +30,9 @@ G.Projectiles = (() => {
         y: 0,
         vx: 0,
         vy: 0,
-        dmg: 10,
-        r: 6,
-        life: 1.4,
+        dmg: D.dmg,
+        r: D.r,
+        life: D.life,
         t: 0,
         pierce: 0,
         hits: null,
@@ -42,7 +44,7 @@ G.Projectiles = (() => {
         poison: 0,
         knock: 0,
         orb: false,
-        rehit: 0.34,
+        rehit: D.rehit,
         hitLog: null,
         phits: null
       },
@@ -102,9 +104,10 @@ G.Projectiles = (() => {
         }
         if (p.back) {
           const [dx, dy] = G.U.norm(o.x - p.x, o.y - p.y);
-          p.vx = G.U.damp(p.vx, dx * p.bsp, 7, dt);
-          p.vy = G.U.damp(p.vy, dy * p.bsp, 7, dt);
-          if (G.U.dist2(p.x, p.y, o.x, o.y) < (o.r + 8) ** 2) {
+          const bm = B.boomerang;
+          p.vx = G.U.damp(p.vx, dx * p.bsp, bm.returnDamp, dt);
+          p.vy = G.U.damp(p.vy, dy * p.bsp, bm.returnDamp, dt);
+          if (G.U.dist2(p.x, p.y, o.x, o.y) < (o.r + bm.catchPad) ** 2) {
             list.splice(i, 1);
             continue;
           }
@@ -113,7 +116,7 @@ G.Projectiles = (() => {
 
       // Homing: bends velocity towards the nearest enemy.
       if (p.homing > 0 && p.friendly) {
-        const tg = nearest(enemies, p.x, p.y, 340);
+        const tg = nearest(enemies, p.x, p.y, B.projectile.homingRange);
         if (tg) {
           const [dx, dy] = G.U.norm(tg.x - p.x, tg.cy() - p.y);
           const sp = Math.hypot(p.vx, p.vy);
@@ -135,7 +138,7 @@ G.Projectiles = (() => {
       p.y += p.vy * dt;
 
       // Out of view with a generous margin -> discarded.
-      if (!G.Camera.sees(p.x, p.y, 260)) {
+      if (!G.Camera.sees(p.x, p.y, B.projectile.despawnMargin)) {
         list.splice(i, 1);
         continue;
       }

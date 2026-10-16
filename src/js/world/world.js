@@ -449,6 +449,11 @@ G.World = (() => {
     else broken.add(k);
   }
 
+  // Prop loot: amounts and chances in G.Balance.drops; what drops is rolled on
+  // the seeded 'loot' stream, where the coins scatter is cosmetic.
+  const LOOT = G.Balance.drops;
+  const lootR = G.RNG.stream('loot');
+
   function destroyProp(p, fromNet = false) {
     broken.add(p.tx + ',' + p.ty);
     if (G.Coop.active && !fromNet) G.Coop.propBroken(p);
@@ -463,29 +468,32 @@ G.World = (() => {
     G.Audio.sfx(p.type === 'grass' ? 'grass' : p.type === 'chest' ? 'chest' : 'break');
     if (p.type === 'grass') {
       G.FX.burst(p.x, p.y - 6, B.grass[1], 6, 70);
-      const r = Math.random();
-      if (r < 0.05) G.Pickups.drop('heal', p.x, p.y);
-      else if (r < 0.11) G.Pickups.drop('coin', p.x, p.y, 1);
+      const r = lootR.next(),
+        L = LOOT.grass;
+      if (r < L.heal) G.Pickups.drop('heal', p.x, p.y);
+      else if (r < L.coin) G.Pickups.drop('coin', p.x, p.y, L.coinValue);
       return;
     }
     if (p.type === 'rock') {
       G.FX.burst(p.x, p.y - 10, B.rock[1], 14, 140);
       G.FX.ring(p.x, p.y - 8, 4, 26, B.rock[2], 0.3, 3);
-      const r = Math.random();
-      if (r < 0.4) G.Pickups.dropXp(p.x, p.y, 6);
-      if (r > 0.75) G.Pickups.drop('coin', p.x, p.y, 2);
-      if (r > 0.94) G.Pickups.drop('heal', p.x + 8, p.y);
+      const r = lootR.next(),
+        L = LOOT.rock;
+      if (r < L.xpBelow) G.Pickups.dropXp(p.x, p.y, L.xp);
+      if (r > L.coinAbove) G.Pickups.drop('coin', p.x, p.y, L.coinValue);
+      if (r > L.healAbove) G.Pickups.drop('heal', p.x + 8, p.y);
       return;
     }
     if (p.type === 'chest') {
       G.FX.burst(p.x, p.y - 10, '#f2c443', 22, 180);
       G.FX.ring(p.x, p.y - 8, 6, 46, '#f2c443', 0.45, 4);
       G.Camera.kick(0.25);
-      const n = G.U.randInt(4, 7);
-      for (let i = 0; i < n; i++) G.Pickups.drop('coin', p.x + G.U.rand(-14, 14), p.y + G.U.rand(-10, 10), 3);
-      G.Pickups.drop(Math.random() < 0.5 ? 'heal' : 'magnet', p.x, p.y);
-      G.Pickups.dropXp(p.x, p.y, 20);
-      if (Math.random() < 0.08) G.Pickups.drop('item', p.x, p.y - 12, G.Items.roll());
+      const L = LOOT.chest;
+      const n = lootR.int(L.coins[0], L.coins[1]);
+      for (let i = 0; i < n; i++) G.Pickups.drop('coin', p.x + G.U.rand(-14, 14), p.y + G.U.rand(-10, 10), L.coinValue);
+      G.Pickups.drop(lootR.chance(L.healChance) ? 'heal' : 'magnet', p.x, p.y);
+      G.Pickups.dropXp(p.x, p.y, L.xp);
+      if (lootR.chance(L.item)) G.Pickups.drop('item', p.x, p.y - 12, G.Items.roll());
       return;
     }
     if (p.type === 'bigchest') {
@@ -493,11 +501,12 @@ G.World = (() => {
       G.FX.burst(p.x, p.y - 12, '#f2c443', 34, 220);
       G.FX.ring(p.x, p.y - 8, 6, 80, '#f2c443', 0.6, 5);
       G.Camera.kick(0.4);
-      for (let i = 0; i < 9; i++) G.Pickups.drop('coin', p.x + G.U.rand(-22, 22), p.y + G.U.rand(-14, 14), 4);
-      const tk = G.U.randInt(1, 3);
+      const L = LOOT.bigchest;
+      for (let i = 0; i < L.coins; i++) G.Pickups.drop('coin', p.x + G.U.rand(-22, 22), p.y + G.U.rand(-14, 14), L.coinValue);
+      const tk = lootR.int(L.tickets[0], L.tickets[1]);
       for (let i = 0; i < tk; i++) G.Pickups.drop('ticket', p.x + G.U.rand(-16, 16), p.y + G.U.rand(-10, 10), 1);
-      if (Math.random() < 0.15) G.Pickups.drop('ticket10', p.x, p.y - 10, 1);
-      if (Math.random() < 0.5) G.Pickups.drop('item', p.x + 14, p.y - 14, G.Items.roll());
+      if (lootR.chance(L.t10)) G.Pickups.drop('ticket10', p.x, p.y - 10, 1);
+      if (lootR.chance(L.item)) G.Pickups.drop('item', p.x + 14, p.y - 14, G.Items.roll());
       G.Pickups.dropXp(p.x, p.y, G.Game.levelXp());
       G.Progress.event('chest');
       return;

@@ -392,16 +392,12 @@ plucked guitar, bass, pad, lead and drums, with reverb). Zero audio files.
 
 **2026-10-07 · database and publishing**
 
-- **Firebase** (Authentication + Firestore): accounts with username + password or
-  Google; the save follows you on any computer. Local copy for playing
-  offline, real-time listening to other computers and a **merge** on
-  sync (collections combined, maximums for upgrades/stats, coins and
-  partner from the most recent version). Rules: each player can only access
-  `saves/{their uid}`. Old local accounts are uploaded when signing in with the
-  same username and password. Tested with the official emulator in two browsers.
+- **Cloud saves** on our own server (`server/`: Node + Postgres) with Google-only
+  accounts (better-auth). Local copy for playing offline and a **merge** on
+  sync (collections combined, maximums for upgrades/stats, coins and partner
+  from the most recent version; the same merge runs on the server).
 - With no configuration, or opened with a double click, it stays in local mode.
-- **Legal notice and privacy** with a contact for takedown requests and a button
-  to delete the account. Open source (MIT) on GitHub (JPTER78).
+- **Legal notice and privacy** with a button to delete the account.
 - Measures NOT applied unless requested: renaming without "Pokémon" and removing
   the sprites ripped from the games (the CHUNSOFT ones).
 
@@ -409,10 +405,6 @@ plucked guitar, bass, pad, lead and drums, with reverb). Zero audio files.
 
 - The game is renamed **PokéSurvivor** (no "Pokémon" in the name, like
   PokéRogue or Showdown). Repository: `pokesurvivor`.
-- Firebase: new project **`pokesurvivor-jpter`** (Firestore in eur3, email/
-  password and Google enabled, domains `jpter78.github.io` and `localhost`). The
-  projects `pokemon-survivors-jpter` and `asdaad-9e84f` were deleted (recoverable for 30 days
-  in Google Cloud).
 
 **2026-10-09 · mobile and settings**
 
@@ -433,20 +425,8 @@ plucked guitar, bass, pad, lead and drums, with reverb). Zero audio files.
   that would not start on mobile; summoners respect the enemy cap;
   a clear notice if a game file fails to load.
 
-**2026-10-09 · spending as little Firebase as possible (free plan)**
+**2026-10-09 · fewer but stronger enemies**
 
-- **Leaderboard with a summary**: one `lbs/{table}` document with the top 50 per
-  table (1 read per tab instead of ~52) and a 10-min cache in the
-  browser; your own records are remembered to avoid reading before writing.
-  The per-Pokémon filter remains **only on all-time** (half the writes).
-- **Approximate "online"** via Firestore (`pres/`, heartbeat every 10 min, read
-  when opening Friends or the lobby) and **invitations via Firestore** (`inv/`). The
-  Realtime Database only connects inside a lobby: the free plan's cap of 100
-  connections no longer limits regular players.
-- **Cloud saves** at most every 30 s (and on close), with no live
-  listening to your own document; public profile at most every 10 min.
-- Measured in the emulator: viewing the whole leaderboard twice went from 1,275 to 20
-  reads; finishing a run from 12 to 3.
 - Fewer Pokémon on screen but stronger (×0.45 count, ×2.1 HP,
   ×1.35 damage, ×2.6 experience) and no "Super effective!" texts.
 
@@ -455,10 +435,9 @@ plucked guitar, bass, pad, lead and drums, with reverb). Zero audio files.
 - **Co-op up to 4** with a **friends list** (no lobby codes or public
   lobbies). Shared experience and **cards that wait for everyone**; a downed player
   is **revived** by standing next to them.
-- **Direct WebRTC** connection with signaling through the **Realtime Database**
-  (new instance `pokesurvivor-jpter-default-rtdb`, europe-west1), and a **relay**
-  through that same database if a direct connection is not possible. No own
-  server and no paid TURN.
+- **Direct WebRTC** connection between browsers (Google's free STUN); lobbies,
+  invitations, online friends and signaling go through our server's `/ws`
+  WebSocket (`server/live.mjs`). No paid TURN.
 - **Unique nickname** for friends and leaderboard; Google accounts pick it when
   signing in (privacy: their real name is not shown).
 - **Time-survived leaderboard**: Solo / Group, daily to all-time, friends,

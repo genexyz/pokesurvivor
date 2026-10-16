@@ -27,6 +27,11 @@ G.Game = (() => {
   let pl = null;
   let caught = []; // shinies caught in this run
   let biome = -1;
+  // Run tuning (biome length, revive, death delays, end-of-run coins): G.Balance.run;
+  // pickup effects (berry, bomb): G.Balance.drops.
+  const BR = G.Balance.run,
+    BD = G.Balance.drops;
+  const levelupR = G.RNG.stream('levelup');
 
   const st = {
     get time() {
@@ -113,8 +118,15 @@ G.Game = (() => {
 
   // ---------------- run ----------------
 
+  // Seed for the next solo runs (?seed=CODE in the URL or the dev panel); null = random.
+  let fixedSeed = G.RNG.parse(new URLSearchParams(location.search).get('seed'));
+
   /** @param coop  { seed, host, members } for a group run */
   function startRun(coop = null) {
+    // First of all: every system rolls its run from these streams (core/rng.js).
+    if (coop) G.RNG.start(coop.seed);
+    else if (fixedSeed != null) G.RNG.start(fixedSeed, true);
+    else G.RNG.start();
     holdBy = [];
     awayBy = null;
     const save = G.DB.save;
@@ -135,7 +147,7 @@ G.Game = (() => {
     G.Weather.reset();
     G.Path.clear();
     G.Hazards.clear();
-    G.World.reset(coop ? coop.seed : Math.floor(Math.random() * 1e6));
+    G.World.reset(G.RNG.seed);
     G.World.setBiome(0, true);
     biome = 0;
     time = 0;
@@ -157,7 +169,7 @@ G.Game = (() => {
     // "Repertoire" upgrade: a second random attack move.
     if (perks.startMoves >= 2) {
       const pool = G.Moves.poolFor(mon).filter(id => !pl.hasMove(id) && !pl.banned.has(id) && G.Moves.BY_ID[id].kind !== 'buff');
-      if (pool.length) pl.addMove(G.U.pick(pool));
+      if (pool.length) pl.addMove(levelupR.pick(pool));
       pl.setActive(0);
     }
 
@@ -190,7 +202,7 @@ G.Game = (() => {
 
   /** Experience needed for the next level (locked chests). */
   function levelXp() {
-    if (!pl) return 20;
+    if (!pl) return BR.levelXpFallback;
     const k = (G.Coop.active ? G.Coop.xpFactor() : 1) * (pl.xpMul || 1);
     return Math.ceil((pl.xpNext - pl.xp + 1) / k);
   }
@@ -357,8 +369,8 @@ G.Game = (() => {
     if (isNew) {
       G.DB.grant(dex, 'rescue');
       G.DB.commit(true);
-    } else pl.coins += 150;
-    G.Spawner.say(isNew ? `${name} joins your team!` : `${name} thanks you! (+150 coins, you already had it)`, 4);
+    } else pl.coins += BR.rescueDupCoins;
+    G.Spawner.say(isNew ? `${name} joins your team!` : `${name} thanks you! (+${G.U.num(BR.rescueDupCoins)} coins, you already had it)`, 4);
     G.Audio.sfx('shinyGet');
   };
 
@@ -370,8 +382,8 @@ G.Game = (() => {
     G.DB.save.stats.shinies++;
     G.DB.commit(true);
     caught.push({ dex: e.dex, isNew });
-    G.Spawner.say(isNew ? `You got a shiny ${e.name}!` : `Another shiny ${e.name}! (+300 coins)`, 4);
-    if (!isNew) pl.coins += 300;
+    G.Spawner.say(isNew ? `You got a shiny ${e.name}!` : `Another shiny ${e.name}! (+${G.U.num(BR.shinyDupCoins)} coins)`, 4);
+    if (!isNew) pl.coins += BR.shinyDupCoins;
     G.Audio.sfx('shinyGet');
   };
 
@@ -387,10 +399,11 @@ G.Game = (() => {
     G.Audio.sfx(dead ? 'gameover' : 'back');
     const save = G.DB.save;
     const mul = pl.coinMul;
+    const C = BR.coins;
     const parts = {
-      time: Math.floor(time / 5),
-      defeated: Math.floor(pl.kills * 0.25),
-      bosses: pl.bosses * 80,
+      time: Math.floor(time / C.perSeconds),
+      defeated: Math.floor(pl.kills * C.perKill),
+      bosses: pl.bosses * C.perBoss,
       collected: pl.coins
     };
     const coins = Math.round((parts.time + parts.defeated + parts.bosses + parts.collected) * mul);
@@ -417,7 +430,8 @@ G.Game = (() => {
     // Leaderboard: solo, each player submits their own; in a group the host submits it.
     const mark = { t: Math.floor(time), lv: pl.level, kills: pl.kills };
     // If the run was tampered with (see clean()), it isn't submitted to the leaderboard (silently); everything else is.
-    const ok = clean();
+    // (Nor is a run with a chosen seed: you could pick an easy one.)
+    const ok = clean() && !G.RNG.custom;
     const sent =
       ok && !coop
         ? G.Ranking.submitSolo(Object.assign(mark, { dex: pl.dex, shiny: pl.shiny }))
@@ -657,7 +671,7 @@ G.Game = (() => {
       return;
     }
     if (p.kind === 'heal') {
-      if (mine) pl.heal(pl.maxHp * 0.3);
+      if (mine) pl.heal(pl.maxHp * BD.berryHeal);
       G.FX.ring(who.x, who.y, 6, 60, '#5fe08a', 0.4, 3);
       return;
     }
@@ -672,7 +686,7 @@ G.Game = (() => {
       G.FX.ring(who.x, who.y, 20, R, '#ff7b3d', 0.5, 6);
       for (const e of G.EnemyMgr.all()) {
         if (mine ? !G.Camera.sees(e.x, e.y, 0) : G.U.dist2(e.x, e.y, who.x, who.y) > R * R) continue;
-        e.hurt(60 + pl.level * 14, '#ff7b3d', e.x - who.x, e.y - who.y, 160);
+        e.hurt(BD.bomb.base + pl.level * BD.bomb.perLevel, '#ff7b3d', e.x - who.x, e.y - who.y, BD.bomb.knock);
       }
     }
   }
@@ -820,7 +834,7 @@ G.Game = (() => {
       G.EnemyMgr.update(dt * 0.3, pl);
       G.FX.update(dt);
       G.Camera.follow(pl.x, pl.y, dt);
-      if (deathT > 1.3) {
+      if (deathT > BR.deathDelay.solo) {
         deathT = 0;
         endRun(true);
       }
@@ -828,7 +842,7 @@ G.Game = (() => {
     }
     time += dt;
 
-    const b = Math.floor(time / 240);
+    const b = Math.floor(time / BR.biomeLength);
     if (b !== biome && !G.Rift.inArena && !G.Judgment.active) {
       biome = b;
       G.World.setBiome(b);
@@ -885,9 +899,10 @@ G.Game = (() => {
 
   /** Fainted in a group: a teammate next to you gradually revives you. */
   function reviveTick(dt) {
-    const helper = G.Coop.puppets().some(p => !p.dead && G.U.dist2(p.x, p.y, pl.x, pl.y) < 56 * 56);
-    pl.reviveT = helper ? (pl.reviveT || 0) + dt : Math.max(0, (pl.reviveT || 0) - dt * 0.5);
-    if (pl.reviveT >= G.Player.REVIVE_TIME) pl.revive(0.5);
+    const R = G.Balance.player.revive;
+    const helper = G.Coop.puppets().some(p => !p.dead && G.U.dist2(p.x, p.y, pl.x, pl.y) < R.radius * R.radius);
+    pl.reviveT = helper ? (pl.reviveT || 0) + dt : Math.max(0, (pl.reviveT || 0) - dt * R.decay);
+    if (pl.reviveT >= R.time) pl.revive();
   }
 
   /** Host: if everyone faints, it ends (after showing the last one fall). */
@@ -897,7 +912,7 @@ G.Game = (() => {
       return;
     }
     deathT += dt;
-    if (deathT > 1.6) {
+    if (deathT > BR.deathDelay.group) {
       deathT = 0;
       G.Coop.over(summary());
       endRun(true);
@@ -1106,26 +1121,63 @@ G.Game = (() => {
     levelXp,
     flash,
     offerBond,
-    /** For testing: skips the run clock. */
-    debugTime(t) {
-      tampered = true;
-      time = t;
-    },
-    /** For recording videos: slow motion (0.5 = half speed). */
-    debugSpeed(k) {
-      if (k > 1) tampered = true;
-      speedK = k;
-    },
     togglePause,
     /** Abandons the current run (e.g. when logging out from Settings). */
     quit() {
       if (state !== 'ui' && state !== 'over') quitRun();
     },
-    /** For recording videos: opens the level-up cards. */
-    debugLevelUp() {
-      tampered = true;
-      pl.level++;
-      pendingLevels++;
+    /**
+     * Testing tools (the dev panel, ui/dev-ui.js, and the console in npm run dev).
+     * Anything that changes the run marks it as tampered: no leaderboard.
+     */
+    debug: {
+      /** Jumps the run clock to `t` seconds. */
+      time(t) {
+        tampered = true;
+        time = t;
+      },
+      /** Game speed (0.5 = slow motion for videos; above 1 counts as tampering). */
+      speed(k) {
+        if (k > 1) tampered = true;
+        speedK = k;
+      },
+      /** Gains `n` levels (their cards are offered one after another). */
+      levels(n = 1) {
+        tampered = true;
+        pl.level += n;
+        pendingLevels += n;
+      },
+      heal() {
+        tampered = true;
+        pl.heal(pl.maxHp);
+      },
+      god(on) {
+        tampered = true;
+        pl.god = !!on;
+      },
+      get godOn() {
+        return !!(pl && pl.god);
+      },
+      boss() {
+        tampered = true;
+        G.Spawner.debugBoss();
+      },
+      /** Knocks out every enemy (they drop their loot as usual). */
+      killAll() {
+        tampered = true;
+        for (const e of G.EnemyMgr.all())
+          if (!e.dead && !e.remote) {
+            e.hp = 0;
+            e.die();
+          }
+      },
+      /** Seed for the next solo runs (null = random); same as ?seed=CODE. */
+      get nextSeed() {
+        return fixedSeed;
+      },
+      set nextSeed(s) {
+        fixedSeed = s;
+      }
     },
     toUI() {
       state = 'ui';

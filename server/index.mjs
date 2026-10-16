@@ -50,33 +50,6 @@ if (!DEV && !fs.existsSync(path.join(ROOT, 'dist', 'index.html'))) {
 
 process.on('unhandledRejection', e => console.error('[server] unhandled rejection:', e));
 
-// ---------------- old URLs ----------------
-
-/** The website used to have Spanish paths at the root and English under /en/. */
-const OLD_PAGES = {
-  guia: 'guide',
-  legendarios: 'legendaries',
-  tipos: 'types',
-  movimientos: 'moves',
-  objetos: 'items',
-  logros: 'achievements',
-  novedades: 'news'
-};
-
-function renamed(p) {
-  const m = /^\/([a-z]+)(\/.*)?$/.exec(p);
-  return m && Object.hasOwn(OLD_PAGES, m[1]) ? '/' + OLD_PAGES[m[1]] + (m[2] || '/') : null;
-}
-
-/** Where an old URL lives now (permanent redirect), or null. */
-function movedTo(p) {
-  if (p === '/en' || p.startsWith('/en/')) {
-    const q = p.slice(3) || '/';
-    return renamed(q) || q;
-  }
-  return renamed(p);
-}
-
 // ---------------- files ----------------
 
 /** Same caching that deploy/nginx.conf used to do. */
@@ -210,12 +183,6 @@ const server = http.createServer(async (req, res) => {
     if (!CLOUD) return sendText(res, 200, TYPES['.json'], JSON.stringify({ cloud: false }));
     if (p.startsWith('/api/auth/')) return authHandler(req, res);
     return api.handleApi(req, res, new URL(req.url, BASE_URL));
-  }
-  const moved = movedTo(p);
-  if (moved) {
-    const q = new URL(req.url, 'http://x').search;
-    res.writeHead(301, { Location: encodeURI(moved) + q });
-    return res.end();
   }
   if (DEV && devRoute(req, res, p)) return;
   const hit = find(p);

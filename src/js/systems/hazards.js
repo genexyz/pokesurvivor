@@ -12,11 +12,15 @@
  * types and defense (pure), and Judgment falls as a pillar of light (vis).
  */
 G.Hazards = (() => {
+  const B = G.Balance.hazards;
   let list = [];
+
+  // The host's telegraphed attacks, drawn (and dodged) by everyone.
+  G.Sync.on('hz', ev => add(ev[1], true));
 
   /** h: { kind, x, y, r | angle, len, w, delay, dmg, type, color, pct?, pure?, vis? } */
   function add(h, fromNet = false) {
-    const o = Object.assign({ t: 0, hit: false, end: 0.3 }, h);
+    const o = Object.assign({ t: 0, hit: false, end: B.linger }, h);
     list.push(o);
     if (!fromNet && G.Coop.isHost) {
       G.Coop.broadcast([
@@ -47,14 +51,14 @@ G.Hazards = (() => {
   }
 
   function inside(h, x, y, r) {
-    if (h.kind === 'zone') return G.U.dist2(x, y, h.x, h.y) < (h.r + r * 0.6) ** 2;
+    if (h.kind === 'zone') return G.U.dist2(x, y, h.x, h.y) < (h.r + r * B.bodyFrac) ** 2;
     const ca = Math.cos(h.angle),
       sa = Math.sin(h.angle);
     const px = x - h.x,
       py = y - h.y;
     const along = px * ca + py * sa;
     if (along < -r || along > h.len + r) return false;
-    return Math.abs(-px * sa + py * ca) <= h.w / 2 + r * 0.6;
+    return Math.abs(-px * sa + py * ca) <= h.w / 2 + r * B.bodyFrac;
   }
 
   function update(dt) {

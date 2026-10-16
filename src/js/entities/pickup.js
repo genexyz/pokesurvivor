@@ -23,10 +23,13 @@ G.Pickups = (() => {
     ticket10: { color: '#c47bff', glow: '#8a3fd0', r: 8 },
     item: { color: '#ffd23f', glow: '#c08a10', r: 9 } // value = item id
   };
-  /** Chance that a normal Pokémon drops a gacha ticket. */
-  const BOSS_T10 = 1 / 3; // ×10 ticket from a normal boss
-  const LEGEND_T10 = 1 / 2; // ×10 ticket from the rift legendary
-  const TICKET_RATE = 1 / 400; // (was 1/260; rarer since 2026-10-10)
+  // Drop chances, ticket rates and magnet pull: G.Balance.drops.
+  // Whether something drops is rolled on the seeded 'loot' stream.
+  const B = G.Balance.drops;
+  const R = G.RNG.stream('loot');
+  // Where drops land changes when you can grab them, so it's seeded too (its own
+  // stream: the scatter never shifts what drops).
+  const S = G.RNG.stream('scatter');
 
   function clear() {
     list = [];
@@ -82,27 +85,29 @@ G.Pickups = (() => {
   function dropXp(x, y, value, boss = false, legend = false, plain = false) {
     if (boss) {
       // Bosses burst into a pile of big orbs + rewards.
-      for (let i = 0; i < 14; i++) {
-        const a = Math.random() * 6.2832,
-          d = G.U.rand(10, 70);
-        push(orb('xpBig', x + Math.cos(a) * d, y + Math.sin(a) * d, Math.ceil(value / 14)));
+      const n = B.boss.orbs;
+      for (let i = 0; i < n; i++) {
+        const a = S.angle(),
+          d = S.range(10, 70);
+        push(orb('xpBig', x + Math.cos(a) * d, y + Math.sin(a) * d, Math.ceil(value / n)));
       }
       if (plain) return;
       push(orb('heal', x + 24, y, 0));
       push(orb('magnet', x - 24, y, 0));
-      // ×10 ticket: the rift legendary always; a normal boss, 1 time in 3.
+      // ×10 ticket: B.boss.legendT10 from the rift legendary, B.boss.t10 from a normal boss.
       // (Until 12-10-2026 the rift legendary always gave 2: too many came out.)
-      if (Math.random() < (legend ? LEGEND_T10 : BOSS_T10)) push(orb('ticket10', x, y - 20, 1));
+      if (R.chance(legend ? B.boss.legendT10 : B.boss.t10)) push(orb('ticket10', x, y - 20, 1));
       return;
     }
-    push(orb(value >= 20 ? 'xpBig' : 'xp', x, y, value));
-    if (Math.random() < TICKET_RATE) push(orb('ticket', x + G.U.rand(-6, 6), y, 1));
+    push(orb(value >= B.xpBigFrom ? 'xpBig' : 'xp', x, y, value));
+    if (R.chance(B.ticketRate)) push(orb('ticket', x + S.range(-6, 6), y, 1));
 
     // Occasional drops.
-    const r = Math.random();
-    if (r < 0.012) push(orb('heal', x + G.U.rand(-8, 8), y, 0));
-    else if (r < 0.02) push(orb('magnet', x, y, 0));
-    else if (r < 0.026) push(orb('bomb', x, y, 0));
+    const r = R.next(),
+      O = B.occasional;
+    if (r < O.heal) push(orb('heal', x + S.range(-8, 8), y, 0));
+    else if (r < O.magnet) push(orb('magnet', x, y, 0));
+    else if (r < O.bomb) push(orb('bomb', x, y, 0));
   }
 
   /** Drops a single pickup: 'heal' | 'magnet' | 'bomb' | 'coin'. */
@@ -111,14 +116,14 @@ G.Pickups = (() => {
   }
 
   function orb(kind, x, y, value) {
-    const a = Math.random() * 6.2832;
+    const a = S.angle();
     return {
       kind,
       x,
       y,
       value,
-      vx: Math.cos(a) * G.U.rand(10, 46),
-      vy: Math.sin(a) * G.U.rand(10, 46),
+      vx: Math.cos(a) * S.range(10, 46),
+      vy: Math.sin(a) * S.range(10, 46),
       t: Math.random() * 6.28,
       pulled: false
     };
@@ -153,18 +158,19 @@ G.Pickups = (() => {
       if (p.pulled || d2 < mag2) {
         p.pulled = true;
         const d = Math.sqrt(d2) || 1;
-        const pull = 240 + 1400 / d;
-        p.vx = G.U.damp(p.vx, (dx / d) * pull, 7, dt);
-        p.vy = G.U.damp(p.vy, (dy / d) * pull, 7, dt);
+        const P = B.pull;
+        const pull = P.base + P.near / d;
+        p.vx = G.U.damp(p.vx, (dx / d) * pull, P.damp, dt);
+        p.vy = G.U.damp(p.vy, (dy / d) * pull, P.damp, dt);
       } else {
-        p.vx *= Math.pow(0.02, dt);
-        p.vy *= Math.pow(0.02, dt);
+        p.vx *= Math.pow(B.pull.friction, dt);
+        p.vy *= Math.pow(B.pull.friction, dt);
       }
 
       p.x += p.vx * dt;
       p.y += p.vy * dt;
 
-      if (d2 < 15 * 15) {
+      if (d2 < B.collectR * B.collectR) {
         list.splice(i, 1);
         onCollect(p, pl);
       }

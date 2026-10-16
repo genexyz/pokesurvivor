@@ -107,14 +107,11 @@
         if (!r[coll][k] || (older[coll][k].at || 0) < (r[coll][k].at || 0)) r[coll][k] = older[coll][k];
       }
     }
-    r.upgrades = r.upgrades || {};
-    for (const k in older.upgrades || {}) r.upgrades[k] = Math.max(r.upgrades[k] || 0, older.upgrades[k]);
     r.pupg = r.pupg || {};
     for (const d in older.pupg || {}) {
       const mine = (r.pupg[d] = r.pupg[d] || {});
       for (const k in older.pupg[d]) mine[k] = Math.max(mine[k] || 0, older.pupg[d][k]);
     }
-    r.pupgDone = r.pupgDone || older.pupgDone;
     // What's been earned is never lost: union of legendaries, arenas, items, achievements...
     for (const coll of ['legends', 'arenas', 'itemsFound', 'evoMoves', 'ach']) {
       r[coll] = r[coll] || {};

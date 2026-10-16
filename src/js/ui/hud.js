@@ -28,6 +28,74 @@ G.HUD = (() => {
     }
   }
 
+  /**
+   * Arrow on the screen edge toward a spot that is off screen (sx, sy in screen
+   * pixels). Draws nothing and returns false while the spot is visible.
+   * Used for the rift, teammates, Arceus, the lost Pokémon and treasure goblins.
+   * o: { color, label, labelColor, font, margin, tip, base, spread, alpha,
+   *      outline (stroke color), shadow (darker copy behind), halo: { color, r, a },
+   *      disc: { color, r }, labelAt: [x, y], labelStroke, inner(ctx) }
+   */
+  function edgeArrow(ctx, w, h, sx, sy, o) {
+    if (sx > 0 && sx < w && sy > 0 && sy < h) return false;
+    const M = o.margin || 44,
+      ex = G.U.clamp(sx, M, w - M),
+      ey = G.U.clamp(sy, M + 70, h - M - 80);
+    const a = Math.atan2(sy - ey, sx - ex),
+      ca = Math.cos(a),
+      sa = Math.sin(a);
+    const tip = o.tip || 30,
+      base = o.base || 15,
+      sp = o.spread || 2.45;
+    const tri = k => {
+      ctx.beginPath();
+      ctx.moveTo(ca * tip * k, sa * tip * k);
+      ctx.lineTo(Math.cos(a + sp) * base * k, Math.sin(a + sp) * base * k);
+      ctx.lineTo(Math.cos(a - sp) * base * k, Math.sin(a - sp) * base * k);
+      ctx.closePath();
+    };
+    const circle = (r, color, alpha) => {
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    };
+    ctx.save();
+    ctx.translate(ex, ey);
+    if (o.halo) circle(o.halo.r, o.halo.color, o.halo.a);
+    if (o.disc) circle(o.disc.r, o.disc.color, 1);
+    if (o.shadow) {
+      tri(1.12);
+      ctx.fillStyle = o.shadow;
+      ctx.fill();
+    }
+    ctx.globalAlpha = o.alpha == null ? 1 : o.alpha;
+    tri(1);
+    if (o.outline) {
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = o.outline;
+      ctx.stroke();
+    }
+    ctx.fillStyle = o.color;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    if (o.inner) o.inner(ctx);
+    if (o.label) {
+      const [lx, ly] = o.labelAt || [26, 24];
+      ctx.font = F(800, o.font || 11);
+      ctx.textAlign = ca > 0.3 ? 'right' : ca < -0.3 ? 'left' : 'center';
+      ctx.lineWidth = o.labelStroke || 4;
+      ctx.strokeStyle = 'rgba(0,0,0,.85)';
+      ctx.strokeText(o.label, -ca * lx, -sa * ly + 4);
+      ctx.fillStyle = o.labelColor || o.color;
+      ctx.fillText(o.label, -ca * lx, -sa * ly + 4);
+    }
+    ctx.restore();
+    return true;
+  }
+
   function draw(ctx, w, h, pl, st) {
     ctx.save();
     ctx.textBaseline = 'alphabetic';
@@ -171,44 +239,20 @@ G.HUD = (() => {
       const label = 'RIFT · ' + Math.round(G.U.dist(pl.x, pl.y, rift.x, rift.y) / 32) + ' m · ' + Math.ceil(rift.ttl) + ' s';
       const off = sx < 0 || sx > w || sy < 0 || sy > h;
       ctx.save();
-      if (off) {
-        const M = 52,
-          ex = G.U.clamp(sx, M, w - M),
-          ey = G.U.clamp(sy, M + 70, h - M - 80);
-        const a = Math.atan2(sy - ey, sx - ex),
-          ca = Math.cos(a),
-          sa = Math.sin(a);
-        ctx.translate(ex, ey);
-        // Pulsing halo.
-        ctx.globalAlpha = 0.18 + beat * 0.22;
-        ctx.fillStyle = '#b48aff';
-        ctx.beginPath();
-        ctx.arc(0, 0, 30 + beat * 8, 0, 6.2832);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        const tri = k => {
-          ctx.beginPath();
-          ctx.moveTo(ca * 40 * k, sa * 40 * k);
-          ctx.lineTo(Math.cos(a + 2.45) * 20 * k, Math.sin(a + 2.45) * 20 * k);
-          ctx.lineTo(Math.cos(a - 2.45) * 20 * k, Math.sin(a - 2.45) * 20 * k);
-          ctx.closePath();
-        };
-        tri(1.12);
-        ctx.fillStyle = '#1a0b33';
-        ctx.fill();
-        tri(1);
-        ctx.fillStyle = beat > 0.5 ? '#e2d0ff' : '#a06bff';
-        ctx.fill();
-        ctx.font = F(800, 12);
-        ctx.textAlign = ca > 0.3 ? 'right' : ca < -0.3 ? 'left' : 'center';
-        const lx = -ca * 34,
-          ly = -sa * 30 + 4;
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = 'rgba(0,0,0,.85)';
-        ctx.strokeText(label, lx, ly);
-        ctx.fillStyle = '#e2d0ff';
-        ctx.fillText(label, lx, ly);
-      } else {
+      if (off)
+        edgeArrow(ctx, w, h, sx, sy, {
+          margin: 52,
+          tip: 40,
+          base: 20,
+          halo: { color: '#b48aff', r: 30 + beat * 8, a: 0.18 + beat * 0.22 },
+          shadow: '#1a0b33',
+          color: beat > 0.5 ? '#e2d0ff' : '#a06bff',
+          font: 12,
+          label,
+          labelColor: '#e2d0ff',
+          labelAt: [34, 30]
+        });
+      else {
         // Above the rift: bouncing down arrow.
         const by = sy - 46 - Math.abs(Math.sin(now * 4)) * 10;
         ctx.translate(sx, by);
@@ -512,44 +556,27 @@ G.HUD = (() => {
       const o = m.pl;
       const sx = (o.x - cam.left()) * cam.scale,
         sy = (o.y - o.bodyH * 0.5 - cam.top()) * cam.scale;
-      if (sx > 0 && sx < w && sy > 0 && sy < h) continue;
-      const M = 42;
-      const ex = G.U.clamp(sx, M, w - M),
-        ey = G.U.clamp(sy, M + 70, h - M - 80);
-      const a = Math.atan2(sy - ey, sx - ex);
       const metres = Math.round(G.U.dist(pl.x, pl.y, o.x, o.y) / 32);
       const col = o.dead ? (Math.sin(t * 8) > 0 ? '#ff5f6d' : '#ffd0d5') : m.color;
-      ctx.save();
-      ctx.translate(ex, ey);
-      // Arrow
-      ctx.fillStyle = 'rgba(0,0,0,.55)';
-      ctx.beginPath();
-      ctx.arc(0, 0, 17, 0, 6.2832);
-      ctx.fill();
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * 28, Math.sin(a) * 28);
-      ctx.lineTo(Math.cos(a + 2.4) * 14, Math.sin(a + 2.4) * 14);
-      ctx.lineTo(Math.cos(a - 2.4) * 14, Math.sin(a - 2.4) * 14);
-      ctx.closePath();
-      ctx.fill();
-      // Teammate's initial inside the circle
-      ctx.font = F(800, 14);
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#fff';
-      ctx.fillText(m.name.charAt(0).toUpperCase(), 0, 5);
-      // Name and distance: on the side opposite the arrow, so it stays on screen
-      const lx = -Math.cos(a) * 30,
-        ly = -Math.sin(a) * 26 + 4;
-      ctx.font = F(800, 12);
-      const label = (o.dead ? m.name + ' needs help! ' : m.name + ' ') + '· ' + metres + ' m';
-      ctx.textAlign = Math.cos(a) > 0.3 ? 'right' : Math.cos(a) < -0.3 ? 'left' : 'center';
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(0,0,0,.8)';
-      ctx.strokeText(label, lx, ly);
-      ctx.fillStyle = col;
-      ctx.fillText(label, lx, ly);
-      ctx.restore();
+      edgeArrow(ctx, w, h, sx, sy, {
+        margin: 42,
+        tip: 28,
+        base: 14,
+        spread: 2.4,
+        disc: { color: 'rgba(0,0,0,.55)', r: 17 },
+        color: col,
+        font: 12,
+        labelStroke: 3,
+        labelAt: [30, 26],
+        label: (o.dead ? m.name + ' needs help! ' : m.name + ' ') + '· ' + metres + ' m',
+        // Teammate's initial inside the circle
+        inner(c) {
+          c.font = F(800, 14);
+          c.textAlign = 'center';
+          c.fillStyle = '#fff';
+          c.fillText(m.name.charAt(0).toUpperCase(), 0, 5);
+        }
+      });
     }
 
     // You, down.
@@ -569,5 +596,5 @@ G.HUD = (() => {
     }
   }
 
-  return { draw, roundRect, bar };
+  return { draw, roundRect, bar, edgeArrow };
 })();

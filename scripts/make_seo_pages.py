@@ -456,46 +456,19 @@ def ach_page(lang):
     write(pid, lang, page(pid, lang, title, desc, body))
 
 # ================= news =================
-# (date, (title en, title es), (text en, text es))
-NEWS = [
- ('2026-10-14', ('Place the buttons your way on mobile', 'Coloca los botones a tu gusto en el móvil'),
-  ('In Settings > Controls > Place the buttons you can drag the attacks, the pause button and the joystick wherever you want, and choose a fixed joystick.',
-   'En Ajustes > Controles > Colocar los botones puedes arrastrar los ataques, la pausa y el joystick a donde quieras, y elegir un joystick fijo.')),
- ('2026-10-14', ('The only official website is pokesurvivor.com', 'La única web oficial es pokesurvivor.com'),
-  ('PokéSurvivor is and always will be free. If any other website asks you to pay for tickets, coins or anything else, it isn’t us: it is a copy. From today the game’s code is under a non-commercial license (PolyForm Noncommercial 1.0.0).',
-   'PokéSurvivor es y será gratis. Si alguna otra web te pide pagar por tickets, monedas o lo que sea, no somos nosotros: es una copia. Desde hoy el código del juego va bajo una licencia no comercial (PolyForm Noncommercial 1.0.0).')),
- ('2026-10-14', ('Recover your account with Gmail', 'Recupera tu cuenta con Gmail'),
-  ('If you play with a name and password, you can now link your Gmail: if you forget your password, sign in with Google and it is the same account.',
-   'Si juegas con nombre y contraseña, ya puedes vincular tu Gmail: si olvidas la contraseña, entras con Google y es tu misma cuenta.')),
- ('2026-10-13', ('The Judgment of Arceus', 'La Sentencia de Arceus'),
-  ('At minute 30, Arceus descends from the sky and takes you to the Ruins of Judgment: it is invincible, chases you faster and faster, and every 5 seconds a legendary joins with twice the HP and damage of the previous one. Three new achievements, new music, and the all-time leaderboard starts from scratch.',
-   'Al llegar al minuto 30, Arceus baja del cielo y te lleva a las Ruinas del Juicio: es invencible, te persigue cada vez más deprisa y cada 5 segundos acude un legendario con el doble de vida y de daño que el anterior. Tres logros nuevos, música nueva y el ranking histórico empieza de cero.')),
- ('2026-10-12', ('Endless runs, less random rifts and a "What\'s new" screen', 'Partidas sin límite, grietas con menos azar y novedades en el juego'),
-  ('Fixed the bug that turned the screen black or levelled you up forever after 84 minutes; if something fails, the run saves itself. Rifts show up at least every 2.5 minutes and the legendaries you are missing appear more often. Healers heal based on how hard you hit, with a cap. In co-op, if the host switches tabs the run pauses for everyone. iPhone fixes, a shiny toggle in the menu, stronger melee attacks and a "What\'s new" button inside the game.',
-   'Arreglado el fallo que dejaba la pantalla en negro o subía de nivel sin fin pasados 84 minutos; si algo falla, la partida se guarda sola. Las grietas salen como mucho cada 2,5 minutos y los legendarios que te faltan aparecen más. Los curanderos curan según lo fuerte que pegas, con tope. En cooperativo, si el anfitrión cambia de pestaña la partida se pausa para todos. Arreglos para iPhone, selector shiny en el menú, ataques cuerpo a cuerpo más fuertes y un botón de Novedades dentro del juego.')),
- ('2026-10-11', ('Bonds: fuse moves by defeating legendaries', 'Vínculos: fusiona movimientos al vencer legendarios'),
-  ('Every legendary you defeat in a rift gives you a bond: link two moves so they fire at the same time from a single slot, and each further legendary adds another one, up to 4 at once. That frees slots to learn more moves. Rifts also show up more often.',
-   'Cada legendario que vences en una grieta te da un vínculo: une dos movimientos para que se lancen a la vez y ocupen un solo hueco, y con cada legendario siguiente se suma otro, hasta 4 a la vez. Así queda sitio para aprender más movimientos. Además, las grietas salen más a menudo.')),
- ('2026-10-10', ('Bosses with several attacks, 8 new move kinds and a tougher game', 'Jefes con varios ataques, 8 tipos de movimiento nuevos y más reto'),
-  ('Bosses and legendaries have 4 telegraphed attacks, close in or fight from range and get enraged at half health. 12 new moves and 8 new ways to attack: boomerang, chain, mines, meteors, turret, dash, trail and spray. Fewer but tougher enemies, mid-run events (single-type hordes, golden hour, lost Pokémon), Meowth running away loaded with coins, Water types swim at full speed and the leaderboard has anti-cheat.',
-   'Los jefes y legendarios tienen 4 ataques avisados, se acercan o pelean de lejos y se enfurecen a media vida. 12 movimientos nuevos y 8 formas de atacar: bumerán, cadena, minas, meteoros, torreta, embestida, rastro y abanico. Menos enemigos pero más duros, eventos a mitad de partida (hordas de un tipo, hora dorada, Pokémon perdidos), Meowth que huyen cargados de monedas, los de tipo Agua nadan sin frenarse y el ranking tiene anti-trampas.')),
- ('2026-10-09', ('Mobile, English and settings', 'Móvil, inglés y ajustes'),
-  ('You can now play on phones and tablets with a touch joystick, in English and Spanish, and install it as an app. New settings screen with automatic graphics quality, and fewer but stronger enemies on screen.',
-   'Ya se puede jugar en móvil y tablet con joystick táctil, en español y en inglés, e instalar como app. Nueva pantalla de ajustes con calidad gráfica automática, y menos enemigos en pantalla pero más fuertes.')),
- ('2026-10-08', ('Missions, achievements and enemies with personality', 'Misiones, logros y enemigos con personalidad'),
-  ('Daily and weekly missions, 127 achievements with medals and titles, a public profile, held items, move evolutions and enemies that heal, shield, summon or explode.',
-   'Misiones diarias y semanales, 127 logros con medallas y títulos, perfil público, objetos equipables, evoluciones de movimientos y enemigos que curan, protegen, invocan o explotan.')),
- ('2026-10-08', ('Legendary rifts and weather', 'Grietas legendarias y clima'),
-  ('Rifts leading to 18 legendary arenas, one per type; weather that changes the fight; a type chart and a slot-machine gacha with tickets.',
-   'Grietas que llevan a 18 arenas legendarias, una por tipo; clima que cambia la batalla; tabla de tipos y gacha tragaperras con tickets.')),
- ('2026-10-08', ('Co-op and leaderboards', 'Cooperativo y ranking'),
-  ('Online co-op for up to 4 with your friends list, plus daily, weekly, monthly, yearly and all-time leaderboards.',
-   'Cooperativo online hasta 4 con tu lista de amigos y ranking diario, semanal, mensual, anual e histórico.')),
-]
+# Made from src/js/data/changelog.js (the same list as the in-game "What's new"), so
+# there is a single place to write updates.
+NEWS_PARTS = [('new', ("What's new", 'Novedades')), ('chg', ('Changes', 'Cambios')), ('fix', ('Fixes', 'Arreglos'))]
 def news(lang):
     pid = 'news'
     i = 0 if lang == 'en' else 1
-    items = ''.join(f'<article class="news"><time datetime="{d}">{d}</time><h2>{esc(t[i])}</h2><p>{esc(x[i])}</p></article>' for d, t, x in NEWS)
+    items = ''
+    for v in D['changelog']:
+        t = v.get('title') or ['', '']
+        parts = ''.join(f'<h3>{esc(h[i])}</h3><ul>' + ''.join(f'<li>{esc(x[i])}</li>' for x in v[k]) + '</ul>'
+                        for k, h in NEWS_PARTS if v.get(k))
+        items += f'<article class="news"><time datetime="{v["d"]}">{v["d"]}</time><h2>{esc(t[i])}</h2>{parts}</article>'
+    if not items: items = '<p>' + L(lang, 'No updates yet.', 'Todavía no hay novedades.') + '</p>'
     h1 = L(lang, 'PokéSurvivor news', 'Novedades de PokéSurvivor')
     title = h1 + L(lang, ' · game updates', ' · actualizaciones del juego')
     desc = L(lang, 'The latest PokéSurvivor updates: new features, improvements and fixes.',

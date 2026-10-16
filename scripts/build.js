@@ -30,7 +30,8 @@ const i = dev.indexOf(BEGIN),
   j = dev.indexOf(END);
 if (i < 0 || j < 0) throw new Error('src/index.html is missing the markers ' + BEGIN + ' / ' + END);
 const block = dev.slice(i, j + END.length);
-const files = [...block.matchAll(/<script[^>]*src="(js\/[^"]+\.js)"/g)].map(m => m[1]);
+// <script data-dev> (the developer panel) is never published.
+const files = [...block.matchAll(/<script[^>]*src="(js\/[^"]+\.js)"/g)].filter(m => !/\bdata-dev\b/.test(m[0])).map(m => m[1]);
 
 // dist/ from scratch: the static files from public/ and the CSS from src/.
 fs.rmSync(DIST, { recursive: true, force: true });

@@ -92,7 +92,6 @@ G.DB = (() => {
       partnerShiny: false, // play with its shiny version (if you have it)
       starter: null, // dex you got in the quiz
       personality: null, // { trait, scores }
-      upgrades: {}, // (old) account upgrades; they are now per Pokémon
       pupg: {}, // dex -> { id -> level }: each Pokémon's upgrades
       tickets: { t1: 0, t10: 0 }, // gacha tickets (x1 and x10)
       pity: {}, // banner generation -> pulls without a ★5
@@ -126,47 +125,10 @@ G.DB = (() => {
     const base = newSave(name || s.name);
     for (const k in base) if (s[k] == null) s[k] = base[k];
     for (const k in base.stats) if (s.stats[k] == null) s.stats[k] = base.stats[k];
-    // v1 -> v2: there was a single banner (Kanto) with pity as a number.
-    if (typeof s.pity === 'number') s.pity = { 1: s.pity };
-    // v2 -> v3: upgrades belonged to the account; they move to the partner at that time.
-    if (!s.pupgDone) {
-      if (s.partner && Object.values(s.upgrades || {}).some(v => v > 0)) {
-        s.pupg[s.partner] = Object.assign({}, s.upgrades);
-      }
-      s.pupgDone = true;
-    }
     s.tickets = Object.assign({ t1: 0, t10: 0 }, s.tickets);
-    migrateSpanish(s);
     sanitize(s);
     s.v = VERSION;
     return s;
-  }
-
-  /**
-   * The game used to be written in Spanish and some saved values were Spanish
-   * text: personality traits ('valiente' -> 'brave'), the profile title (the
-   * title text -> the achievement id) and the default names.
-   */
-  function migrateSpanish(s) {
-    const P = s.personality;
-    if (P && G.TRAIT_LEGACY) {
-      if (G.TRAIT_LEGACY[P.trait]) P.trait = G.TRAIT_LEGACY[P.trait];
-      if (isObj(P.scores)) {
-        for (const k of Object.keys(P.scores)) {
-          const id = G.TRAIT_LEGACY[k];
-          if (!id) continue;
-          P.scores[id] = (P.scores[id] || 0) + P.scores[k];
-          delete P.scores[k];
-        }
-      }
-    }
-    const prof = s.profile;
-    if (prof && prof.title && G.AchDefs && !G.AchDefs.BY[prof.title]) {
-      const a = G.AchDefs.LIST.find(a => a.title && (a.title === prof.title || G.I18n.es(a.title) === prof.title));
-      prof.title = a ? a.id : '';
-    }
-    if (s.name === 'Entrenador') s.name = 'Trainer';
-    else if (s.name === 'Invitado') s.name = 'Guest';
   }
 
   /**

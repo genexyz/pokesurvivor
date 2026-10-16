@@ -65,26 +65,6 @@ G.TRAIT_NAME = {
   careful: 'Careful'
 };
 
-/** Old (Spanish) trait ids -> current ids, to migrate saved personalities. */
-G.TRAIT_LEGACY = {
-  valiente: 'brave',
-  tímido: 'timid',
-  travieso: 'impish',
-  alegre: 'jolly',
-  sereno: 'calm',
-  tranquilo: 'relaxed',
-  solitario: 'lonely',
-  impulsivo: 'hasty',
-  caótico: 'quirky',
-  leal: 'loyal',
-  paciente: 'patient',
-  dulce: 'gentle',
-  astuto: 'clever',
-  tenaz: 'determined',
-  orgulloso: 'proud',
-  prudente: 'careful'
-};
-
 /** Short description of each trait, for the result screen. */
 G.TRAIT_TEXT = {
   brave: "You don't think twice when someone needs help.",

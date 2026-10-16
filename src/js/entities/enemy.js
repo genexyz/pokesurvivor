@@ -11,6 +11,9 @@
  * enemy separation and projectile collisions.
  */
 (() => {
+  const B = G.Balance.enemies;
+  const RE = G.RNG.stream('enemy'); // AI choices, cooldown jitter, where attacks land
+  const RL = G.RNG.stream('loot'); // drops
   let nextId = 1;
   /** Bosses are scaled up to ~110 tall, depending on how big their sprite already is. */
   function bossScale(dex) {
@@ -20,6 +23,11 @@
     // whole number of screen pixels (scales like 1.37 distort it).
     return G.U.clamp(Math.round((110 / h) * 2) / 2, 1, 2);
   }
+
+  // Enemy flags guests see on their copies (status rings, shield bubble).
+  G.Sync.flag('burn', e => e.burn > 0);
+  G.Sync.flag('poison', e => e.poison > 0);
+  G.Sync.flag('shield', e => e.shield > 0);
 
   class Enemy {
     constructor(def, x, y, sc, boss = false) {
@@ -71,7 +79,7 @@
       this.dx = 0;
       this.dy = 0;
       // ranged
-      this.shotCd = def.shotCd ? G.U.rand(0.3, def.shotCd) : 0;
+      this.shotCd = def.shotCd ? RE.range(B.start.shotCdMin, def.shotCd) : 0;
       // unsticking
       this.stuckT = 0;
       this.sideT = 0;
@@ -83,7 +91,7 @@
       this.sc = sc; // run scaling (for its summons)
       this.shield = 0;
       this.shieldT = 0; // shield that absorbs damage
-      this.skillCd = G.U.rand(1, 4); // shields / jumps
+      this.skillCd = RE.range(B.start.skillCd[0], B.start.skillCd[1]); // shields / jumps
       this.minions = [];
       this.jump = null; // { sx, sy, tx, ty, t, dur }
       // Stragglers: if they fall behind, out of view, while you run away,
@@ -95,13 +103,19 @@
       return this.y;
     }
 
+    /** Co-op copy: is this G.Sync flag set on the host's enemy? */
+    netFlag(name) {
+      const b = G.Sync.flagBit(name);
+      return b >= 0 && !!this.net && ((this.net.st >> b) & 1) === 1;
+    }
+
     /** Makes it shiny: different sprite, more HP and much more XP. */
     makeShiny() {
       this.shiny = true;
       this.anim = new G.Sprites.Animator(this.dex, this.scale, true);
-      this.maxHp *= 2;
+      this.maxHp *= B.shiny.hp;
       this.hp = this.maxHp;
-      this.xp *= 5;
+      this.xp *= B.shiny.xp;
       G.Sprites.preload([this.dex], 4000, true);
     }
 
@@ -109,7 +123,7 @@
     makeGolden() {
       if (this.golden || this.boss || this.behavior === 'thief') return;
       this.golden = true;
-      this.xp *= 2;
+      this.xp *= B.golden.xp;
     }
 
     /** @param eff  'super' | 'weak' | null (type chart, only for display) */
@@ -163,7 +177,7 @@
       G.Audio.sfx('hit');
     }
 
-    applySlow(factor, dur = 1.2) {
+    applySlow(factor, dur = B.status.slow.dur) {
       if (this.remote) {
         G.Coop.status(this, 's', factor);
         return;
@@ -176,16 +190,16 @@
         G.Coop.status(this, 'b', stacks);
         return;
       }
-      this.burn = Math.min(8, this.burn + stacks);
-      this.burnT = 3;
+      this.burn = Math.min(B.status.burn.cap, this.burn + stacks);
+      this.burnT = B.status.burn.dur;
     }
     applyPoison(stacks = 1) {
       if (this.remote) {
         G.Coop.status(this, 'p', stacks);
         return;
       }
-      this.poison = Math.min(8, this.poison + stacks);
-      this.poisonT = 4;
+      this.poison = Math.min(B.status.poison.cap, this.poison + stacks);
+      this.poisonT = B.status.poison.dur;
     }
 
     die() {
@@ -207,27 +221,30 @@
         }
         return;
       }
+      const L = B.drops;
       // (The Judgment of Arceus legendaries only give experience.)
       if (this.boss && !this.judge) {
         G.Camera.kick(0.9);
-        for (let i = 0; i < 10; i++) G.Pickups.drop('coin', this.x + G.U.rand(-40, 40), this.y + G.U.rand(-30, 30), 5);
+        for (let i = 0; i < L.boss.coins; i++)
+          G.Pickups.drop('coin', this.x + RL.range(-40, 40), this.y + RL.range(-30, 30), L.boss.coinValue);
         // Bosses always drop a holdable item.
         G.Pickups.drop('item', this.x - 26, this.y - 10, G.Items.roll());
       }
       G.Pickups.dropXp(this.x, this.y, this.xp, this.boss, !!this.legend, !!this.judge);
-      if (this.golden && Math.random() < 0.35) G.Pickups.drop('coin', this.x + 6, this.y - 4, 3);
+      if (this.golden && RL.chance(B.golden.coinChance)) G.Pickups.drop('coin', this.x + 6, this.y - 4, B.golden.coinValue);
       // Treasure goblin: Meowth drops coins; Gholdengo, a ×10 ticket.
       if (this.behavior === 'thief') {
-        const n = this.def.loot === 'ticket10' ? 6 : 20;
-        for (let i = 0; i < n; i++) G.Pickups.drop('coin', this.x + G.U.rand(-36, 36), this.y + G.U.rand(-26, 26), 5);
-        if (this.def.loot === 'ticket10') G.Pickups.drop('ticket10', this.x, this.y - 12, 1);
+        const n = this.def.loot === 'ticket10' ? L.thief.ticketCoins : L.thief.coins;
+        for (let i = 0; i < n; i++) G.Pickups.drop('coin', this.x + RL.range(-36, 36), this.y + RL.range(-26, 26), L.thief.coinValue);
+        if (this.def.loot === 'ticket10') G.Pickups.drop('ticket10', this.x, this.y - 12, L.thief.tickets10);
         G.FX.ring(this.x, this.y, this.r, this.r * 5, '#ffd23f', 0.6, 4);
       }
       if (this.legend) {
         // The rift legendary: single tickets and coins (the ×10 one, about
         // half the time; it used to always give 2).
-        for (let i = 0; i < 3; i++) G.Pickups.drop('ticket', this.x + G.U.rand(-30, 30), this.y + G.U.rand(-20, 20), 1);
-        for (let i = 0; i < 10; i++) G.Pickups.drop('coin', this.x + G.U.rand(-50, 50), this.y + G.U.rand(-35, 35), 8);
+        for (let i = 0; i < L.legend.tickets; i++) G.Pickups.drop('ticket', this.x + RL.range(-30, 30), this.y + RL.range(-20, 20), 1);
+        for (let i = 0; i < L.legend.coins; i++)
+          G.Pickups.drop('coin', this.x + RL.range(-50, 50), this.y + RL.range(-35, 35), L.legend.coinValue);
       }
       G.Audio.sfx(this.boss ? 'bossDown' : 'faint');
       if (this.shiny) {
@@ -307,6 +324,7 @@
       this.bob += dt * 6;
 
       // --- status effects ---
+      const ST = B.status;
       if (this.slowT > 0) {
         this.slowT -= dt;
         if (this.slowT <= 0) this.slow = 0;
@@ -315,8 +333,8 @@
         this.burnT -= dt;
         this.burnTick -= dt;
         if (this.burnTick <= 0) {
-          this.burnTick = 0.5;
-          this.hurt(1.6 * this.burn * (1 + pl.level * 0.06), '#ff9a4d');
+          this.burnTick = ST.burn.tick;
+          this.hurt(ST.burn.dmg * this.burn * (1 + pl.level * ST.burn.perLevel), '#ff9a4d');
         }
         if (this.burnT <= 0) this.burn = 0;
       }
@@ -324,8 +342,8 @@
         this.poisonT -= dt;
         this.poisonTick -= dt;
         if (this.poisonTick <= 0) {
-          this.poisonTick = 0.6;
-          this.hurt(this.maxHp * 0.012 * this.poison + 1, '#d47cf0');
+          this.poisonTick = ST.poison.tick;
+          this.hurt(this.maxHp * ST.poison.maxHpPct * this.poison + ST.poison.flat, '#d47cf0');
         }
         if (this.poisonT <= 0) this.poison = 0;
       }
@@ -340,30 +358,32 @@
           this.lavaTick -= dt;
           if (this.lavaTick <= 0) {
             this.lavaTick = le.every;
-            this.hurt(6 + this.maxHp * 0.04, le.color);
+            this.hurt(B.terrain.lavaFlat + this.maxHp * B.terrain.lavaMaxHpPct, le.color);
           }
           if (this.dead) return;
-        } else if (le.slow) terrainMul = le.slow < 0.5 ? 0.45 : 0.55;
+        } else if (le.slow) terrainMul = le.slow < B.terrain.deepBelow ? B.terrain.deep : B.terrain.shallow;
       }
 
       const spd = this.spd * (1 - this.slow) * terrainMul * G.Weather.speedFor(this.types);
       let [dx, dy] = G.U.norm(pl.x - this.x, pl.y - this.y);
       const dist = G.U.dist(this.x, this.y, pl.x, pl.y);
+      const BH = B.behaviors;
       // Treasure goblin: runs away from you (zigzagging) as soon as you get close.
       if (this.behavior === 'thief') {
+        const T = BH.thief;
         this.zig = (this.zig || 0) + dt;
-        const near = dist < 300,
-          a = Math.atan2(-dy, -dx) + Math.sin(this.zig * 2.2) * 0.7;
-        const k = near ? 1 : 0.35;
+        const near = dist < T.fleeRange,
+          a = Math.atan2(-dy, -dx) + Math.sin(this.zig * T.zigFreq) * T.zigAmp;
+        const k = near ? 1 : T.idleSpd;
         const vx0 = Math.cos(a) * spd * k,
           vy0 = Math.sin(a) * spd * k;
         const ox = this.x,
           oy = this.y;
         this.x += (vx0 + this.kx) * dt;
         this.y += (vy0 + this.ky) * dt;
-        this.kx *= Math.pow(0.0015, dt);
-        this.ky *= Math.pow(0.0015, dt);
-        if (G.World.collide(this) && Math.hypot(this.x - ox, this.y - oy) < spd * k * dt * 0.3) this.zig += 1.4;
+        this.kx *= Math.pow(B.knockDecay, dt);
+        this.ky *= Math.pow(B.knockDecay, dt);
+        if (G.World.collide(this) && Math.hypot(this.x - ox, this.y - oy) < spd * k * dt * 0.3) this.zig += T.bumpZig;
         if (Math.random() < dt * 6 && G.Camera.sees(this.x, this.y, 0))
           G.FX.twinkle(this.x + G.U.rand(-this.r, this.r), this.y - G.U.rand(4, this.bodyH));
         this.anim.dir = G.Sprites.dirFromAngle(a);
@@ -372,7 +392,7 @@
       }
       // Runner: heads to where you WILL be (cuts you off if you just run).
       if (this.behavior === 'runner' && pl._vx != null) {
-        const lead = G.U.clamp(dist / Math.max(60, spd), 0, 1.4);
+        const lead = G.U.clamp(dist / Math.max(BH.runner.minSpd, spd), 0, BH.runner.maxLead);
         [dx, dy] = G.U.norm(pl.x + pl._vx * lead - this.x, pl.y + pl._vy * lead - this.y);
         if (G.Camera.sees(this.x, this.y, 0) && Math.random() < dt * 10)
           G.FX.px(this.x - dx * 8 + G.U.rand(-4, 4), this.y, '#e8dcc0', { vy: -12, life: 0.35 });
@@ -394,7 +414,7 @@
         this.anim.loop('Idle');
         return;
       }
-      if (this.behavior === 'bomber' && dist < this.r + pl.r + 26) {
+      if (this.behavior === 'bomber' && dist < this.r + pl.r + BH.bomber.gap) {
         this.startFuse();
         return;
       }
@@ -402,13 +422,13 @@
         this.skillCd -= dt;
         if (this.skillCd <= 0) {
           if (this.behavior === 'shielder') {
-            this.skillCd = 6;
+            this.skillCd = BH.shielder.cd;
             this.castShields();
-          } else if (dist < 250) {
-            this.skillCd = G.U.rand(5, 7);
+          } else if (dist < BH.jumper.range) {
+            this.skillCd = RE.range(BH.jumper.cd[0], BH.jumper.cd[1]);
             this.startJump(pl);
             return;
-          } else this.skillCd = 0.5;
+          } else this.skillCd = BH.jumper.retry;
         }
       }
 
@@ -423,7 +443,7 @@
       // Path around obstacles (non-flyers).
       if (!this.flying && this.phase !== 'dash' && this.sideT <= 0) {
         const pd = G.Path.dirFor(this, pl);
-        if (pd && !(this.keepsDistance() && dist < (this.def.range || 200) * 0.82)) {
+        if (pd && !(this.keepsDistance() && dist < this.keepDist())) {
           dx = pd[0];
           dy = pd[1];
         }
@@ -436,11 +456,12 @@
       if (this.boss) {
         [vx, vy, animBase] = this.bossMove(dt, pl, dist, dx, dy, spd);
       } else if (this.behavior === 'charger') {
+        const C = BH.charger;
         this.pt -= dt;
         if (this.phase === 'walk') {
-          if (dist < 200 && this.pt <= 0) {
+          if (dist < C.aggro && this.pt <= 0) {
             this.phase = 'aim';
-            this.pt = 0.55;
+            this.pt = C.aim;
             this.anim.play('Charge', { speed: 1.6 });
           }
         } else if (this.phase === 'aim') {
@@ -448,36 +469,37 @@
           animBase = 'Idle';
           if (this.pt <= 0) {
             this.phase = 'dash';
-            this.pt = 0.42;
+            this.pt = C.dash;
             this.dx = dx;
             this.dy = dy;
             this.anim.play('Attack', { speed: 1.4 });
             G.FX.ring(this.x, this.y, this.r, this.r * 2.4, '#ff6b6b', 0.25, 2);
           }
         } else if (this.phase === 'dash') {
-          vx = this.dx * spd * 3.4;
-          vy = this.dy * spd * 3.4;
+          vx = this.dx * spd * C.dashSpd;
+          vy = this.dy * spd * C.dashSpd;
           if (this.pt <= 0) {
             this.phase = 'walk';
-            this.pt = 1.1;
+            this.pt = C.rest;
           }
         }
       } else if (this.keepsDistance()) {
-        const range = this.def.range || 200;
-        const keep = range * 0.82;
+        const RG = BH.ranged;
+        const range = this.def.range || RG.range;
+        const keep = this.keepDist();
         // Straight line to you (not the path) to back away.
         const [ddx, ddy] = G.U.norm(pl.x - this.x, pl.y - this.y);
-        if (dist < keep * 0.75) {
-          vx = -ddx * spd * 0.8;
-          vy = -ddy * spd * 0.8;
+        if (dist < keep * RG.backOff) {
+          vx = -ddx * spd * RG.backSpd;
+          vy = -ddy * spd * RG.backSpd;
         } else if (dist < keep) {
-          vx *= 0.1;
-          vy *= 0.1;
+          vx *= RG.holdSpd;
+          vy *= RG.holdSpd;
           animBase = 'Idle';
         }
         this.shotCd -= dt;
         if (this.shotCd <= 0 && dist < range) {
-          this.shotCd = this.def.shotCd || 2;
+          this.shotCd = this.def.shotCd || RG.cd;
           this.special(pl, ddx, ddy);
         }
       }
@@ -487,8 +509,8 @@
         oy = this.y;
       this.x += this.kx * dt;
       this.y += this.ky * dt;
-      this.kx *= Math.pow(0.0015, dt);
-      this.ky *= Math.pow(0.0015, dt);
+      this.kx *= Math.pow(B.knockDecay, dt);
+      this.ky *= Math.pow(B.knockDecay, dt);
       this.x += vx * dt;
       this.y += vy * dt;
 
@@ -501,7 +523,7 @@
           if (this.stuckT > 0.35 && this.sideT <= 0) {
             this.sideT = 0.7;
             this.stuckT = 0;
-            this.side = Math.random() < 0.5 ? -1 : 1;
+            this.side = RE.chance(0.5) ? -1 : 1;
           }
         } else this.stuckT = 0;
       }
@@ -535,54 +557,58 @@
             : 'volley';
       const others = ['rain', 'beam', 'nova', 'volley'].filter(x => x !== pref);
       const ranged = [pref, others[Math.floor(G.U.hash(this.dex, 5, 9) * 3) % 3]];
-      const far = this.behavior === 'ranged';
+      const far = this.behavior === 'ranged',
+        A = B.bossAi;
       this.ai = {
         melee,
         ranged,
-        farLike: far ? 0.65 : 0.35,
+        farLike: far ? A.farLike.far : A.farLike.close,
         mode: far ? 'far' : 'close',
-        modeT: G.U.rand(6, 8),
-        cd: 1.6,
+        modeT: RE.range(A.modeT[0], A.modeT[1]),
+        cd: A.cd,
         cast: null,
         fury: false,
-        side: Math.random() < 0.5 ? -1 : 1
+        side: RE.chance(0.5) ? -1 : 1
       };
     }
 
     bossMove(dt, pl, dist, dx, dy, spd) {
       if (!this.ai) this.bossInit();
-      const ai = this.ai;
-      if (!ai.fury && this.hp < this.maxHp * 0.5) this.enrage();
-      const k = ai.fury ? 1.25 : 1;
+      const ai = this.ai,
+        A = B.bossAi;
+      if (!ai.fury && this.hp < this.maxHp * A.furyAt) this.enrage();
+      const k = ai.fury ? A.furyRate : 1;
       if (ai.cast) return this.bossCast(dt, pl);
       ai.modeT -= dt;
       ai.cd -= dt * k;
       // Always alternates: it stays longer at its favourite range (7-9 s) than at the other (4-5 s).
       if (ai.modeT <= 0) {
         ai.mode = ai.mode === 'far' ? 'close' : 'far';
-        ai.modeT = (ai.mode === 'far') === ai.farLike > 0.5 ? G.U.rand(7, 9) : G.U.rand(4, 5);
+        ai.modeT =
+          (ai.mode === 'far') === ai.farLike > 0.5 ? RE.range(A.modeLong[0], A.modeLong[1]) : RE.range(A.modeShort[0], A.modeShort[1]);
         ai.side = -ai.side;
       }
-      let vx = dx * spd * k * 1.1,
-        vy = dy * spd * k * 1.1;
+      let vx = dx * spd * k * A.chaseSpd,
+        vy = dy * spd * k * A.chaseSpd;
       const [ddx, ddy] = G.U.norm(pl.x - this.x, pl.y - this.y);
       if (ai.mode === 'far') {
-        if (dist < 170) {
+        if (dist < A.far.flee) {
           vx = -ddx * spd;
           vy = -ddy * spd;
-        } else if (dist < 300) {
-          vx = -ddy * spd * 0.55 * ai.side;
-          vy = ddx * spd * 0.55 * ai.side;
+        } else if (dist < A.far.circle) {
+          vx = -ddy * spd * A.far.circleSpd * ai.side;
+          vy = ddx * spd * A.far.circleSpd * ai.side;
         } // circles you
       }
       if (ai.cd <= 0) {
         let id = null;
+        const C = A.close;
         if (ai.mode === 'close') {
-          const ok = ai.melee.filter(m => (m === 'slam' ? dist < 125 : dist < 320));
+          const ok = ai.melee.filter(m => (m === 'slam' ? dist < C.slam : dist < C.melee));
           // Every now and then it shoots even when close.
-          id = ok.length && Math.random() < 0.8 ? G.U.pick(ok) : dist < 480 ? G.U.pick(ai.ranged) : null;
+          id = ok.length && RE.chance(C.meleeChance) ? RE.pick(ok) : dist < C.shoot ? RE.pick(ai.ranged) : null;
         } else {
-          id = dist < 115 ? 'slam' : dist < 430 ? G.U.pick(ai.ranged) : null;
+          id = dist < A.farSlam ? 'slam' : dist < A.farShoot ? RE.pick(ai.ranged) : null;
         }
         if (id) this.bossStart(id, pl);
       }
@@ -591,7 +617,7 @@
 
     enrage() {
       this.ai.fury = true;
-      this.spd *= 1.15;
+      this.spd *= B.bossAi.furySpd;
       if (!this.judge) G.Spawner.say(`${this.name} is enraged!`, 2.4);
       G.FX.ring(this.x, this.y, this.r, this.r * 5, '#ff4a4a', 0.6, 5);
       G.Camera.kick(0.5);
@@ -599,90 +625,106 @@
     }
 
     bossStart(id, pl) {
-      const ai = this.ai,
-        f = ai.fury ? 0.8 : 1,
+      const A = B.bossAi,
+        K = A.attacks,
+        ai = this.ai,
+        f = ai.fury ? A.furyWind : 1,
         type = this.atkType;
       const col = G.U.TYPE_COLOR[type] || '#ff7a9e';
       const ang = Math.atan2(pl.y - this.y, pl.x - this.x);
-      const c = (ai.cast = { id, t: 0, wind: 0.6 * f, after: 0.35, ang });
+      const c = (ai.cast = { id, t: 0, wind: A.wind * f, after: A.after, ang });
       switch (id) {
         case 'slam': // stomp: shockwave around it
-          c.wind = 0.85 * f;
-          G.Hazards.add({ kind: 'zone', x: this.x, y: this.y, r: 96 + this.r, delay: c.wind, dmg: this.dmg * 1.3, type, color: col });
+          c.wind = K.slam.wind * f;
+          G.Hazards.add({
+            kind: 'zone',
+            x: this.x,
+            y: this.y,
+            r: K.slam.r + this.r,
+            delay: c.wind,
+            dmg: this.dmg * K.slam.dmg,
+            type,
+            color: col
+          });
           this.anim.play('Charge', { speed: 1.2 });
           break;
         case 'dash': // charge in a straight line
-          c.wind = 0.75 * f;
-          c.len = 330;
-          c.dur = 0.32;
+          c.wind = K.dash.wind * f;
+          c.len = K.dash.len;
+          c.dur = K.dash.dur;
           G.Hazards.add({
             kind: 'beam',
             x: this.x,
             y: this.y,
             angle: ang,
             len: c.len + this.r,
-            w: this.r * 2 + 16,
+            w: this.r * 2 + K.dash.wPad,
             delay: c.wind + c.dur,
-            dmg: this.dmg * 1.2,
+            dmg: this.dmg * K.dash.dmg,
             type,
             color: col
           });
           this.anim.play('Charge', { speed: 1.3 });
           break;
-        case 'leap': // leap and land on you
-          this.jump = { sx: this.x, sy: this.y, tx: pl.x, ty: pl.y, t: -0.5 * f, dur: 0.65 };
-          G.Hazards.add({ kind: 'zone', x: pl.x, y: pl.y, r: 82, delay: 0.5 * f + 0.65, dmg: this.dmg * 1.25, type, color: col });
+        case 'leap': {
+          // leap and land on you
+          const L = K.leap;
+          this.jump = { sx: this.x, sy: this.y, tx: pl.x, ty: pl.y, t: -L.crouch * f, dur: L.dur };
+          G.Hazards.add({ kind: 'zone', x: pl.x, y: pl.y, r: L.r, delay: L.crouch * f + L.dur, dmg: this.dmg * L.dmg, type, color: col });
           this.anim.play('Charge', { speed: 1.4 });
           ai.cast = null;
-          ai.cd = G.U.rand(1.4, 2) + 0.6;
+          ai.cd = RE.range(L.cd[0], L.cd[1]) + L.cdPad;
           break;
+        }
         case 'rain': {
           // zones falling around you
-          const n = ai.fury ? 6 : 4;
+          const R = K.rain;
+          const n = ai.fury ? R.furyN : R.n;
           for (let i = 0; i < n; i++) {
-            const a = i ? Math.random() * 6.2832 : 0,
-              d = i ? G.U.rand(40, 120) : 0;
+            const a = i ? RE.angle() : 0,
+              d = i ? RE.range(R.dist[0], R.dist[1]) : 0;
             G.Hazards.add({
               kind: 'zone',
               x: pl.x + Math.cos(a) * d,
-              y: pl.y + Math.sin(a) * d * 0.8,
-              r: 50,
-              delay: 1.05 + i * 0.12,
-              dmg: this.shotDmg() * 1.15,
+              y: pl.y + Math.sin(a) * d * R.yK,
+              r: R.r,
+              delay: R.delay + i * R.stagger,
+              dmg: this.shotDmg() * R.dmg,
               type,
               color: col
             });
           }
-          c.wind = 0.5;
+          c.wind = R.wind;
           this.anim.play('Shoot');
           break;
         }
         case 'beam': {
           // fan of beams
-          const n = ai.fury ? 5 : 3,
-            sp = ai.fury ? 0.42 : 0.5;
+          const BM = K.beam;
+          const n = ai.fury ? BM.furyN : BM.n,
+            sp = ai.fury ? BM.furySp : BM.sp;
           for (let i = 0; i < n; i++) {
             G.Hazards.add({
               kind: 'beam',
               x: this.x,
               y: this.y,
               angle: ang + (i - (n - 1) / 2) * sp,
-              len: 400,
-              w: 26,
-              delay: 1.0,
-              dmg: this.shotDmg() * 1.2,
+              len: BM.len,
+              w: BM.w,
+              delay: BM.delay,
+              dmg: this.shotDmg() * BM.dmg,
               type,
               color: col
             });
           }
-          c.wind = 1.0;
-          c.after = 0.25;
+          c.wind = BM.wind;
+          c.after = BM.after;
           this.anim.play('Charge', { speed: 1.1 });
           break;
         }
         case 'volley': // fan of shots
         case 'nova': // ring of shots
-          c.wind = (id === 'nova' ? 0.7 : 0.5) * f;
+          c.wind = K[id].wind * f;
           this.anim.play('Charge', { speed: 1.4 });
           G.FX.ring(this.x, this.y, this.r, this.r * 2.4, col, c.wind, 2);
           break;
@@ -705,10 +747,11 @@
       if (c.t >= c.wind && !c.fired) {
         c.fired = true;
         const [ax, ay] = G.U.norm(pl.x - this.x, pl.y - this.y);
-        if (c.id === 'volley') this.shoot(ax, ay, 1.1, ai.fury ? 9 : 7, 0.8);
+        const K = B.bossAi.attacks;
+        if (c.id === 'volley') this.shoot(ax, ay, K.volley.spread, ai.fury ? K.volley.furyN : K.volley.n, K.volley.dmg);
         else if (c.id === 'nova') {
-          const n = ai.fury ? 18 : 14;
-          this.shoot(ax, ay, (6.2832 * (n - 1)) / n, n, 0.7);
+          const n = ai.fury ? K.nova.furyN : K.nova.n;
+          this.shoot(ax, ay, (6.2832 * (n - 1)) / n, n, K.nova.dmg);
         } else if (c.id === 'slam') this.anim.play('Attack', { speed: 1.4 });
       }
       if (c.t >= c.wind + c.after) return this.bossEnd();
@@ -716,10 +759,11 @@
     }
 
     bossEnd() {
-      const ai = this.ai;
+      const ai = this.ai,
+        A = B.bossAi;
       ai.cast = null;
-      ai.cd = G.U.rand(1.3, 2.0);
-      if (ai.fury && Math.random() < 0.35) ai.cd = 0.3; // chain another one
+      ai.cd = RE.range(A.cdAfter[0], A.cdAfter[1]);
+      if (ai.fury && RE.chance(A.chainChance)) ai.cd = A.chainCd; // chain another one
       return [0, 0, 'Idle'];
     }
 
@@ -727,13 +771,19 @@
       return ['ranged', 'fan', 'beamer', 'zoner', 'healer', 'summoner'].includes(this.behavior);
     }
 
+    /** Distance a ranged fighter tries to keep from you. */
+    keepDist() {
+      return (this.def.range || B.behaviors.ranged.range) * B.behaviors.ranged.keep;
+    }
+
     shotDmg() {
-      return (this.def.shotDmg || 10) * (this.dmg / this.def.dmg);
+      return (this.def.shotDmg || B.shot.dmg) * (this.dmg / this.def.dmg);
     }
 
     /** Normal enemy shot (one, or several in a fan). */
     shoot(ax, ay, spread = 0, n = 1, k = 1) {
-      const sp = 190,
+      const S = B.shot,
+        sp = S.speed,
         type = this.atkType;
       const base = Math.atan2(ay, ax);
       for (let i = 0; i < n; i++) {
@@ -744,8 +794,8 @@
           vx: Math.cos(a) * sp,
           vy: Math.sin(a) * sp,
           dmg: this.shotDmg() * k,
-          r: 7,
-          life: 2.4,
+          r: S.r,
+          life: S.life,
           friendly: false,
           color: '#ff7a9e',
           mtype: type,
@@ -759,11 +809,13 @@
 
     /** What each personality does on its turn (host / solo). */
     special(pl, dx, dy) {
-      const col = G.U.TYPE_COLOR[this.atkType] || '#ff7a9e';
+      const col = G.U.TYPE_COLOR[this.atkType] || '#ff7a9e',
+        BH = B.behaviors;
       switch (this.behavior) {
         case 'fan': {
-          const n = this.def.fanN || 5;
-          this.shoot(dx, dy, n === 3 ? 0.6 : 0.9, n, 0.65);
+          const F = BH.fan;
+          const n = this.def.fanN || F.n;
+          this.shoot(dx, dy, n === 3 ? F.spread3 : F.spread, n, F.dmg);
           break;
         }
         case 'beamer':
@@ -773,25 +825,26 @@
             x: this.x,
             y: this.y,
             angle: Math.atan2(dy, dx),
-            len: 360,
-            w: 22,
-            delay: 1.0,
-            dmg: this.shotDmg() * 1.05,
+            len: BH.beamer.len,
+            w: BH.beamer.w,
+            delay: BH.beamer.delay,
+            dmg: this.shotDmg() * BH.beamer.dmg,
             type: this.atkType,
             color: col
           });
           this.anim.play('Charge', { speed: 1.2 });
           break;
         case 'zoner': {
-          const n = G.U.randInt(1, this.def.zones || 3);
+          const Z = BH.zoner;
+          const n = RE.int(1, this.def.zones || Z.zones);
           for (let i = 0; i < n; i++) {
             G.Hazards.add({
               kind: 'zone',
-              x: pl.x + (i ? G.U.rand(-70, 70) : 0),
-              y: pl.y + (i ? G.U.rand(-55, 55) : 0),
-              r: 44,
-              delay: 1.2,
-              dmg: this.shotDmg() * 0.95,
+              x: pl.x + (i ? RE.range(-Z.dx, Z.dx) : 0),
+              y: pl.y + (i ? RE.range(-Z.dy, Z.dy) : 0),
+              r: Z.r,
+              delay: Z.delay,
+              dmg: this.shotDmg() * Z.dmg,
               type: this.atkType,
               color: col
             });
@@ -816,51 +869,53 @@
       // double attack it heals 27% more, with 10 times more 124%, and at
       // most ×2.5. (Like enemies having more HP if you deal more damage.)
       const pow = Math.max(1, ...G.Game.everyone().map(p => (p.atk > 0 && p.baseAtk > 0 ? p.atk / p.baseAtk : 1)));
-      const k = 0.07 * Math.min(2.5, Math.pow(pow, 0.35));
+      const H = B.behaviors.healer;
+      const k = H.pct * Math.min(H.powCap, Math.pow(pow, H.powExp));
       let n = 0;
-      for (const e of G.EnemyMgr.queryCircle(this.x, this.y, 150)) {
+      for (const e of G.EnemyMgr.queryCircle(this.x, this.y, H.radius)) {
         if (e.dead || e.hp >= e.maxHp) continue;
         e.hp = Math.min(e.maxHp, e.hp + e.maxHp * k);
         G.FX.burst(e.x, e.y - e.bodyH * 0.6, '#7dffb0', 5, 60);
         n++;
       }
       this.anim.play('Charge');
-      G.FX.ring(this.x, this.y, 8, 150, '#5fe08a', 0.5, 3);
-      if (G.Coop.isHost) G.Coop.broadcast(['fxr', Math.round(this.x), Math.round(this.y), 150, '#5fe08a']);
+      G.Coop.fx('ring', this.x, this.y, 8, H.radius, '#5fe08a', 0.5, 3);
       if (n && G.Camera.sees(this.x, this.y, 0)) G.Audio.sfx('heal');
     }
 
     castShields() {
-      const near = G.EnemyMgr.queryCircle(this.x, this.y, 160)
+      const S = B.behaviors.shielder;
+      const near = G.EnemyMgr.queryCircle(this.x, this.y, S.radius)
         .filter(e => !e.dead)
         .sort((a, b) => G.U.dist2(a.x, a.y, this.x, this.y) - G.U.dist2(b.x, b.y, this.x, this.y))
-        .slice(0, 6);
+        .slice(0, S.max);
       for (const e of near) {
-        e.shield = Math.max(e.shield, e.maxHp * 0.35);
-        e.shieldT = 8;
+        e.shield = Math.max(e.shield, e.maxHp * S.hpPct);
+        e.shieldT = S.dur;
       }
       this.anim.play('Charge');
-      G.FX.ring(this.x, this.y, 8, 160, '#7fc8ff', 0.5, 3);
-      if (G.Coop.isHost) G.Coop.broadcast(['fxr', Math.round(this.x), Math.round(this.y), 160, '#7fc8ff']);
+      G.Coop.fx('ring', this.x, this.y, 8, S.radius, '#7fc8ff', 0.5, 3);
     }
 
     summon() {
       this.minions = this.minions.filter(m => !m.dead && G.EnemyMgr.get(m.id));
       // With the global enemy cap (fewer Pokémon on screen), plus a small margin.
-      if (this.minions.length >= 4 || G.EnemyMgr.count > G.Spawner.CAP + 15) return;
+      const S = B.behaviors.summoner,
+        M = S.minion;
+      if (this.minions.length >= S.maxMinions || G.EnemyMgr.count > G.Spawner.CAP + S.capMargin) return;
       const dex = this.def.minion || this.dex;
       const mon = G.DEX_BY[dex];
       const def = {
         dex,
         name: mon ? mon.name : '',
-        hp: Math.round(this.def.hp * 0.35),
-        spd: Math.round(this.def.spd * 1.1),
-        dmg: Math.round(this.def.dmg * 0.6),
-        xp: Math.max(1, Math.round(this.def.xp * 0.25)),
+        hp: Math.round(this.def.hp * M.hp),
+        spd: Math.round(this.def.spd * M.spd),
+        dmg: Math.round(this.def.dmg * M.dmg),
+        xp: Math.max(M.minXp, Math.round(this.def.xp * M.xp)),
         behavior: 'chase'
       };
-      for (let i = 0; i < 2; i++) {
-        const a = Math.random() * 6.2832;
+      for (let i = 0; i < S.perCast; i++) {
+        const a = RE.angle();
         const m = new Enemy(def, this.x + Math.cos(a) * 30, this.y + Math.sin(a) * 22, this.sc || { hp: 1, spd: 1, dmg: 1 });
         G.EnemyMgr.add(m);
         this.minions.push(m);
@@ -871,23 +926,34 @@
     }
 
     startFuse() {
+      const F = B.behaviors.bomber;
       this.phase = 'fuse';
-      this.pt = 1.0;
-      G.Hazards.add({ kind: 'zone', x: this.x, y: this.y, r: 62, delay: 1.0, dmg: this.dmg * 1.4, type: this.atkType, color: '#ff7b3d' });
+      this.pt = F.fuse;
+      G.Hazards.add({
+        kind: 'zone',
+        x: this.x,
+        y: this.y,
+        r: F.r,
+        delay: F.fuse,
+        dmg: this.dmg * F.dmg,
+        type: this.atkType,
+        color: '#ff7b3d'
+      });
     }
 
     startJump(pl) {
-      const tx = pl.x,
+      const J = B.behaviors.jumper,
+        tx = pl.x,
         ty = pl.y;
-      this.jump = { sx: this.x, sy: this.y, tx, ty, t: -0.45, dur: 0.6 };
+      this.jump = { sx: this.x, sy: this.y, tx, ty, t: -J.crouch, dur: J.dur };
       this.anim.play('Charge', { speed: 1.4 });
       G.Hazards.add({
         kind: 'zone',
         x: tx,
         y: ty,
-        r: 50,
-        delay: 1.05,
-        dmg: this.dmg * 1.2,
+        r: J.r,
+        delay: J.crouch + J.dur, // lands when the jump does
+        dmg: this.dmg * J.dmg,
         type: this.atkType,
         color: G.U.TYPE_COLOR[this.atkType] || '#ff7a9e'
       });
@@ -949,7 +1015,7 @@
       if (this.dead) return;
 
       // Shield: blue bubble.
-      if (this.shield > 0 || (this.net && this.net.st & 4)) {
+      if (this.shield > 0 || this.netFlag('shield')) {
         ctx.save();
         ctx.globalAlpha = 0.35 + Math.sin(this.bob) * 0.08;
         ctx.strokeStyle = '#9fd8ff';
@@ -962,10 +1028,10 @@
         ctx.restore();
       }
 
-      if (this.burn > 0 || this.poison > 0 || (this.net && this.net.st & 3)) {
+      if (this.burn > 0 || this.poison > 0 || this.netFlag('burn') || this.netFlag('poison')) {
         ctx.save();
         ctx.globalAlpha = 0.45;
-        ctx.fillStyle = this.burn > 0 || (this.net && this.net.st & 1) ? '#ff8a3d' : '#c86bdc';
+        ctx.fillStyle = this.burn > 0 || this.netFlag('burn') ? '#ff8a3d' : '#c86bdc';
         ctx.beginPath();
         ctx.ellipse(this.x, this.y, this.r * 1.2, this.r * 0.5, 0, 0, 6.2832);
         ctx.fill();
@@ -1121,6 +1187,7 @@
     }
 
     function separate(dt) {
+      const SEP = B.separation;
       for (const e of list) {
         if (e.dead) continue;
         const cx = Math.floor(e.x / CELL),
@@ -1134,7 +1201,7 @@
             if (!b) continue;
             for (const o of b) {
               if (o === e || o.dead) continue;
-              const min = (e.r + o.r) * 0.82;
+              const min = (e.r + o.r) * SEP.overlap;
               const dx = e.x - o.x,
                 dy = e.y - o.y;
               const d2 = dx * dx + dy * dy;
@@ -1143,13 +1210,13 @@
               const f = (min - d) / min;
               px += (dx / d) * f;
               py += (dy / d) * f;
-              if (++n > 6) break;
+              if (++n > SEP.maxNear) break;
             }
           }
         }
         if (n) {
-          e.x += px * 42 * dt;
-          e.y += py * 42 * dt;
+          e.x += px * SEP.push * dt;
+          e.y += py * SEP.push * dt;
           if (!e.flying) G.World.collide(e);
         }
       }
@@ -1174,9 +1241,6 @@
      * @param players  [local player, ...teammates]. The run stats
      *                 (defeated, bosses) are recorded on the first one.
      */
-    // Seconds a straggler must be out of view before reappearing ahead.
-    const LAG_T = 2.5;
-
     function update(dt, players) {
       if (!Array.isArray(players)) players = [players];
       const pl = players[0];
@@ -1227,14 +1291,15 @@
         // Stragglers: those that fall behind while you run and have been
         // OUT OF VIEW (of everyone) for a while reappear ahead of you. That way
         // you can't just run away, and one you can see never disappears.
+        const S = B.straggler;
         const d2 = G.U.dist2(e.x, e.y, near.x, near.y);
-        const R = G.Camera.outerRadius() + 40;
-        const unseen = d2 > R * R && !G.Camera.sees(e.x, e.y, 60);
+        const R = G.Camera.outerRadius() + S.margin;
+        const unseen = d2 > R * R && !G.Camera.sees(e.x, e.y, S.pad);
         const sp = Math.hypot(near._vx || 0, near._vy || 0);
-        const behind = sp > 40 && (e.x - near.x) * near._vx + (e.y - near.y) * near._vy < -0.2 * Math.sqrt(d2) * sp;
+        const behind = sp > S.minSpd && (e.x - near.x) * near._vx + (e.y - near.y) * near._vy < -S.behind * Math.sqrt(d2) * sp;
         if (unseen && behind) e.lagT += dt;
         else if (!unseen) e.lagT = 0;
-        if ((unseen && e.lagT > LAG_T) || d2 > 1400 * 1400) {
+        if ((unseen && e.lagT > S.lagT) || d2 > S.farDist * S.farDist) {
           e.lagT = 0;
           if (!G.Spawner.ahead(e, near)) {
             list.splice(i, 1);

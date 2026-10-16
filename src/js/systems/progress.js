@@ -17,31 +17,24 @@
  *   legends{dex} · arenas{type} · itemsFound{id} · evoMoves{id} · ach{id}
  *   missions { day, daily[], rerolled, week, weekly[] }
  *
- * Missions: 3 daily + 2 weekly, drawn with a seed from the date and
+ * Missions: 3 daily + 2 weekly (G.Balance.run.missions), drawn with a seed from the date and
  * the account (the same ones on any computer). The reward is claimed
  * by hand; achievements are granted automatically when earned.
  */
 G.Progress = (() => {
   const TYPES = Object.keys(G.U.TYPE_NAME);
+  const BR = G.Balance.run;
   let achT = 0,
     toastQ = [],
     toastT = 0;
 
   // ---------------- missions ----------------
 
+  /** A generator seeded by a text (FNV-1a + mulberry32, the same as the run streams in core/rng.js). */
   function rng(seedStr) {
-    let h = 2166136261;
-    for (let i = 0; i < seedStr.length; i++) {
-      h ^= seedStr.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    return () => {
-      h += 0x6d2b79f5;
-      let t = h;
-      t = Math.imul(t ^ (t >>> 15), t | 1);
-      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
+    const st = new G.RNG.Stream(seedStr);
+    st.reseed(0); // state = hash of the text
+    return () => st.next();
   }
 
   function make(def, r) {
@@ -67,11 +60,11 @@ G.Progress = (() => {
     if (M.day !== ids.d) {
       M.day = ids.d;
       M.rerolled = false;
-      M.daily = pickSet(G.MissionDefs.daily, 3, rng(ids.d + key));
+      M.daily = pickSet(G.MissionDefs.daily, BR.missions.daily, rng(ids.d + key));
     }
     if (M.week !== ids.w) {
       M.week = ids.w;
-      M.weekly = pickSet(G.MissionDefs.weekly, 2, rng(ids.w + key));
+      M.weekly = pickSet(G.MissionDefs.weekly, BR.missions.weekly, rng(ids.w + key));
     }
   }
 

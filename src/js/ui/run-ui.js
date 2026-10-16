@@ -24,8 +24,8 @@ G.RunUI = (() => {
    */
   function rerollsLeft() {
     const p = G.Game.player;
-    // 1 free + the ones bought in Upgrades (previously, 1 more per boss).
-    return p ? Math.max(0, 1 + (p.rerollBonus || 0) - (p.rerolls || 0)) : 0;
+    // The free ones + the ones bought in Upgrades (previously, 1 more per boss).
+    return p ? Math.max(0, G.Balance.levelup.freeRerolls + (p.rerollBonus || 0) - (p.rerolls || 0)) : 0;
   }
 
   function reroll() {
@@ -126,7 +126,8 @@ G.RunUI = (() => {
         <div class="caught-row" id="over-caught"></div></div>`
           : ''
       }
-      ${r.record ? '<div style="grid-column:1/-1;text-align:center" class="gold">New time record!</div>' : ''}`;
+      ${r.record ? '<div style="grid-column:1/-1;text-align:center" class="gold">New time record!</div>' : ''}
+      <div style="grid-column:1/-1"><span>Seed</span><b translate="no">${G.RNG.code()}</b></div>`;
     $('btn-again').onclick = onBack;
     if (r.caught && r.caught.length) {
       const row = $('over-caught');
@@ -237,6 +238,9 @@ G.RunUI = (() => {
     G.UI.soundControls($('pause-sound'));
     $('pause-coop').classList.toggle('hidden', !coop);
     $('btn-quit').textContent = coop ? 'Leave the game' : 'Quit run';
+    $('pause-seed').textContent = G.RNG.custom
+      ? `Chosen seed ${G.RNG.code()}: this run doesn't count for the leaderboard`
+      : `Seed ${G.RNG.code()}`;
     G.UI.show('scr-pause');
   }
 
