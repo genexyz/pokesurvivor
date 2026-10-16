@@ -196,7 +196,7 @@ G.SettingsUI = (() => {
       return;
     }
     const nick = G.Social.me ? G.Social.me.name : G.DB.user || '';
-    const kind = G.DB.mode === 'local' ? 'Cuenta de este navegador' : G.DB.nameAccount ? 'Nombre y contraseña' : 'Google';
+    const kind = G.DB.mode === 'local' ? 'Partida de este navegador' : 'Google';
     box.innerHTML =
       section('Cuenta') +
       `<div class="set-row"><div class="grow"><b>Apodo</b><small>Es único y no se puede cambiar.</small></div><span class="gold" translate="no">${esc(nick)}</span></div>` +
@@ -249,7 +249,7 @@ G.SettingsUI = (() => {
         const ok = await G.UI.confirmDelete();
         if (!ok) return;
         del.disabled = true;
-        const r = await G.DB.deleteAccount(ok.pass);
+        const r = await G.DB.deleteAccount();
         if (!r.ok) {
           $('set-msg').textContent = r.error;
           del.disabled = false;

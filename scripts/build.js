@@ -6,7 +6,7 @@
  * - dist/ se genera entero: public/ tal cual, src/css, y dist/index.html a partir
  *   de src/index.html, cambiando el bloque de scripts por js/app.min.js (con la
  *   huella en la URL para que no se quede en caché).
- * - node scripts/build.js --sin-seo  ->  sin lo de SEO (hasta tener pokesurvivor.com).
+ * - node scripts/build.js --sin-seo  ->  sin lo de SEO (hasta tener survivor.preciostcg.com).
  * - Después se generan las páginas web y en/index.html: scripts/make_seo_pages.py
  */
 const fs = require('fs'),
@@ -109,7 +109,7 @@ const hash = crypto.createHash('sha1').update(min).digest('hex').slice(0, 10);
 let html = dev.slice(0, i) + `<script defer src="js/app.min.js?v=${hash}"></script>` + dev.slice(j + END.length);
 html = html.replace(/<meta name="robots" content="noindex">\s*/, '');
 // --sin-seo: sin canonical/redes/datos estructurados ni enlaces a las páginas
-// (para publicar antes de tener el dominio pokesurvivor.com).
+// (para publicar antes de tener el dominio survivor.preciostcg.com).
 const SIN_SEO = process.argv.includes('--sin-seo');
 html = SIN_SEO ? html.replace(/<!-- seo:begin -->[\s\S]*?<!-- seo:end -->\n?/g, '') : html.replace(/<!-- seo:(begin|end) -->\n?/g, '');
 html = html.replace(

@@ -1,0 +1,15 @@
+# Postgres para probar en local: npm run db:up
+# y en .env: DATABASE_URL=postgres://pokesurvivor:pokesurvivor@localhost:5432/pokesurvivor
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pokesurvivor
+      POSTGRES_PASSWORD: pokesurvivor
+      POSTGRES_DB: pokesurvivor
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:

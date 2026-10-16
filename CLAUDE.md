@@ -30,10 +30,11 @@ servidores, base de datos o costes NO van ahí.
 
 ## Servidores
 
-- Firebase: proyecto **pokesurvivor-free** (autenticación normal: cuentas gratis sin límite).
-  **Nunca** activar "Identity Platform" ni nada que lo active (funciones de bloqueo, MFA,
-  "Actualizar para habilitar"): cobra por usuario. El proyecto viejo pokesurvivor-jpter se borró el 13-10-2026 (con su facturación).
-- Cloudflare: SÓLO el dominio pokesurvivor.com (comprado allí, DNS gratis). El Worker y el TURN
-  (Cloudflare Realtime) se quitaron el 15-10-2026: el cooperativo va sólo con conexión directa
-  (STUN gratis de Google). No volver a añadir nada de pago.
+- Todo en Coolify, sin servicios de pago: la web en **https://survivor.preciostcg.com** y su servidor
+  (`server/`: Node + Postgres de Coolify, `DATABASE_URL`). Firebase se quitó el 16-10-2026.
+- Cuentas: SÓLO con Google (better-auth, `server/auth.mjs`), con el cliente OAuth de precios-tcg.
+  Nada de usuario y contraseña. Variables de entorno en `.env.example`.
+- Cooperativo: las salas, invitaciones, amigos en línea y la señalización de WebRTC van por el
+  WebSocket `/ws` (`server/live.mjs`); la partida va directa entre navegadores (STUN gratis de
+  Google). Si hiciera falta un TURN, uno propio (coturn) en Coolify, nunca de pago.
 - Mantenimiento: `MAINTENANCE` en `src/js/main.js` (con `?dev` se puede entrar para probar).

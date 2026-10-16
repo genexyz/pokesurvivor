@@ -4,12 +4,12 @@
  *
  * Dos caminos, a la vez:
  *   directo  WebRTC (canal de datos entre navegadores, sin pasar por ningún
- *            servidor). La negociación (señalización) va por la base de datos.
+ *            servidor). La negociación (señalización) va por nuestro servidor
+ *            (G.Live, WebSocket; server/live.mjs).
  *            Sólo con STUN gratuito de Google: si la red no deja conectar
  *            directo (algunos routers y datos móviles), esa pareja no puede
- *            jugar junta. El TURN de Cloudflare se QUITÓ el 15-10-2026 (de pago).
- *   relé     (APAGADO) los mensajes irían por la Realtime Database:
- *            rooms/{sala}/q/{destinatario}/{id}, a 1 $ el GB.
+ *            jugar junta. (Se podría añadir un TURN propio, coturn, en ICE.)
+ *   relé     (APAGADO) los mensajes irían por el servidor.
  *
  * Se envía por el canal directo si está abierto; si no, por el relé. El que
  * recibe escucha los dos, así que no hace falta ponerse de acuerdo.
@@ -21,19 +21,16 @@
 G.Net = (() => {
   const ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
   const DIRECT_TIMEOUT = 9000; // ms para conseguir canal directo antes de usar el relé
-  // Relé por la Realtime Database APAGADO (12-10-2026): a 1 $ el GB era lo que más
-  // costaba del cooperativo. Sin conexión directa, esa pareja no puede jugar
-  // junta ('failed') y el anfitrión lo reintenta cada RETRY_MS. Por la base de datos
-  // sólo pasa la señalización (unos pocos mensajes pequeños para conectarse).
+  // Relé APAGADO: sin conexión directa, esa pareja no puede jugar junta
+  // ('failed') y el anfitrión lo reintenta cada RETRY_MS. Por el servidor sólo
+  // pasa la señalización (unos pocos mensajes pequeños para conectarse).
   const ALLOW_RELAY = false,
     RETRY_MS = 15000;
 
-  let rtdb = null,
-    uid = null,
+  let uid = null,
     roomId = null,
     isHost = false,
     hostUid = null;
-  let qref = null;
   const peers = new Map(); // uid -> { pc, dc, mode, timer }
   const handlers = new Set(),
     peerHandlers = new Set();
@@ -55,26 +52,10 @@ G.Net = (() => {
   function open(id, host, hostId) {
     if (roomId === id) return;
     close();
-    const fb = G.DB.fb;
-    rtdb = fb.rtdb;
-    uid = fb.uid;
+    uid = G.DB.uid;
     roomId = id;
     isHost = host;
     hostUid = hostId;
-    qref = rtdb.ref('rooms/' + id + '/q/' + uid);
-    qref.on('child_added', s => {
-      const raw = s.val();
-      s.ref.remove().catch(() => {});
-      let m;
-      try {
-        m = JSON.parse(raw);
-      } catch (e) {
-        return;
-      }
-      if (!m || !m.f) return;
-      if (m.sig) onSignal(m.f, m.sig);
-      else deliver(m.f, m.d);
-    });
     // Invitado: hueco para el anfitrión desde ya (se sustituye al llegar su
     // oferta). Así, si no llega nunca, se sigue por el relé y se sabe cuándo se va.
     if (!isHost) {
@@ -91,10 +72,6 @@ G.Net = (() => {
 
   function close() {
     for (const u of [...peers.keys()]) drop(u);
-    if (qref) {
-      qref.off();
-      qref = null;
-    }
     roomId = null;
     isHost = false;
     hostUid = null;
@@ -262,12 +239,15 @@ G.Net = (() => {
   // ---------------- envío / recepción ----------------
 
   function relayPush(to, env) {
-    if (!rtdb || !roomId) return;
-    rtdb
-      .ref('rooms/' + roomId + '/q/' + to)
-      .push(JSON.stringify(env))
-      .catch(e => console.warn('[Net] relé:', e.code || e.message));
+    if (roomId) G.Live.send('sig', { to, env });
   }
+  // Lo que llega por el servidor: señalización (o el aviso de empezar).
+  G.Live.on('sig', msg => {
+    const m = msg.env;
+    if (!roomId || msg.room !== roomId || !m || !msg.f) return;
+    if (m.sig) onSignal(msg.f, m.sig);
+    else deliver(msg.f, m.d);
+  });
 
   function send(to, msg) {
     if (!roomId) return;
@@ -281,7 +261,7 @@ G.Net = (() => {
         /* cae al relé */
       }
     }
-    // Sin relé, los datos de la partida no van por la base de datos (se pierden: esa
+    // Sin relé, los datos de la partida no van por el servidor (se pierden: esa
     // pareja no está conectada). Sólo pasa el aviso de empezar.
     if (!ALLOW_RELAY && !(msg && msg.k === 'start')) return;
     stats.relaySent++;

@@ -7,6 +7,16 @@
  */
 G.CHANGELOG = [
   {
+    d: '2026-10-16',
+    title: ['Nueva web y entrar con Google', 'New website and Google sign-in'],
+    chg: [
+      [
+        'El juego se muda a survivor.preciostcg.com. Ahora se entra sólo con Google (ya no hay cuentas de nombre y contraseña) y se empieza de cero. Sigues pudiendo jugar como invitado.',
+        'The game moves to survivor.preciostcg.com. You now sign in only with Google (no more name and password accounts) and everyone starts from scratch. You can still play as a guest.'
+      ]
+    ]
+  },
+  {
     d: '2026-10-15',
     title: ['Actualizaciones obligatorias', 'Required updates'],
     chg: [

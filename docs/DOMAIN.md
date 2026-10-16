@@ -1,5 +1,8 @@
 # Poner pokesurvivor.com en marcha
 
+> **Nota (16-10-2026):** el juego se mudó a **survivor.preciostcg.com** (Coolify, ver
+> [PUBLICAR.md](PUBLICAR.md)). Lo de abajo es histórico.
+
 > **Nota (16-10-2026):** histórico. El juego ya no se publica en GitHub Pages sino
 > con Docker en Coolify ([PUBLICAR.md](PUBLICAR.md)) y `tools/activar_dominio.sh` se
 > quitó. Para el dominio basta un registro `A` a la IP del servidor y ponerlo en Coolify.

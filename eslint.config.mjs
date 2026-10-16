@@ -16,8 +16,7 @@ export default [
       sourceType: 'script',
       globals: {
         ...globals.browser,
-        G: 'writable',
-        firebase: 'readonly' // SDK de Firebase, cargado al vuelo por db.js
+        G: 'writable'
       }
     }
   },
@@ -31,7 +30,19 @@ export default [
     languageOptions: { sourceType: 'script', globals: { ...globals.serviceworker } }
   },
 
-  // Scripts de Node (build, servidor local...).
+  // Fusión de partidas: también la carga el servidor con require.
+  {
+    files: ['src/js/core/save-merge.js'],
+    languageOptions: { globals: { module: 'readonly' } }
+  },
+
+  // El servidor (server/): módulos de Node.
+  {
+    files: ['server/**/*.mjs'],
+    languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.node } }
+  },
+
+  // Scripts de Node (build...).
   {
     files: ['scripts/**/*.js'],
     languageOptions: { sourceType: 'commonjs', globals: { ...globals.node } }

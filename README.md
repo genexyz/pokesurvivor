@@ -89,9 +89,9 @@ jefe, la captura de un shiny salvaje y un shiny en el gacha.
 
 ## Guardado en la nube y publicación
 
-- **Base de datos (Firebase):** cuentas con nombre + contraseña o Google, y la
-  partida se sigue en cualquier ordenador. Pasos en [docs/FIREBASE.md](docs/FIREBASE.md).
-  Sin configurar, el juego guarda sólo en el navegador, como antes.
+- **Nube propia (`server/`: Node + Postgres):** se entra sólo con Google y la
+  partida se sigue en cualquier aparato. Variables en [.env.example](.env.example).
+  Sin `DATABASE_URL`, el juego guarda sólo en el navegador.
 - **Jugar con amigos (hasta 4) y ranking:** con cuenta en la nube, menú
   **Amigos** (añadir por apodo, invitar a tu sala) y **Ranking** (tiempo
   aguantado: solo o grupo, de hoy a histórico, amigos, por Pokémon).
@@ -99,8 +99,8 @@ jefe, la captura de un shiny salvaje y un shiny en el gacha.
 - Si se juega en dos ordenadores a la vez o sin conexión, las partidas se
   **fusionan**: las colecciones se unen (nunca se pierde un Pokémon ni un
   shiny), mejoras y estadísticas se quedan con el máximo, y monedas y
-  compañero con la versión más reciente. Los cambios de otro ordenador llegan
-  en directo.
+  monedas y tickets con la libreta de cada aparato (`src/js/core/save-merge.js`,
+  la misma fusión en el navegador y en el servidor).
 
 ## Licencia
 
@@ -112,24 +112,24 @@ la fuente (OFL) y las marcas de Pokémon tienen sus propias condiciones: ver
 [LICENSE](LICENSE) y [CREDITS.md](CREDITS.md). Proyecto de fan sin ánimo de
 lucro.
 
-**La única web oficial es [pokesurvivor.com](https://pokesurvivor.com).** El
+**La única web oficial es [survivor.preciostcg.com](https://survivor.preciostcg.com).** El
 juego es y será gratis: si alguien te pide pagar, no somos nosotros.
 
 ## Desarrollo
 
-| Comando                               | Qué hace                                                                                                                                |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run dev`                         | Servidor local en http://localhost:3000 con `src/` + `public/`. Sin nube (guardado en el navegador) y se recarga al guardar un archivo. |
-| `npm run dev:emulator`                | Igual, pero con el emulador local de Firebase (cuentas, amigos, cooperativo). Necesita Java.                                            |
-| `npm run build`                       | Genera `dist/`: el juego empaquetado (`js/app.min.js`), `version.json` y las páginas web. Necesita Python 3.                            |
-| `npm run build:force`                 | Igual, pero es una actualización obligatoria para los jugadores.                                                                        |
-| `npm run build:debug`                 | Igual, sin ofuscar (`G` accesible en la consola).                                                                                       |
-| `npm start`                           | Sirve `dist/` como en producción (antes, `npm run build`).                                                                              |
-| `npm run clean`                       | Borra `dist/` y `.cache/`.                                                                                                              |
-| `npm run lint` / `lint:fix`           | Revisa el código con ESLint (y arregla lo automático).                                                                                  |
-| `npm run format` / `format:check`     | Formatea con Prettier / comprueba que todo está formateado.                                                                             |
-| `npm run docker:build` / `docker:run` | Imagen de producción (nginx) en http://localhost:8080.                                                                                  |
-| `npm run data:*`                      | Regenera datos: `pokedex`, `sprites`, `credits`, `hover`, `icons`, `font` (Python).                                                     |
+| Comando                               | Qué hace                                                                                                                    |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                         | Servidor local en http://localhost:3000 con `src/` + `public/`; se recarga al guardar. Con `.env` (DATABASE_URL), con nube. |
+| `npm run db:up`                       | Postgres local en Docker (`docker-compose.dev.yml`).                                                                        |
+| `npm run build`                       | Genera `dist/`: el juego empaquetado (`js/app.min.js`), `version.json` y las páginas web. Necesita Python 3.                |
+| `npm run build:force`                 | Igual, pero es una actualización obligatoria para los jugadores.                                                            |
+| `npm run build:debug`                 | Igual, sin ofuscar (`G` accesible en la consola).                                                                           |
+| `npm start`                           | Sirve `dist/` como en producción (antes, `npm run build`).                                                                  |
+| `npm run clean`                       | Borra `dist/` y `.cache/`.                                                                                                  |
+| `npm run lint` / `lint:fix`           | Revisa el código con ESLint (y arregla lo automático).                                                                      |
+| `npm run format` / `format:check`     | Formatea con Prettier / comprueba que todo está formateado.                                                                 |
+| `npm run docker:build` / `docker:run` | Imagen de producción (servidor Node) en http://localhost:8080.                                                              |
+| `npm run data:*`                      | Regenera datos: `pokedex`, `sprites`, `credits`, `hover`, `icons`, `font` (Python).                                         |
 
 Puerto: `PORT=4000 npm run dev`. Python: si no está en el PATH, `PYTHON=/ruta/a/python`.
 
@@ -147,7 +147,7 @@ src/
     world/    tiles (pixel art en código), world (terreno, objetos, colisiones)
     entities/ player, enemy, projectile, pickup, fx
     systems/  combat, spawner, levelup, gacha...
-    net/      social (apodo, amigos, salas), net (WebRTC), coop, ranking
+    net/      live (WebSocket), social (apodo, amigos, salas), net (WebRTC), coop, ranking
     ui/       icons (pixel art), ui, hud, login, test, menu, gacha-ui, run-ui...
     game.js   flujo y bucle principal
     main.js   arranque
@@ -156,10 +156,9 @@ public/                 se copia tal cual a dist/
   assets/icons/         iconos de la app*
   assets/fonts/         Pixelify Sans (OFL) y su versión con números redibujados*
   contacto/  favicon.ico  manifest.webmanifest  sw.js
-scripts/                build, servidor local y scripts que regeneran los ficheros marcados con *
-firebase/               reglas de Firestore y Realtime Database (firebase.json en la raíz)
-deploy/nginx.conf       servidor de la imagen Docker
-docs/                   Firebase, publicar, SEO, dominio, GDD
+scripts/                build y scripts que regeneran los ficheros marcados con *
+server/                 servidor (web, cuentas de Google, partidas, ranking, salas y señalización del cooperativo)
+docs/                   publicar, SEO, dominio, GDD
 dist/                   generado por npm run build (no se sube)
 ```
 
