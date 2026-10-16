@@ -1247,6 +1247,8 @@ export const Game = (() => {
       if (!ready) return;
       step(dt);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // Cleared like a run frame: if a ground chunk fails to draw, sprites don't smear over it.
+      ctx.clearRect(0, 0, w, h);
       ctx.imageSmoothingEnabled = false;
       ctx.save();
       ctx.scale(Camera.scale, Camera.scale);
