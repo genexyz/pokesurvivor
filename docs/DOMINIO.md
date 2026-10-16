@@ -30,17 +30,17 @@ Estado a 10-10-2026:
 2. Pulsa **Add record** y crea estos 9 registros. En todos, el interruptor
    **Proxy status** tiene que quedar en **DNS only** (nube **gris**, no naranja).
 
-   | Type | Name | IPv4 / IPv6 / Target |
-   |---|---|---|
-   | A | `@` | `185.199.108.153` |
-   | A | `@` | `185.199.109.153` |
-   | A | `@` | `185.199.110.153` |
-   | A | `@` | `185.199.111.153` |
-   | AAAA | `@` | `2606:50c0:8000::153` |
-   | AAAA | `@` | `2606:50c0:8001::153` |
-   | AAAA | `@` | `2606:50c0:8002::153` |
-   | AAAA | `@` | `2606:50c0:8003::153` |
-   | CNAME | `www` | `jpter78.github.io` |
+   | Type  | Name  | IPv4 / IPv6 / Target  |
+   | ----- | ----- | --------------------- |
+   | A     | `@`   | `185.199.108.153`     |
+   | A     | `@`   | `185.199.109.153`     |
+   | A     | `@`   | `185.199.110.153`     |
+   | A     | `@`   | `185.199.111.153`     |
+   | AAAA  | `@`   | `2606:50c0:8000::153` |
+   | AAAA  | `@`   | `2606:50c0:8001::153` |
+   | AAAA  | `@`   | `2606:50c0:8002::153` |
+   | AAAA  | `@`   | `2606:50c0:8003::153` |
+   | CNAME | `www` | `jpter78.github.io`   |
 
    Son las direcciones de GitHub Pages, que es donde está el juego.
 
@@ -51,6 +51,7 @@ Estado a 10-10-2026:
 > **Full (strict)** si algún día interesa, pero no hace falta.
 
 Opcional y gratis en el mismo panel:
+
 - **DNSSEC** (menú DNS → Settings → Enable DNSSEC): protege el dominio contra
   suplantaciones.
 - **Email Routing**: un correo `contacto@pokesurvivor.com` que te llegue a tu Gmail,

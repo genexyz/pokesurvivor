@@ -5,8 +5,11 @@
  */
 G.RankingUI = (() => {
   const $ = G.UI.$;
-  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  let mode = 's', period = 'w', scope = 'all', dex = null;
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  let mode = 's',
+    period = 'w',
+    scope = 'all',
+    dex = null;
   let token = 0;
 
   function init() {
@@ -15,11 +18,20 @@ G.RankingUI = (() => {
     $('rk-poke').onchange = () => {
       const v = $('rk-poke').value.trim().toLowerCase();
       const p = G.DEX.find(x => x.name.toLowerCase() === v);
-      if (!v) { setDex(null); return; }
-      if (!p) { G.UI.toast('No hay ningún Pokémon con ese nombre'); return; }
+      if (!v) {
+        setDex(null);
+        return;
+      }
+      if (!p) {
+        G.UI.toast('No hay ningún Pokémon con ese nombre');
+        return;
+      }
       setDex(p.dex);
     };
-    $('rk-clear').onclick = () => { $('rk-poke').value = ''; setDex(null); };
+    $('rk-clear').onclick = () => {
+      $('rk-poke').value = '';
+      setDex(null);
+    };
     $('rk-mod').onclick = () => G.ModUI.open();
   }
 
@@ -28,7 +40,8 @@ G.RankingUI = (() => {
     dex = d;
     if (d && period !== 'a') period = 'a';
     $('rk-clear').classList.toggle('hidden', !d);
-    tabs(); load();
+    tabs();
+    load();
   }
 
   function open() {
@@ -47,27 +60,63 @@ G.RankingUI = (() => {
         const b = document.createElement('button');
         b.className = cls + (k === cur ? ' on' : '');
         b.innerHTML = label;
-        b.onclick = () => { set(k); tabs(); load(); };
+        b.onclick = () => {
+          set(k);
+          tabs();
+          load();
+        };
         box.appendChild(b);
       }
     };
-    mk($('rk-mode'), [['s', `<b>${G.Icons.html('user', 16)} Solo</b>`], ['g', `<b>${G.Icons.html('friends', 16)} Grupo</b>`]],
-       mode, k => { mode = k; }, 'gen-tab');
-    mk($('rk-period'), G.Ranking.PERIODS, period, k => {
-      period = k;
-      if (k !== 'a' && dex) { dex = null; $('rk-poke').value = ''; $('rk-clear').classList.add('hidden'); }
-    }, 'chip');
-    mk($('rk-scope'), [['all', 'Todos'], ['friends', 'Sólo amigos']], scope, k => { scope = k; }, 'chip');
+    mk(
+      $('rk-mode'),
+      [
+        ['s', `<b>${G.Icons.html('user', 16)} Solo</b>`],
+        ['g', `<b>${G.Icons.html('friends', 16)} Grupo</b>`]
+      ],
+      mode,
+      k => {
+        mode = k;
+      },
+      'gen-tab'
+    );
+    mk(
+      $('rk-period'),
+      G.Ranking.PERIODS,
+      period,
+      k => {
+        period = k;
+        if (k !== 'a' && dex) {
+          dex = null;
+          $('rk-poke').value = '';
+          $('rk-clear').classList.add('hidden');
+        }
+      },
+      'chip'
+    );
+    mk(
+      $('rk-scope'),
+      [
+        ['all', 'Todos'],
+        ['friends', 'Sólo amigos']
+      ],
+      scope,
+      k => {
+        scope = k;
+      },
+      'chip'
+    );
   }
 
-  const fmt = t => t >= 3600 ? Math.floor(t / 3600) + ':' + G.U.mmss(t % 3600).padStart(5, '0') : G.U.mmss(t);
+  const fmt = t => (t >= 3600 ? Math.floor(t / 3600) + ':' + G.U.mmss(t % 3600).padStart(5, '0') : G.U.mmss(t));
 
   async function load() {
     const my = ++token;
     const list = $('rk-list');
     list.innerHTML = '<p class="sub">Cargando…</p>';
     $('rk-me').innerHTML = '';
-    let rows = [], me = null;
+    let rows = [],
+      me = null;
     try {
       [rows, me] = await Promise.all([
         G.Ranking.top(mode, period, dex, scope === 'friends'),
@@ -84,22 +133,32 @@ G.RankingUI = (() => {
       list.innerHTML = '<p class="sub">Todavía no hay marcas aquí. ¡Sé el primero!</p>';
     }
     const uid = G.Social.uid;
-    const b = G.Ranking.board(mode, period, dex), done = G.Ranking.reported();
+    const b = G.Ranking.board(mode, period, dex),
+      done = G.Ranking.reported();
     rows.forEach((r, i) => list.appendChild(rowEl(r, i + 1, r.uids.includes(uid), b, done)));
 
     // La frase se monta en cada idioma (traducirla por trozos sale rara).
     const en = G.I18n.lang === 'en';
-    const pn = en ? { d: 'today', w: 'this week', m: 'this month', y: 'this year', a: 'of all time' }[period]
-                  : { d: 'de hoy', w: 'de esta semana', m: 'de este mes', y: 'de este año', a: 'de siempre' }[period];
+    const pn = en
+      ? { d: 'today', w: 'this week', m: 'this month', y: 'this year', a: 'of all time' }[period]
+      : { d: 'de hoy', w: 'de esta semana', m: 'de este mes', y: 'de este año', a: 'de siempre' }[period];
     const mon = dex ? G.DEX_BY[dex].name : '';
-    const where = en ? (mode === 's' ? 'solo' : 'group') + (dex ? ' with ' + mon : '')
-                     : (mode === 's' ? 'en solitario' : 'en grupo') + (dex ? ' con ' + mon : '');
-    $('rk-me').innerHTML = !G.Social.me ? 'Elige un apodo (en Amigos) para salir en el ranking.'
-      : me && me.out ? (en ? `<span translate="no">You're not in the top 50 ${where} ${pn} yet. Your exact rank is in All-time.</span>`
-                           : `Aún no estás en el top 50 ${pn} ${where}. Tu puesto exacto está en Histórico.`)
-      : me ? (en ? `<span translate="no">Your best ${where} rank ${pn}: <b class="gold">#${me.pos}</b> · ${fmt(me.t)}</span>`
-                 : `Tu mejor puesto ${pn} ${where}: <b class="gold">#${me.pos}</b> · ${fmt(me.t)}`)
-      : (en ? `<span translate="no">You don't have a ${where} record ${pn} yet.</span>` : `Aún no tienes marca ${pn} ${where}.`);
+    const where = en
+      ? (mode === 's' ? 'solo' : 'group') + (dex ? ' with ' + mon : '')
+      : (mode === 's' ? 'en solitario' : 'en grupo') + (dex ? ' con ' + mon : '');
+    $('rk-me').innerHTML = !G.Social.me
+      ? 'Elige un apodo (en Amigos) para salir en el ranking.'
+      : me && me.out
+        ? en
+          ? `<span translate="no">You're not in the top 50 ${where} ${pn} yet. Your exact rank is in All-time.</span>`
+          : `Aún no estás en el top 50 ${pn} ${where}. Tu puesto exacto está en Histórico.`
+        : me
+          ? en
+            ? `<span translate="no">Your best ${where} rank ${pn}: <b class="gold">#${me.pos}</b> · ${fmt(me.t)}</span>`
+            : `Tu mejor puesto ${pn} ${where}: <b class="gold">#${me.pos}</b> · ${fmt(me.t)}`
+          : en
+            ? `<span translate="no">You don't have a ${where} record ${pn} yet.</span>`
+            : `Aún no tienes marca ${pn} ${where}.`;
   }
 
   function rowEl(r, pos, mine, b, done) {
@@ -108,12 +167,21 @@ G.RankingUI = (() => {
     el.insertAdjacentHTML('beforeend', `<span class="pos">${pos <= 3 ? G.Icons.html('trophy', 20) : ''}${pos}</span>`);
     const mons = document.createElement('span');
     mons.className = 'mons';
-    r.dex.forEach((d, i) => { if (G.DEX_BY[d]) mons.appendChild(G.UI.spriteCanvas(d, 44, 40, { scale: 1, shiny: !!r.shiny[i] })); });
+    r.dex.forEach((d, i) => {
+      if (G.DEX_BY[d]) mons.appendChild(G.UI.spriteCanvas(d, 44, 40, { scale: 1, shiny: !!r.shiny[i] }));
+    });
     el.appendChild(mons);
-    el.insertAdjacentHTML('beforeend',
+    el.insertAdjacentHTML(
+      'beforeend',
       `<span class="who"><b translate="no">${r.names.map((n, i) => `<a href="#" class="plink" data-u="${esc(r.uids[i] || '')}">${esc(n)}</a>`).join(' · ')}</b><small>Nv. ${r.lv || 1} · ${(r.kills || 0).toLocaleString('es')} derrotados</small></span>
-       <span class="time">${fmt(r.t)}</span>`);
-    el.querySelectorAll('.plink').forEach(a => { a.onclick = e => { e.preventDefault(); G.ProfileUI.show(a.dataset.u); }; });
+       <span class="time">${fmt(r.t)}</span>`
+    );
+    el.querySelectorAll('.plink').forEach(a => {
+      a.onclick = e => {
+        e.preventDefault();
+        G.ProfileUI.show(a.dataset.u);
+      };
+    });
     // Reportar una marca sospechosa (no la tuya). Lo revisa el admin (mod-ui.js).
     if (!mine && G.Social.me) {
       const rep = document.createElement('button');
@@ -122,9 +190,13 @@ G.RankingUI = (() => {
       rep.title = sent ? 'Ya la has reportado' : 'Reportar marca sospechosa';
       rep.innerHTML = G.Icons.html('flag', 16);
       rep.onclick = async () => {
-        if (rep.classList.contains('sent')) { G.UI.toast('Ya has reportado esta marca'); return; }
+        if (rep.classList.contains('sent')) {
+          G.UI.toast('Ya has reportado esta marca');
+          return;
+        }
         if (!confirm('¿Reportar la marca de ' + r.names.join(', ') + ' como trampa?')) return;
-        rep.classList.add('sent'); rep.title = 'Ya la has reportado';
+        rep.classList.add('sent');
+        rep.title = 'Ya la has reportado';
         await G.Ranking.report(b, r);
         G.UI.toast('Gracias: la revisaremos');
       };

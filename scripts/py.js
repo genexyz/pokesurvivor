@@ -3,15 +3,24 @@
  * Orden: $PYTHON, python3, python, py y, en Windows, las instalaciones normales
  * aunque no estén en el PATH. Se salta el "python" falso de la Microsoft Store.
  */
-const { spawnSync } = require('child_process'), fs = require('fs'), path = require('path');
+const { spawnSync } = require('child_process'),
+  fs = require('fs'),
+  path = require('path');
 
 function candidates() {
   const list = [process.env.PYTHON, 'python3', 'python', 'py'].filter(Boolean);
   if (process.platform === 'win32') {
     for (const base of [path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Python'), 'C:\\Program Files', 'C:\\Python']) {
       try {
-        for (const d of fs.readdirSync(base).filter(d => /^Python3\d+$/i.test(d)).sort().reverse()) list.push(path.join(base, d, 'python.exe'));
-      } catch { /* no existe */ }
+        for (const d of fs
+          .readdirSync(base)
+          .filter(d => /^Python3\d+$/i.test(d))
+          .sort()
+          .reverse())
+          list.push(path.join(base, d, 'python.exe'));
+      } catch {
+        /* no existe */
+      }
     }
   }
   return list;

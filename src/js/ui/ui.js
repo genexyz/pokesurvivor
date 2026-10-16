@@ -7,17 +7,41 @@
  */
 G.UI = (() => {
   const $ = id => document.getElementById(id);
-  const SCREENS = ['scr-login', 'scr-test', 'scr-result', 'scr-starters', 'scr-menu',
-                   'scr-dex', 'scr-upgrades', 'scr-gacha', 'scr-levelup', 'scr-pause', 'scr-over',
-                   'scr-nick', 'scr-friends', 'scr-lobby', 'scr-rank', 'scr-item', 'scr-goals', 'scr-bond', 'scr-mod'];
+  const SCREENS = [
+    'scr-login',
+    'scr-test',
+    'scr-result',
+    'scr-starters',
+    'scr-menu',
+    'scr-dex',
+    'scr-upgrades',
+    'scr-gacha',
+    'scr-levelup',
+    'scr-pause',
+    'scr-over',
+    'scr-nick',
+    'scr-friends',
+    'scr-lobby',
+    'scr-rank',
+    'scr-item',
+    'scr-goals',
+    'scr-bond',
+    'scr-mod'
+  ];
 
   function show(id, keepMenu = false) {
     for (const s of SCREENS) if (s !== id && !(keepMenu && s === 'scr-menu')) $(s).classList.add('hidden');
     $(id).classList.remove('hidden');
   }
-  function hide(id) { $(id).classList.add('hidden'); }
-  function hideAll() { for (const s of SCREENS) $(s).classList.add('hidden'); }
-  function isOpen(id) { return !$(id).classList.contains('hidden'); }
+  function hide(id) {
+    $(id).classList.add('hidden');
+  }
+  function hideAll() {
+    for (const s of SCREENS) $(s).classList.add('hidden');
+  }
+  function isOpen(id) {
+    return !$(id).classList.contains('hidden');
+  }
 
   /** Barra superior (monedas, usuario, sonido) sólo fuera de las runs. */
   function chrome(on) {
@@ -35,20 +59,37 @@ G.UI = (() => {
     // Punto de sincronización: verde = guardado en la nube, amarillo = guardando,
     // rojo = sin conexión (se guarda en local y se sube al volver).
     const st = G.DB.guest ? 'guest' : G.DB.syncState;
-    const TIP = { ok: 'Guardado en la nube', syncing: 'Guardando…', pending: 'Guardando…',
-                  offline: 'Sin conexión: se subirá al volver', local: 'Guardado sólo en este navegador', guest: 'Invitado: no se guarda' };
-    $('user-pill').innerHTML = G.Icons.html(G.DB.guest ? 'user' : 'crown', 18) + ' <span translate="no">' + (G.DB.guest ? G.T('Invitado') : (G.DB.user || '')) + '</span>' +
+    const TIP = {
+      ok: 'Guardado en la nube',
+      syncing: 'Guardando…',
+      pending: 'Guardando…',
+      offline: 'Sin conexión: se subirá al volver',
+      local: 'Guardado sólo en este navegador',
+      guest: 'Invitado: no se guarda'
+    };
+    $('user-pill').innerHTML =
+      G.Icons.html(G.DB.guest ? 'user' : 'crown', 18) +
+      ' <span translate="no">' +
+      (G.DB.guest ? G.T('Invitado') : G.DB.user || '') +
+      '</span>' +
       `<i class="sync ${st}" title="${TIP[st] || ''}"></i>`;
     $('user-pill').title = TIP[st] || '';
   }
 
-  let toastEl = null, toastT = 0;
+  let toastEl = null,
+    toastT = 0;
   function toast(msg, ms = 2200) {
-    if (!toastEl) { toastEl = document.createElement('div'); toastEl.className = 'toast'; document.body.appendChild(toastEl); }
+    if (!toastEl) {
+      toastEl = document.createElement('div');
+      toastEl.className = 'toast';
+      document.body.appendChild(toastEl);
+    }
     toastEl.textContent = msg;
     toastEl.style.display = 'block';
     clearTimeout(toastT);
-    toastT = setTimeout(() => { toastEl.style.display = 'none'; }, ms);
+    toastT = setTimeout(() => {
+      toastEl.style.display = 'none';
+    }, ms);
   }
 
   function typeChips(types) {
@@ -56,7 +97,9 @@ G.UI = (() => {
   }
 
   /** Rareza: la Poké Ball que le corresponde (ver G.Icons.rarity). */
-  function stars(n, size = 12) { return G.Icons.rarity(n, size > 16 ? 24 : 12); }
+  function stars(n, size = 12) {
+    return G.Icons.rarity(n, size > 16 ? 24 : 12);
+  }
 
   // ---------------- sonido de la interfaz ----------------
 
@@ -69,14 +112,21 @@ G.UI = (() => {
       if (el && el !== lastHover && !el.disabled) G.Audio.sfx('hover');
       lastHover = el;
     });
-    document.addEventListener('click', e => {
-      const el = e.target.closest(CLICKABLE);
-      if (!el) return;
-      if (el.disabled) { G.Audio.sfx('error'); return; }
-      // Los botones con su propio sonido (comprar, tirar, elegir...) lo ponen ellos.
-      if (el.dataset.sfx === 'none') return;
-      G.Audio.sfx(el.matches('[data-back]') ? 'back' : el.dataset.sfx || 'click');
-    }, true);
+    document.addEventListener(
+      'click',
+      e => {
+        const el = e.target.closest(CLICKABLE);
+        if (!el) return;
+        if (el.disabled) {
+          G.Audio.sfx('error');
+          return;
+        }
+        // Los botones con su propio sonido (comprar, tirar, elegir...) lo ponen ellos.
+        if (el.dataset.sfx === 'none') return;
+        G.Audio.sfx(el.matches('[data-back]') ? 'back' : el.dataset.sfx || 'click');
+      },
+      true
+    );
   }
 
   /** Controles de volumen (se usan en la barra superior y en la pausa). */
@@ -92,7 +142,11 @@ G.UI = (() => {
       r.oninput = () => G.Audio.setVolume(r.dataset.k, r.value / 100);
       r.onchange = () => G.Audio.sfx('click');
     });
-    box.querySelector('[data-mute]').onclick = () => { G.Audio.toggleMute(); soundControls(box); refreshSoundIcon(); };
+    box.querySelector('[data-mute]').onclick = () => {
+      G.Audio.toggleMute();
+      soundControls(box);
+      refreshSoundIcon();
+    };
   }
 
   function refreshSoundIcon() {
@@ -124,7 +178,8 @@ G.UI = (() => {
    * Devuelve { pass } o null si se cancela.
    */
   function confirmDelete() {
-    if (!G.DB.nameAccount) return Promise.resolve(confirm(G.T('Se borrarán tu cuenta y toda tu partida, para siempre. ¿Seguro?')) ? { pass: '' } : null);
+    if (!G.DB.nameAccount)
+      return Promise.resolve(confirm(G.T('Se borrarán tu cuenta y toda tu partida, para siempre. ¿Seguro?')) ? { pass: '' } : null);
     return new Promise(done => {
       const el = document.createElement('section');
       el.className = 'scr dim';
@@ -139,19 +194,33 @@ G.UI = (() => {
         </div></div>`;
       document.body.appendChild(el);
       const inp = el.querySelector('input');
-      const end = v => { el.remove(); done(v); };
+      const end = v => {
+        el.remove();
+        done(v);
+      };
       el.querySelector('[data-a=no]').onclick = () => end(null);
-      el.querySelector('[data-a=yes]').onclick = () => { if (inp.value) end({ pass: inp.value }); else inp.focus(); };
-      inp.onkeydown = e => { if (e.key === 'Enter' && inp.value) end({ pass: inp.value }); if (e.key === 'Escape') end(null); };
+      el.querySelector('[data-a=yes]').onclick = () => {
+        if (inp.value) end({ pass: inp.value });
+        else inp.focus();
+      };
+      inp.onkeydown = e => {
+        if (e.key === 'Enter' && inp.value) end({ pass: inp.value });
+        if (e.key === 'Escape') end(null);
+      };
       setTimeout(() => inp.focus(), 50);
     });
   }
 
-  function closeLegal() { $('scr-legal').classList.add('hidden'); }
+  function closeLegal() {
+    $('scr-legal').classList.add('hidden');
+  }
 
   function wireLegal() {
     document.addEventListener('click', e => {
-      if (e.target.closest('[data-legal]')) { e.preventDefault(); openLegal(); }
+      if (e.target.closest('[data-legal]')) {
+        e.preventDefault();
+        openLegal();
+      }
     });
     $('legal-close').onclick = closeLegal;
     $('legal-delete').onclick = async () => {
@@ -159,7 +228,11 @@ G.UI = (() => {
       if (!ok) return;
       $('legal-delete').disabled = true;
       const r = await G.DB.deleteAccount(ok.pass);
-      if (!r.ok) { $('legal-del-msg').textContent = r.error; $('legal-delete').disabled = false; return; }
+      if (!r.ok) {
+        $('legal-del-msg').textContent = r.error;
+        $('legal-delete').disabled = false;
+        return;
+      }
       closeLegal();
       toast('Cuenta borrada');
       G.Audio.music(null);
@@ -170,7 +243,9 @@ G.UI = (() => {
   function initChrome() {
     G.Icons.installCss();
     wireLegal();
-    G.DB.onSync(() => { if (!$('topbar').classList.contains('hidden')) refreshCoins(); });
+    G.DB.onSync(() => {
+      if (!$('topbar').classList.contains('hidden')) refreshCoins();
+    });
     wireSounds();
     refreshSoundIcon();
     $('btn-sound').onclick = () => {
@@ -185,9 +260,10 @@ G.UI = (() => {
   const live = new Set();
   // Sólo se animan los canvas que están a la vista (la colección tiene cientos).
   const seen = new WeakMap();
-  const io = 'IntersectionObserver' in window
-    ? new IntersectionObserver(es => es.forEach(e => seen.set(e.target, e.isIntersecting)), { rootMargin: '80px' })
-    : null;
+  const io =
+    'IntersectionObserver' in window
+      ? new IntersectionObserver(es => es.forEach(e => seen.set(e.target, e.isIntersecting)), { rootMargin: '80px' })
+      : null;
 
   /**
    * Anima un Pokémon dentro de un <canvas>.
@@ -212,18 +288,28 @@ G.UI = (() => {
 
   function tick(dt) {
     for (const s of live) {
-      if (!s.cv.isConnected) { live.delete(s); if (io) io.unobserve(s.cv); continue; }
-      if (s.cv.offsetParent === null) continue;            // pantalla oculta
-      if (io && seen.get(s.cv) === false) continue;         // fuera de la vista
+      if (!s.cv.isConnected) {
+        live.delete(s);
+        if (io) io.unobserve(s.cv);
+        continue;
+      }
+      if (s.cv.offsetParent === null) continue; // pantalla oculta
+      if (io && seen.get(s.cv) === false) continue; // fuera de la vista
       s.a.update(dt);
 
       if (s.opts.lively) {
         s.t -= dt;
-        if (s.t <= 0) { s.t = G.U.rand(2.5, 4.5); s.a.play(G.U.pick(['Attack', 'Shoot', 'Charge'])); }
+        if (s.t <= 0) {
+          s.t = G.U.rand(2.5, 4.5);
+          s.a.play(G.U.pick(['Attack', 'Shoot', 'Charge']));
+        }
       }
       if (s.opts.spin) {
         s.spinT += dt;
-        if (s.spinT > 1.4) { s.spinT = 0; s.a.dir = (s.a.dir + 7) % 8; }
+        if (s.spinT > 1.4) {
+          s.spinT = 0;
+          s.a.dir = (s.a.dir + 7) % 8;
+        }
       }
 
       const { cv, ctx } = s;
@@ -235,15 +321,18 @@ G.UI = (() => {
       const m = G.Sprites.animMeta(s.dex, 'Idle');
       const ay = m ? m.ay : 24;
       let k = s.opts.scale || 2;
-      if (s.opts.hero) k = Math.max(1, Math.min(k, Math.floor(cv.height * 0.8 / ay)));
+      if (s.opts.hero) k = Math.max(1, Math.min(k, Math.floor((cv.height * 0.8) / ay)));
       s.a.scale = k / G.Sprites.PX;
       // Si no cabe de pie, se centra el cuerpo en el recuadro.
       const big = ay * k > cv.height * 0.8;
-      const fx = cv.width / 2, fy = big ? cv.height / 2 + ay * k * 0.45 : cv.height * 0.88;
+      const fx = cv.width / 2,
+        fy = big ? cv.height / 2 + ay * k * 0.45 : cv.height * 0.88;
 
       if (s.opts.shadow !== false && !s.opts.silhouette) {
         ctx.fillStyle = 'rgba(0,0,0,.35)';
-        ctx.beginPath(); ctx.ellipse(fx, fy, 9 * k, 3.4 * k, 0, 0, 6.2832); ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(fx, fy, 9 * k, 3.4 * k, 0, 0, 6.2832);
+        ctx.fill();
       }
       if (s.opts.silhouette) {
         ctx.save();
@@ -266,7 +355,10 @@ G.UI = (() => {
         for (let i = s.tw.length - 1; i >= 0; i--) {
           const w = s.tw[i];
           w.t += dt;
-          if (w.t >= w.life) { s.tw.splice(i, 1); continue; }
+          if (w.t >= w.life) {
+            s.tw.splice(i, 1);
+            continue;
+          }
           G.Icons.twinkle(ctx, w.x, w.y, w.t / w.life, Math.max(2, k));
         }
         ctx.globalAlpha = 1;
@@ -277,11 +369,28 @@ G.UI = (() => {
   /** Crea un <canvas> con un sprite animado (para rejillas). */
   function spriteCanvas(dex, w, h, opts) {
     const cv = document.createElement('canvas');
-    cv.width = w; cv.height = h;
+    cv.width = w;
+    cv.height = h;
     sprite(cv, dex, opts);
     return cv;
   }
 
-  return { $, show, hide, hideAll, isOpen, chrome, refreshCoins, toast, typeChips, stars, confirmDelete,
-           sprite, spriteCanvas, tick, initChrome, soundControls };
+  return {
+    $,
+    show,
+    hide,
+    hideAll,
+    isOpen,
+    chrome,
+    refreshCoins,
+    toast,
+    typeChips,
+    stars,
+    confirmDelete,
+    sprite,
+    spriteCanvas,
+    tick,
+    initChrome,
+    soundControls
+  };
 })();

@@ -17,21 +17,68 @@ G.Interact = (() => {
   const CHEST_TIME = 3.5;
   const POWER_TIME = 25;
   const POWERS = [
-    { id: 'dmg', name: 'Furia', desc: 'daño ×2', color: '#ff5f6d', on: p => { p.atkMul *= 2; }, off: p => { p.atkMul /= 2; } },
-    { id: 'spd', name: 'Rayo', desc: '+45% velocidad', color: '#5fd4ff', on: p => { p.spdMul *= 1.45; }, off: p => { p.spdMul /= 1.45; } },
-    { id: 'mag', name: 'Imán', desc: 'atraes todo desde lejos', color: '#ff8ad8', on: p => { p.magnet *= 4; }, off: p => { p.magnet /= 4; } },
-    { id: 'cd', name: 'Prisa', desc: '-40% recarga', color: '#ffd23f', on: p => { p.cdMul *= 0.6; }, off: p => { p.cdMul /= 0.6; } }
+    {
+      id: 'dmg',
+      name: 'Furia',
+      desc: 'daño ×2',
+      color: '#ff5f6d',
+      on: p => {
+        p.atkMul *= 2;
+      },
+      off: p => {
+        p.atkMul /= 2;
+      }
+    },
+    {
+      id: 'spd',
+      name: 'Rayo',
+      desc: '+45% velocidad',
+      color: '#5fd4ff',
+      on: p => {
+        p.spdMul *= 1.45;
+      },
+      off: p => {
+        p.spdMul /= 1.45;
+      }
+    },
+    {
+      id: 'mag',
+      name: 'Imán',
+      desc: 'atraes todo desde lejos',
+      color: '#ff8ad8',
+      on: p => {
+        p.magnet *= 4;
+      },
+      off: p => {
+        p.magnet /= 4;
+      }
+    },
+    {
+      id: 'cd',
+      name: 'Prisa',
+      desc: '-40% recarga',
+      color: '#ffd23f',
+      on: p => {
+        p.cdMul *= 0.6;
+      },
+      off: p => {
+        p.cdMul /= 0.6;
+      }
+    }
   ];
   const TRAP_R = 74;
   const authority = () => !G.Coop.active || G.Coop.isHost;
-  let healShown = 0, healAcc = 0;
+  let healShown = 0,
+    healAcc = 0;
 
   function update(dt, pl) {
     if (!pl) return;
     for (const p of G.World.specialsNear(pl.x, pl.y, 720)) {
       const d2 = G.U.dist2(pl.x, pl.y, p.x, p.type === 'spring' || p.type === 'trap' ? p.y - 8 : p.y);
       switch (p.type) {
-        case 'spring': spring(dt, pl, p, d2); break;
+        case 'spring':
+          spring(dt, pl, p, d2);
+          break;
         case 'altar':
           // Contando el tamaño de tu Pokémon: uno grande (Reshiram, Zekrom...) choca
           // con el altar antes de llegar a 30 y no lo podía activar.
@@ -41,7 +88,10 @@ G.Interact = (() => {
           if (!pl.dead && d2 < Math.max(46, p.r + pl.r + 24) ** 2) {
             if (p.open === 0) G.Audio.sfx('select');
             p.open += dt;
-            if (p.open >= CHEST_TIME) { p.open = 0; G.World.breakProp(p); }
+            if (p.open >= CHEST_TIME) {
+              p.open = 0;
+              G.World.breakProp(p);
+            }
           } else if (p.open > 0) p.open = Math.max(0, p.open - dt * 1.5);
           break;
         case 'trap':
@@ -85,15 +135,20 @@ G.Interact = (() => {
    * sólo lo hace quien manda; a ti te afecta si estás dentro.
    */
   function trapEffect(p) {
-    const x = p.x, y = p.y - 8, k = p.kind;
+    const x = p.x,
+      y = p.y - 8,
+      k = p.kind;
     const col = ['#c86bdc', '#8bd94a', '#ff7b3d'][k];
     const pal = ['poison', 'grass', 'fire'][k];
     G.FX.ring(x, y, 6, TRAP_R, col, 0.5, k === 2 ? 7 : 4);
     G.FX.burst(x, y - 6, col, k === 2 ? 40 : 22, k === 2 ? 260 : 140);
     for (let i = 0; i < (k === 2 ? 10 : 7); i++) {
-      const a = Math.random() * 6.2832, r = G.U.rand(8, TRAP_R * 0.8);
-      G.FX.sp(k === 2 ? 'impact' : 'blob', pal, x + Math.cos(a) * r, y + Math.sin(a) * r * 0.7 - 6,
-              { vy: k === 2 ? -30 : -45, life: G.U.rand(0.4, 0.8) });
+      const a = Math.random() * 6.2832,
+        r = G.U.rand(8, TRAP_R * 0.8);
+      G.FX.sp(k === 2 ? 'impact' : 'blob', pal, x + Math.cos(a) * r, y + Math.sin(a) * r * 0.7 - 6, {
+        vy: k === 2 ? -30 : -45,
+        life: G.U.rand(0.4, 0.8)
+      });
     }
     G.Audio.sfx(k === 2 ? 'boss' : 'surge');
     if (k === 2 && G.U.dist2(x, y, G.Camera.x, G.Camera.y) < 500 * 500) G.Camera.kick(0.7);
@@ -103,16 +158,22 @@ G.Interact = (() => {
     if (authority()) {
       for (const e of G.EnemyMgr.queryCircle(x, y, TRAP_R)) {
         if (e.remote) continue;
-        if (k === 0) { e.applyPoison(5); e.hurt(14 + lvl * 3, '#d47cf0'); }
-        else if (k === 1) { e.applySlow(0.65, 4.5); e.hurt(4, '#8bd94a'); }
-        else e.hurt(90 + lvl * 18, '#ff7b3d', e.x - x, e.y - y, 220);
+        if (k === 0) {
+          e.applyPoison(5);
+          e.hurt(14 + lvl * 3, '#d47cf0');
+        } else if (k === 1) {
+          e.applySlow(0.65, 4.5);
+          e.hurt(4, '#8bd94a');
+        } else e.hurt(90 + lvl * 18, '#ff7b3d', e.x - x, e.y - y, 220);
       }
     }
     if (pl && !pl.dead && G.U.dist2(x, y, pl.x, pl.y) < (TRAP_R * 0.7) ** 2) {
       pl.invuln = 0;
       if (k === 0) pl.hurt(pl.maxHp * 0.1);
-      else if (k === 1) { pl.slowT = 3.5; G.FX.dmgText(pl.x, pl.y - pl.bodyH - 6, '¡Pegajoso!', '#8bd94a'); }
-      else pl.hurt(pl.maxHp * 0.2);
+      else if (k === 1) {
+        pl.slowT = 3.5;
+        G.FX.dmgText(pl.x, pl.y - pl.bodyH - 6, '¡Pegajoso!', '#8bd94a');
+      } else pl.hurt(pl.maxHp * 0.2);
     }
   }
 

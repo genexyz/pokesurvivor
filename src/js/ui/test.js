@@ -1,17 +1,24 @@
 /* ============ test.js — test de personalidad y elección de compañero ============ */
 G.TestUI = (() => {
   const $ = G.UI.$;
-  let idx = 0, scores = {}, result = null, picked = null;
+  let idx = 0,
+    scores = {},
+    result = null,
+    picked = null;
 
   function init() {
     $('res-ok').onclick = () => choose(result.dex);
     $('res-other').onclick = openStarters;
     $('starter-back').onclick = () => G.UI.show('scr-result');
-    $('starter-ok').onclick = () => { if (picked) choose(picked); };
+    $('starter-ok').onclick = () => {
+      if (picked) choose(picked);
+    };
   }
 
   function start() {
-    idx = 0; scores = {}; result = null;
+    idx = 0;
+    scores = {};
+    result = null;
     G.UI.chrome(false);
     G.UI.show('scr-test');
     render();
@@ -20,7 +27,7 @@ G.TestUI = (() => {
   function render() {
     const Q = G.PERSONALITY_TEST;
     const q = Q[idx];
-    $('test-bar').style.width = (idx / Q.length * 100) + '%';
+    $('test-bar').style.width = (idx / Q.length) * 100 + '%';
     $('test-count').textContent = `Pregunta ${idx + 1} de ${Q.length}`;
     $('test-q').textContent = q.q;
     const box = $('test-a');
@@ -71,10 +78,14 @@ G.TestUI = (() => {
         cell.classList.add('on');
         picked = s.dex;
         const mv = G.Moves.BY_ID[s.start];
-        $('starter-info').innerHTML = `${G.UI.typeChips(mon.types)} ${G.Icons.html('move:' + s.start, 16)} ${mv.name} · ${s.traits.join(', ')}`;
+        $('starter-info').innerHTML =
+          `${G.UI.typeChips(mon.types)} ${G.Icons.html('move:' + s.start, 16)} ${mv.name} · ${s.traits.join(', ')}`;
         $('starter-ok').disabled = false;
       };
-      if (result && s.dex === result.dex) { picked = s.dex; $('starter-ok').disabled = false; }
+      if (result && s.dex === result.dex) {
+        picked = s.dex;
+        $('starter-ok').disabled = false;
+      }
       grid.appendChild(cell);
     }
     G.UI.show('scr-starters');

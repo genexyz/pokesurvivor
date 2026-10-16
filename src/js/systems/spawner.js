@@ -14,19 +14,32 @@ G.Spawner = (() => {
   // Tope de enemigos a la vez (antes 420: con tantos se ralentizaba). Cuando
   // se llega al tope, los que siguen saliendo son "élite" (más vida, daño y
   // experiencia), así la dificultad no baja.
-  const CAP = 64, ELITE_FROM = 0.85;
+  const CAP = 64,
+    ELITE_FROM = 0.85;
   // Menos Pokémon pero más fuertes (la pantalla no se satura): salen ~24% de
   // los de antes, cada uno con más vida, daño y experiencia.
-  const DENSITY = 0.24, DMG_K = 2.4, XP_K = 5.6;
+  const DENSITY = 0.24,
+    DMG_K = 2.4,
+    XP_K = 5.6;
   // La resistencia extra crece con la run: al principio ×3,3 y hasta ×5
   // hacia el minuto 6, cuando ya tienes ataques para tumbarlos.
   const hpK = t => 3.3 + Math.min(1.7, t / 210);
   const SHINY_RATE = 1 / 4096;
-  let acc = 0, bossIdx = 0, surgeT = 32, announce = null, announceT = 0, preloadT = 0;
-  let forceShiny = 0;           // para pruebas: los N próximos salen shiny
+  let acc = 0,
+    bossIdx = 0,
+    surgeT = 32,
+    announce = null,
+    announceT = 0,
+    preloadT = 0;
+  let forceShiny = 0; // para pruebas: los N próximos salen shiny
 
   function reset() {
-    acc = 0; bossIdx = 0; surgeT = 32; announce = null; announceT = 0; preloadT = 0;
+    acc = 0;
+    bossIdx = 0;
+    surgeT = 32;
+    announce = null;
+    announceT = 0;
+    preloadT = 0;
     G.Enemies.rollRun();
     G.Sprites.preload(G.Enemies.upcomingDex(0, 80));
   }
@@ -66,13 +79,20 @@ G.Spawner = (() => {
     return alive.length ? G.U.pick(alive) : players[0];
   }
 
-  function scaled(sc, k) { return k === 1 ? sc : Object.assign({}, sc, { hp: sc.hp * k }); }
+  function scaled(sc, k) {
+    return k === 1 ? sc : Object.assign({}, sc, { hp: sc.hp * k });
+  }
 
-  function isFlyer(def) { return G.Sprites.hovers(def.dex); }
+  function isFlyer(def) {
+    return G.Sprites.hovers(def.dex);
+  }
 
   function rollShiny(dex) {
     if (!G.Sprites.hasShiny(dex)) return false;
-    if (forceShiny > 0) { forceShiny--; return true; }
+    if (forceShiny > 0) {
+      forceShiny--;
+      return true;
+    }
     return Math.random() < SHINY_RATE;
   }
 
@@ -82,8 +102,13 @@ G.Spawner = (() => {
     if (!pt) return null;
     const shiny = rollShiny(def.dex);
     const e = new G.Enemy(def, pt[0], pt[1], scaled(G.Enemies.scale(t), G.Coop.scaleHp(players.length) * hpK(t)));
-    e.dmg *= DMG_K; e.xp = Math.round(e.xp * XP_K);
-    if (G.EnemyMgr.count >= CAP * ELITE_FROM) { e.maxHp = e.hp = Math.round(e.maxHp * 1.6); e.dmg *= 1.25; e.xp = Math.round(e.xp * 1.6); }
+    e.dmg *= DMG_K;
+    e.xp = Math.round(e.xp * XP_K);
+    if (G.EnemyMgr.count >= CAP * ELITE_FROM) {
+      e.maxHp = e.hp = Math.round(e.maxHp * 1.6);
+      e.dmg *= 1.25;
+      e.xp = Math.round(e.xp * 1.6);
+    }
     if (shiny) e.makeShiny();
     if (G.Events.golden) e.makeGolden();
     G.EnemyMgr.add(e);
@@ -115,11 +140,17 @@ G.Spawner = (() => {
 
     // Precarga lo que va a salir en el próximo minuto.
     preloadT -= dt;
-    if (preloadT <= 0) { preloadT = 10; G.Sprites.preload(G.Enemies.upcomingDex(t, 60)); }
+    if (preloadT <= 0) {
+      preloadT = 10;
+      G.Sprites.preload(G.Enemies.upcomingDex(t, 60));
+    }
 
     // --- jefes ---
     const b = G.Enemies.BOSSES[bossIdx];
-    if (b && t >= b.at) { spawnBoss(anchor(), t, b); bossIdx++; }
+    if (b && t >= b.at) {
+      spawnBoss(anchor(), t, b);
+      bossIdx++;
+    }
 
     // Combate de jefe: las oleadas bajan al 25% y no hay mareas, para que el
     // jefe sea un momento propio y se le pueda apuntar entre la multitud.
@@ -148,7 +179,9 @@ G.Spawner = (() => {
 
   /** Unos cuantos de golpe desde un lado (al empezar una horda). */
   function burst(n) {
-    const base = Math.random() * 6.2832, target = anchor() || G.Game.player, t = G.Game.st.time;
+    const base = Math.random() * 6.2832,
+      target = anchor() || G.Game.player,
+      t = G.Game.st.time;
     for (let i = 0; i < n && G.EnemyMgr.count < CAP + 10; i++) spawnOne(target, t, base + G.U.rand(-0.6, 0.6));
   }
 
@@ -162,23 +195,46 @@ G.Spawner = (() => {
     const a0 = sp > 20 ? Math.atan2(pl._vy, pl._vx) : Math.random() * 6.2832;
     const pt = freePoint(pl, a0 + G.U.rand(-0.9, 0.9), e.flying);
     if (!pt) return false;
-    e.x = pt[0]; e.y = pt[1]; e.kx = e.ky = 0;
-    e.phase = 'walk'; e.pt = 0; e.jump = null; e.jumpLift = 0;
+    e.x = pt[0];
+    e.y = pt[1];
+    e.kx = e.ky = 0;
+    e.phase = 'walk';
+    e.pt = 0;
+    e.jump = null;
+    e.jumpLift = 0;
     return true;
   }
 
   /** Aviso grande en pantalla (también lo usan el bioma y los shinies). */
   /** @param local  sólo en este ordenador (no se manda a los compañeros) */
   function say(text, secs = 2.6, local = false) {
-    announce = text; announceT = secs;
+    announce = text;
+    announceT = secs;
     if (G.Coop.isHost && !local) G.Coop.say(text, secs);
   }
 
-  function banner() { return announceT > 0 ? { text: announce, t: announceT } : null; }
+  function banner() {
+    return announceT > 0 ? { text: announce, t: announceT } : null;
+  }
 
   /** Invitado en cooperativo: sólo corre el reloj del aviso. */
-  function tickBanner(dt) { if (announceT > 0) announceT -= dt; }
+  function tickBanner(dt) {
+    if (announceT > 0) announceT -= dt;
+  }
 
-  return { reset, update, ahead, burst, tickBanner, banner, say, rate, SHINY_RATE, CAP,
-           debugForceShiny(n = 1) { forceShiny = n; } };
+  return {
+    reset,
+    update,
+    ahead,
+    burst,
+    tickBanner,
+    banner,
+    say,
+    rate,
+    SHINY_RATE,
+    CAP,
+    debugForceShiny(n = 1) {
+      forceShiny = n;
+    }
+  };
 })();

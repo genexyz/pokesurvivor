@@ -23,14 +23,25 @@
  */
 G.Progress = (() => {
   const TYPES = Object.keys(G.U.TYPE_NAME);
-  let achT = 0, toastQ = [], toastT = 0;
+  let achT = 0,
+    toastQ = [],
+    toastT = 0;
 
   // ---------------- misiones ----------------
 
   function rng(seedStr) {
     let h = 2166136261;
-    for (let i = 0; i < seedStr.length; i++) { h ^= seedStr.charCodeAt(i); h = Math.imul(h, 16777619); }
-    return () => { h += 0x6D2B79F5; let t = h; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    for (let i = 0; i < seedStr.length; i++) {
+      h ^= seedStr.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return () => {
+      h += 0x6d2b79f5;
+      let t = h;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
   }
 
   function make(def, r) {
@@ -54,7 +65,8 @@ G.Progress = (() => {
     s.missions = s.missions || {};
     const M = s.missions;
     if (M.day !== ids.d) {
-      M.day = ids.d; M.rerolled = false;
+      M.day = ids.d;
+      M.rerolled = false;
       M.daily = pickSet(G.MissionDefs.daily, 3, rng(ids.d + key));
     }
     if (M.week !== ids.w) {
@@ -63,8 +75,12 @@ G.Progress = (() => {
     }
   }
 
-  function text(m) { return G.MissionDefs.BY[m.id].text(m.goal, m.param); }
-  function done(m) { return m.prog >= m.goal; }
+  function text(m) {
+    return G.MissionDefs.BY[m.id].text(m.goal, m.param);
+  }
+  function done(m) {
+    return m.prog >= m.goal;
+  }
 
   function advance(list, kind, d) {
     for (const m of list || []) {
@@ -101,7 +117,12 @@ G.Progress = (() => {
     const m = M.daily[i];
     if (!m || M.rerolled || m.claimed) return false;
     const r = rng(M.day + 'cambio' + Date.now());
-    const [n] = pickSet(G.MissionDefs.daily, 1, r, M.daily.map(x => x.id));
+    const [n] = pickSet(
+      G.MissionDefs.daily,
+      1,
+      r,
+      M.daily.map(x => x.id)
+    );
     if (!n) return false;
     M.daily[i] = n;
     M.rerolled = true;
@@ -137,18 +158,26 @@ G.Progress = (() => {
     switch (kind) {
       case 'kill':
         if (d.boss) S.bossesTotal = (S.bossesTotal || 0) + 1;
-        if (d.legend) { s.legends = s.legends || {}; if (!s.legends[d.legend]) s.legends[d.legend] = Date.now(); }
+        if (d.legend) {
+          s.legends = s.legends || {};
+          if (!s.legends[d.legend]) s.legends[d.legend] = Date.now();
+        }
         break;
       case 'rift':
         S.riftWins = (S.riftWins || 0) + 1;
-        if (d.type) { s.arenas = s.arenas || {}; s.arenas[d.type] = s.arenas[d.type] || Date.now(); }
+        if (d.type) {
+          s.arenas = s.arenas || {};
+          s.arenas[d.type] = s.arenas[d.type] || Date.now();
+        }
         break;
       case 'evolve':
         S.evolutions = (S.evolutions || 0) + 1;
-        s.evoMoves = s.evoMoves || {}; s.evoMoves[d.move] = s.evoMoves[d.move] || Date.now();
+        s.evoMoves = s.evoMoves || {};
+        s.evoMoves[d.move] = s.evoMoves[d.move] || Date.now();
         break;
       case 'item':
-        s.itemsFound = s.itemsFound || {}; s.itemsFound[d.id] = s.itemsFound[d.id] || Date.now();
+        s.itemsFound = s.itemsFound || {};
+        s.itemsFound[d.id] = s.itemsFound[d.id] || Date.now();
         break;
       case 'runEnd':
         if (d.group) S.groupRuns = (S.groupRuns || 0) + 1;
@@ -172,7 +201,11 @@ G.Progress = (() => {
   function kill(e) {
     // Los legendarios de la Sentencia de Arceus no cuentan como jefes (ni para
     // misiones ni para logros de jefes): tienen su propio contador.
-    if (G.Judgment.active && e.boss) { G.Judgment.bossDown(); event('kill', { types: e.types || [], boss: false, legend: 0 }); return; }
+    if (G.Judgment.active && e.boss) {
+      G.Judgment.bossDown();
+      event('kill', { types: e.types || [], boss: false, legend: 0 });
+      return;
+    }
     const legend = e.legend || (G.Rift.inArena && e.boss) ? e.dex : 0;
     event('kill', { types: e.types || [], boss: !!e.boss, legend });
   }
@@ -218,7 +251,12 @@ G.Progress = (() => {
     const n = toastQ[0];
     if (!n) return;
     let el = document.getElementById('ach-pop');
-    if (!el) { el = document.createElement('div'); el.id = 'ach-pop'; el.className = 'box ach-pop'; document.body.appendChild(el); }
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'ach-pop';
+      el.className = 'box ach-pop';
+      document.body.appendChild(el);
+    }
     const icon = n.ach ? (n.ach.dex ? '' : G.Icons.html('medal' + n.ach.tier, 24)) : G.Icons.html('medal2', 24);
     el.innerHTML = `${icon}<div><b>${n.title}</b>${n.sub ? `<small>${n.sub}</small>` : ''}</div>`;
     if (n.ach && n.ach.dex) el.prepend(G.UI.spriteCanvas(n.ach.dex, 48, 40, { scale: 1 }));

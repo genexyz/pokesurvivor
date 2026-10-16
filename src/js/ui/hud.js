@@ -15,10 +15,13 @@ G.HUD = (() => {
   }
 
   function bar(ctx, x, y, w, h, frac, col, bg = 'rgba(0,0,0,.55)') {
-    roundRect(ctx, x, y, w, h, h / 2); ctx.fillStyle = bg; ctx.fill();
+    roundRect(ctx, x, y, w, h, h / 2);
+    ctx.fillStyle = bg;
+    ctx.fill();
     if (frac > 0) {
       ctx.save();
-      roundRect(ctx, x, y, w, h, h / 2); ctx.clip();
+      roundRect(ctx, x, y, w, h, h / 2);
+      ctx.clip();
       ctx.fillStyle = col;
       ctx.fillRect(x, y, w * G.U.clamp(frac, 0, 1), h);
       ctx.restore();
@@ -36,12 +39,14 @@ G.HUD = (() => {
     ctx.fillStyle = 'rgba(0,0,0,.5)';
     ctx.fillRect(0, 0, w, 7);
     const g = ctx.createLinearGradient(0, 0, w, 0);
-    g.addColorStop(0, '#4fd1ff'); g.addColorStop(1, '#a98bff');
+    g.addColorStop(0, '#4fd1ff');
+    g.addColorStop(1, '#a98bff');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w * G.U.clamp(xpF, 0, 1), 7);
 
     // ---------- vida + nivel ----------
-    const px = 16, py = 20;
+    const px = 16,
+      py = 20;
     ctx.font = F(800, 13);
     ctx.fillStyle = '#eaf2ff';
     ctx.textAlign = 'left';
@@ -69,7 +74,8 @@ G.HUD = (() => {
       const txt = LBL[k] + ' ×' + b.n;
       const tw = ctx.measureText(txt).width + 12;
       roundRect(ctx, bx, py + 34, tw, 15, 7);
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,.5)';
+      ctx.fill();
       ctx.fillStyle = COL[k];
       ctx.fillText(txt, bx + 6, py + 45);
       bx += tw + 5;
@@ -91,9 +97,11 @@ G.HUD = (() => {
       ctx.textAlign = 'left';
       const txt = wx.name.toUpperCase() + ' · ' + Math.ceil(wx.left) + 's';
       const tw = ctx.measureText(txt).width + 40;
-      const x0 = w - tw - 16 - (touch ? 56 : 0), y0 = 14;
+      const x0 = w - tw - 16 - (touch ? 56 : 0),
+        y0 = 14;
       roundRect(ctx, x0, y0, tw, 26, 9);
-      ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,.55)';
+      ctx.fill();
       G.Icons.draw(ctx, wx.icon, x0 + 6, y0 + 3, 20);
       ctx.fillStyle = wx.color;
       ctx.fillText(txt, x0 + 32, y0 + 17);
@@ -111,12 +119,15 @@ G.HUD = (() => {
 
     // ---------- aviso ----------
     // ---------- shinies fuera de pantalla: destello en el borde ----------
-    const cam = G.Camera, pulse = 0.6 + Math.sin(performance.now() / 160) * 0.4;
+    const cam = G.Camera,
+      pulse = 0.6 + Math.sin(performance.now() / 160) * 0.4;
     for (const e of G.EnemyMgr.shinies()) {
-      const sx = (e.x - cam.left()) * cam.scale, sy = (e.y - cam.top()) * cam.scale;
+      const sx = (e.x - cam.left()) * cam.scale,
+        sy = (e.y - cam.top()) * cam.scale;
       if (sx > 0 && sx < w && sy > 0 && sy < h) continue;
       const M = 34;
-      const ex = G.U.clamp(sx, M, w - M), ey = G.U.clamp(sy, M + 60, h - M - 70);
+      const ex = G.U.clamp(sx, M, w - M),
+        ey = G.U.clamp(sy, M + 60, h - M - 70);
       const a = Math.atan2(sy - ey, sx - ex);
       ctx.save();
       ctx.globalAlpha = pulse;
@@ -134,12 +145,14 @@ G.HUD = (() => {
 
     // Poder de altar activo.
     if (pl.power) {
-      const pw = pl.power, txt = pw.def.name.toUpperCase() + ' ' + Math.ceil(pw.t) + 's';
+      const pw = pl.power,
+        txt = pw.def.name.toUpperCase() + ' ' + Math.ceil(pw.t) + 's';
       ctx.font = F(800, 9);
       ctx.textAlign = 'left';
       const tw = ctx.measureText(txt).width + 12;
       roundRect(ctx, bx, py + 34, tw, 15, 7);
-      ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,.6)';
+      ctx.fill();
       ctx.fillStyle = pw.def.color;
       ctx.fillText(txt, bx + 6, py + 45);
       bx += tw + 5;
@@ -151,33 +164,47 @@ G.HUD = (() => {
     // flecha que bota encima; en la arena, cuenta atrás.
     const rift = G.Rift.rift;
     if (rift) {
-      const sx = (rift.x - cam.left()) * cam.scale, sy = (rift.y - 40 - cam.top()) * cam.scale;
-      const now = performance.now() / 1000, beat = 0.5 + Math.sin(now * 7) * 0.5;
+      const sx = (rift.x - cam.left()) * cam.scale,
+        sy = (rift.y - 40 - cam.top()) * cam.scale;
+      const now = performance.now() / 1000,
+        beat = 0.5 + Math.sin(now * 7) * 0.5;
       const label = 'GRIETA · ' + Math.round(G.U.dist(pl.x, pl.y, rift.x, rift.y) / 32) + ' m · ' + Math.ceil(rift.ttl) + ' s';
       const off = sx < 0 || sx > w || sy < 0 || sy > h;
       ctx.save();
       if (off) {
-        const M = 52, ex = G.U.clamp(sx, M, w - M), ey = G.U.clamp(sy, M + 70, h - M - 80);
-        const a = Math.atan2(sy - ey, sx - ex), ca = Math.cos(a), sa = Math.sin(a);
+        const M = 52,
+          ex = G.U.clamp(sx, M, w - M),
+          ey = G.U.clamp(sy, M + 70, h - M - 80);
+        const a = Math.atan2(sy - ey, sx - ex),
+          ca = Math.cos(a),
+          sa = Math.sin(a);
         ctx.translate(ex, ey);
         // Halo que late.
         ctx.globalAlpha = 0.18 + beat * 0.22;
         ctx.fillStyle = '#b48aff';
-        ctx.beginPath(); ctx.arc(0, 0, 30 + beat * 8, 0, 6.2832); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(0, 0, 30 + beat * 8, 0, 6.2832);
+        ctx.fill();
         ctx.globalAlpha = 1;
-        const tri = (k) => {
+        const tri = k => {
           ctx.beginPath();
           ctx.moveTo(ca * 40 * k, sa * 40 * k);
           ctx.lineTo(Math.cos(a + 2.45) * 20 * k, Math.sin(a + 2.45) * 20 * k);
           ctx.lineTo(Math.cos(a - 2.45) * 20 * k, Math.sin(a - 2.45) * 20 * k);
           ctx.closePath();
         };
-        tri(1.12); ctx.fillStyle = '#1a0b33'; ctx.fill();
-        tri(1); ctx.fillStyle = beat > 0.5 ? '#e2d0ff' : '#a06bff'; ctx.fill();
+        tri(1.12);
+        ctx.fillStyle = '#1a0b33';
+        ctx.fill();
+        tri(1);
+        ctx.fillStyle = beat > 0.5 ? '#e2d0ff' : '#a06bff';
+        ctx.fill();
         ctx.font = F(800, 12);
         ctx.textAlign = ca > 0.3 ? 'right' : ca < -0.3 ? 'left' : 'center';
-        const lx = -ca * 34, ly = -sa * 30 + 4;
-        ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.85)';
+        const lx = -ca * 34,
+          ly = -sa * 30 + 4;
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'rgba(0,0,0,.85)';
         ctx.strokeText(label, lx, ly);
         ctx.fillStyle = '#e2d0ff';
         ctx.fillText(label, lx, ly);
@@ -185,13 +212,24 @@ G.HUD = (() => {
         // Encima de la grieta: flecha hacia abajo que bota.
         const by = sy - 46 - Math.abs(Math.sin(now * 4)) * 10;
         ctx.translate(sx, by);
-        ctx.beginPath(); ctx.moveTo(-15, -12); ctx.lineTo(15, -12); ctx.lineTo(0, 8); ctx.closePath();
-        ctx.lineWidth = 4; ctx.strokeStyle = '#1a0b33'; ctx.stroke();
-        ctx.fillStyle = beat > 0.5 ? '#e2d0ff' : '#a06bff'; ctx.fill();
-        ctx.font = F(800, 11); ctx.textAlign = 'center';
-        ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.85)';
+        ctx.beginPath();
+        ctx.moveTo(-15, -12);
+        ctx.lineTo(15, -12);
+        ctx.lineTo(0, 8);
+        ctx.closePath();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#1a0b33';
+        ctx.stroke();
+        ctx.fillStyle = beat > 0.5 ? '#e2d0ff' : '#a06bff';
+        ctx.fill();
+        ctx.font = F(800, 11);
+        ctx.textAlign = 'center';
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'rgba(0,0,0,.85)';
         const l2 = 'GRIETA · ' + Math.ceil(rift.ttl) + ' s';
-        ctx.strokeText(l2, 0, -18); ctx.fillStyle = '#e2d0ff'; ctx.fillText(l2, 0, -18);
+        ctx.strokeText(l2, 0, -18);
+        ctx.fillStyle = '#e2d0ff';
+        ctx.fillText(l2, 0, -18);
       }
       ctx.restore();
     }
@@ -207,20 +245,30 @@ G.HUD = (() => {
 
     // Aviso propio al abrirse una grieta (no lo tapan los otros avisos).
     if (rift && rift.t < 4.5) {
-      const a = Math.min(1, rift.t * 4, (4.5 - rift.t) * 2), pop = 1 + Math.max(0, 0.25 - rift.t) * 1.6;
+      const a = Math.min(1, rift.t * 4, (4.5 - rift.t) * 2),
+        pop = 1 + Math.max(0, 0.25 - rift.t) * 1.6;
       const y0 = h * 0.2;
       ctx.save();
       ctx.globalAlpha = a;
-      ctx.translate(w / 2, y0); ctx.scale(pop, pop);
+      ctx.translate(w / 2, y0);
+      ctx.scale(pop, pop);
       ctx.font = F(800, 20);
-      const t1 = '¡SE HA ABIERTO UNA GRIETA!', t2 = 'Sigue la flecha morada: dentro te espera un legendario';
-      const bw = Math.min(w - 24, Math.max(ctx.measureText(t1).width, (ctx.font = F(700, 11), ctx.measureText(t2).width)) + 36);
+      const t1 = '¡SE HA ABIERTO UNA GRIETA!',
+        t2 = 'Sigue la flecha morada: dentro te espera un legendario';
+      const bw = Math.min(w - 24, Math.max(ctx.measureText(t1).width, ((ctx.font = F(700, 11)), ctx.measureText(t2).width)) + 36);
       roundRect(ctx, -bw / 2, -26, bw, 52, 10);
-      ctx.fillStyle = 'rgba(26,11,51,.88)'; ctx.fill();
-      ctx.lineWidth = 2; ctx.strokeStyle = '#b48aff'; ctx.stroke();
+      ctx.fillStyle = 'rgba(26,11,51,.88)';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#b48aff';
+      ctx.stroke();
       ctx.textAlign = 'center';
-      ctx.font = F(800, 20); ctx.fillStyle = '#e2d0ff'; ctx.fillText(t1, 0, -2);
-      ctx.font = F(700, 11); ctx.fillStyle = '#c9b0ff'; ctx.fillText(t2, 0, 16);
+      ctx.font = F(800, 20);
+      ctx.fillStyle = '#e2d0ff';
+      ctx.fillText(t1, 0, -2);
+      ctx.font = F(700, 11);
+      ctx.fillStyle = '#c9b0ff';
+      ctx.fillText(t2, 0, 16);
       ctx.restore();
     }
 
@@ -234,14 +282,16 @@ G.HUD = (() => {
       ctx.textAlign = 'center';
       ctx.font = F(800, 22);
       ctx.fillStyle = '#ffcb3d';
-      ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(0,0,0,.7)';
+      ctx.lineWidth = 4;
       ctx.strokeText(ban.text, w / 2, h * 0.3);
       ctx.fillText(ban.text, w / 2, h * 0.3);
       ctx.restore();
     }
 
     // ---------- ranura de movimientos ----------
-    const S = 54, GAP = 9;
+    const S = 54,
+      GAP = 9;
     const n = Math.max(1, pl.slots.length);
     const totalW = n * S + (n - 1) * GAP;
     let sx = (w - totalW) / 2;
@@ -252,12 +302,13 @@ G.HUD = (() => {
     // (layout-ui.js); los ataques nuevos van saliendo hacia la derecha.
     const pb = touch && G.Touch.spot('bar');
     if (pb) {
-      const nAll = Math.max(n, pl.maxMoves), bw = S + 18 + nAll * S + (nAll - 1) * GAP;
+      const nAll = Math.max(n, pl.maxMoves),
+        bw = S + 18 + nAll * S + (nAll - 1) * GAP;
       sx = G.U.clamp(pb[0] * w - bw / 2, 6, Math.max(6, w - bw - 6)) + S + 18;
       sy = G.U.clamp(pb[1] * h - S / 2, 24, h - S - 6);
     }
     const BOND = '#ff8ad8';
-    const cdOf = m => m.kind === 'orbit' ? 0 : G.U.clamp(m.t / (m.cd * pl.cdMul), 0, 1);
+    const cdOf = m => (m.kind === 'orbit' ? 0 : G.U.clamp(m.t / (m.cd * pl.cdMul), 0, 1));
 
     for (let i = 0; i < n; i++) {
       const g = pl.slots[i] || [];
@@ -267,7 +318,20 @@ G.HUD = (() => {
       const x = sx + i * (S + GAP);
       const y = on ? sy - 6 : sy;
       // Tocar (o hacer clic en) un icono activa ese movimiento.
-      if (m) G.Touch.addButton(x, y, S, S, () => { if (G.Game.state === 'playing' && pl.active !== i) { pl.setActive(i); G.Audio.sfx('click'); } }, GAP / 2 + 3);
+      if (m)
+        G.Touch.addButton(
+          x,
+          y,
+          S,
+          S,
+          () => {
+            if (G.Game.state === 'playing' && pl.active !== i) {
+              pl.setActive(i);
+              G.Audio.sfx('click');
+            }
+          },
+          GAP / 2 + 3
+        );
       const col = m ? G.U.TYPE_COLOR[m.type] : '#4a5468';
 
       // fondo
@@ -283,23 +347,36 @@ G.HUD = (() => {
 
       if (fused) {
         // Vínculo: los movimientos en una cuadrícula de 2×2, cada uno con su recarga.
-        const C = 22, P = (S - C * 2) / 3;
+        const C = 22,
+          P = (S - C * 2) / 3;
         g.forEach((gm, k) => {
-          const cx = x + P + (k % 2) * (C + P), cy = y + P + Math.floor(k / 2) * (C + P);
+          const cx = x + P + (k % 2) * (C + P),
+            cy = y + P + Math.floor(k / 2) * (C + P);
           G.Icons.draw(ctx, 'move:' + gm.id, cx, cy, C);
           const f = cdOf(gm);
-          if (f > 0) { ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(cx, cy, C, C * f); }
-          if (gm.evolved) { ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 1; ctx.strokeRect(cx + 0.5, cy + 0.5, C - 1, C - 1); }
+          if (f > 0) {
+            ctx.fillStyle = 'rgba(0,0,0,.55)';
+            ctx.fillRect(cx, cy, C, C * f);
+          }
+          if (gm.evolved) {
+            ctx.strokeStyle = '#ffd23f';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(cx + 0.5, cy + 0.5, C - 1, C - 1);
+          }
           // Destello al lanzarse.
           const fl = 1 - (performance.now() - (gm.castAt || 0)) / 180;
-          if (fl > 0) { ctx.fillStyle = 'rgba(255,255,255,' + (fl * 0.55).toFixed(2) + ')'; ctx.fillRect(cx, cy, C, C); }
+          if (fl > 0) {
+            ctx.fillStyle = 'rgba(255,255,255,' + (fl * 0.55).toFixed(2) + ')';
+            ctx.fillRect(cx, cy, C, C);
+          }
         });
       } else {
         // recarga: se vacía de abajo a arriba
         const cdFrac = cdOf(m);
         if (cdFrac > 0) {
           ctx.save();
-          roundRect(ctx, x, y, S, S, 12); ctx.clip();
+          roundRect(ctx, x, y, S, S, 12);
+          ctx.clip();
           ctx.fillStyle = 'rgba(0,0,0,.6)';
           ctx.fillRect(x, y, S, S * cdFrac);
           ctx.restore();
@@ -310,7 +387,8 @@ G.HUD = (() => {
 
         // nivel del movimiento (puntitos)
         const dots = m.def.maxLvl;
-        const dw = 4, dgap = 2;
+        const dw = 4,
+          dgap = 2;
         const tw = dots * dw + (dots - 1) * dgap;
         for (let d = 0; d < dots; d++) {
           ctx.fillStyle = d < m.lvl ? col : 'rgba(255,255,255,.18)';
@@ -335,7 +413,8 @@ G.HUD = (() => {
 
     // ---------- vínculo guardado (aún no hay dos movimientos sueltos) ----------
     if (pl.bonds > 0) {
-      const bx = sx + totalW + 12, by = sy + S / 2 - 12;
+      const bx = sx + totalW + 12,
+        by = sy + S / 2 - 12;
       G.Icons.draw(ctx, 'bond', bx, by, 24);
       if (pl.bonds > 1) {
         ctx.font = F(800, 10);
@@ -347,7 +426,8 @@ G.HUD = (() => {
 
     // ---------- objeto equipado (a la izquierda de los movimientos) ----------
     {
-      const ix = sx - S - 18, iy = sy;
+      const ix = sx - S - 18,
+        iy = sy;
       roundRect(ctx, ix, iy, S, S, 12);
       ctx.fillStyle = pl.item ? 'rgba(40,30,10,.9)' : 'rgba(10,16,28,.55)';
       ctx.fill();
@@ -368,12 +448,17 @@ G.HUD = (() => {
       const sa = G.Touch.safeArea();
       const pp = G.Touch.spot('pause');
       const bx = pp ? G.U.clamp(pp[0] * w - 20, 4, w - 44) : w - 52 - Math.min(44, sa.right);
-      const by = pp ? G.U.clamp(pp[1] * h - 20, 10, h - 44) : 12 + Math.min(20, sa.top), bs = 40;
+      const by = pp ? G.U.clamp(pp[1] * h - 20, 10, h - 44) : 12 + Math.min(20, sa.top),
+        bs = 40;
       roundRect(ctx, bx, by, bs, bs, 10);
-      ctx.fillStyle = 'rgba(10,16,28,.7)'; ctx.fill();
-      ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(244,248,255,.8)'; ctx.stroke();
+      ctx.fillStyle = 'rgba(10,16,28,.7)';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(244,248,255,.8)';
+      ctx.stroke();
       ctx.fillStyle = '#f4f8ff';
-      ctx.fillRect(bx + 13, by + 11, 5, 18); ctx.fillRect(bx + 22, by + 11, 5, 18);
+      ctx.fillRect(bx + 13, by + 11, 5, 18);
+      ctx.fillRect(bx + 22, by + 11, 5, 18);
       G.Touch.addButton(bx, by, bs, bs, () => G.Game.togglePause(), 8);
     }
 
@@ -382,8 +467,13 @@ G.HUD = (() => {
       ctx.font = F(600, 10);
       ctx.textAlign = 'center';
       ctx.fillStyle = 'rgba(180,200,230,.55)';
-      ctx.fillText(touch ? 'Arrastra el dedo para moverte  ·  toca un ataque para cambiarlo'
-                         : 'WASD moverse  ·  1-4 / Q / E o clic en un ataque para cambiarlo  ·  Esc pausa', w / 2, h - 4);
+      ctx.fillText(
+        touch
+          ? 'Arrastra el dedo para moverte  ·  toca un ataque para cambiarlo'
+          : 'WASD moverse  ·  1-4 / Q / E o clic en un ataque para cambiarlo  ·  Esc pausa',
+        w / 2,
+        h - 4
+      );
     }
 
     ctx.restore();
@@ -422,10 +512,12 @@ G.HUD = (() => {
     for (const m of G.Coop.mates) {
       if (!m.connected) continue;
       const o = m.pl;
-      const sx = (o.x - cam.left()) * cam.scale, sy = (o.y - o.bodyH * 0.5 - cam.top()) * cam.scale;
+      const sx = (o.x - cam.left()) * cam.scale,
+        sy = (o.y - o.bodyH * 0.5 - cam.top()) * cam.scale;
       if (sx > 0 && sx < w && sy > 0 && sy < h) continue;
       const M = 42;
-      const ex = G.U.clamp(sx, M, w - M), ey = G.U.clamp(sy, M + 70, h - M - 80);
+      const ex = G.U.clamp(sx, M, w - M),
+        ey = G.U.clamp(sy, M + 70, h - M - 80);
       const a = Math.atan2(sy - ey, sx - ex);
       const metres = Math.round(G.U.dist(pl.x, pl.y, o.x, o.y) / 32);
       const col = o.dead ? (Math.sin(t * 8) > 0 ? '#ff5f6d' : '#ffd0d5') : m.color;
@@ -433,24 +525,29 @@ G.HUD = (() => {
       ctx.translate(ex, ey);
       // Flecha
       ctx.fillStyle = 'rgba(0,0,0,.55)';
-      ctx.beginPath(); ctx.arc(0, 0, 17, 0, 6.2832); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(0, 0, 17, 0, 6.2832);
+      ctx.fill();
       ctx.fillStyle = col;
       ctx.beginPath();
       ctx.moveTo(Math.cos(a) * 28, Math.sin(a) * 28);
       ctx.lineTo(Math.cos(a + 2.4) * 14, Math.sin(a + 2.4) * 14);
       ctx.lineTo(Math.cos(a - 2.4) * 14, Math.sin(a - 2.4) * 14);
-      ctx.closePath(); ctx.fill();
+      ctx.closePath();
+      ctx.fill();
       // Inicial del compañero dentro del círculo
       ctx.font = F(800, 14);
       ctx.textAlign = 'center';
       ctx.fillStyle = '#fff';
       ctx.fillText(m.name.charAt(0).toUpperCase(), 0, 5);
       // Nombre y distancia: al lado contrario de la flecha, para que no se salga
-      const lx = -Math.cos(a) * 30, ly = -Math.sin(a) * 26 + 4;
+      const lx = -Math.cos(a) * 30,
+        ly = -Math.sin(a) * 26 + 4;
       ctx.font = F(800, 12);
       const label = (o.dead ? '¡' + m.name + ' necesita ayuda! ' : m.name + ' ') + '· ' + metres + ' m';
       ctx.textAlign = Math.cos(a) > 0.3 ? 'right' : Math.cos(a) < -0.3 ? 'left' : 'center';
-      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.8)';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(0,0,0,.8)';
       ctx.strokeText(label, lx, ly);
       ctx.fillStyle = col;
       ctx.fillText(label, lx, ly);
@@ -462,7 +559,8 @@ G.HUD = (() => {
       ctx.save();
       ctx.textAlign = 'center';
       ctx.font = F(800, 20);
-      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.75)';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(0,0,0,.75)';
       const msg = G.Coop.players().every(p => p.dead) ? 'Habéis caído todos…' : 'Has caído: un compañero puede levantarte';
       ctx.strokeText(msg, w / 2, h * 0.62);
       ctx.fillStyle = '#ffb0b8';

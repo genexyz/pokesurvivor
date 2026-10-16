@@ -1,7 +1,7 @@
 # PokéSurvivor · Mundo Misterioso
 
 Bullet-heaven con Pokémon al estilo de Survivor.io y Megabonk, con sprites de
-*Pokémon Mundo Misterioso*, capa roguelike, **966 Pokémon de las 9 generaciones**,
+_Pokémon Mundo Misterioso_, capa roguelike, **966 Pokémon de las 9 generaciones**,
 shinies y gacha por región. Música y efectos compuestos para el juego.
 
 HTML + CSS + JavaScript vanilla sobre Canvas 2D. Sin build, sin dependencias y
@@ -34,12 +34,12 @@ Crea una cuenta o entra como invitado, haz el test de personalidad y a la
 mazmorra. Con `npm run dev` la partida se guarda sólo en el navegador (no toca la
 nube); ver [Desarrollo](#desarrollo).
 
-| Tecla | Acción |
-|---|---|
-| `W` `A` `S` `D` / flechas | Moverse |
-| `1` `2` `3` `4` | Elegir el movimiento activo |
-| `Q` / `E` | Ciclar movimientos |
-| `Esc` / `P` | Pausa |
+| Tecla                     | Acción                      |
+| ------------------------- | --------------------------- |
+| `W` `A` `S` `D` / flechas | Moverse                     |
+| `1` `2` `3` `4`           | Elegir el movimiento activo |
+| `Q` / `E`                 | Ciclar movimientos          |
+| `Esc` / `P`               | Pausa                       |
 
 **En móvil o tablet** (en horizontal): pon el dedo en cualquier sitio y arrastra
 para moverte (el joystick aparece donde tocas), toca un ataque de abajo para
@@ -117,17 +117,19 @@ juego es y será gratis: si alguien te pide pagar, no somos nosotros.
 
 ## Desarrollo
 
-| Comando | Qué hace |
-|---|---|
-| `npm run dev` | Servidor local en http://localhost:3000 con `src/` + `public/`. Sin nube (guardado en el navegador) y se recarga al guardar un archivo. |
-| `npm run dev:emulator` | Igual, pero con el emulador local de Firebase (cuentas, amigos, cooperativo). Necesita Java. |
-| `npm run build` | Genera `dist/`: el juego empaquetado (`js/app.min.js`), `version.json` y las páginas web. Necesita Python 3. |
-| `npm run build:force` | Igual, pero es una actualización obligatoria para los jugadores. |
-| `npm run build:debug` | Igual, sin ofuscar (`G` accesible en la consola). |
-| `npm start` | Sirve `dist/` como en producción (antes, `npm run build`). |
-| `npm run clean` | Borra `dist/` y `.cache/`. |
-| `npm run docker:build` / `docker:run` | Imagen de producción (nginx) en http://localhost:8080. |
-| `npm run data:*` | Regenera datos: `pokedex`, `sprites`, `credits`, `hover`, `icons`, `font` (Python). |
+| Comando                               | Qué hace                                                                                                                                |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                         | Servidor local en http://localhost:3000 con `src/` + `public/`. Sin nube (guardado en el navegador) y se recarga al guardar un archivo. |
+| `npm run dev:emulator`                | Igual, pero con el emulador local de Firebase (cuentas, amigos, cooperativo). Necesita Java.                                            |
+| `npm run build`                       | Genera `dist/`: el juego empaquetado (`js/app.min.js`), `version.json` y las páginas web. Necesita Python 3.                            |
+| `npm run build:force`                 | Igual, pero es una actualización obligatoria para los jugadores.                                                                        |
+| `npm run build:debug`                 | Igual, sin ofuscar (`G` accesible en la consola).                                                                                       |
+| `npm start`                           | Sirve `dist/` como en producción (antes, `npm run build`).                                                                              |
+| `npm run clean`                       | Borra `dist/` y `.cache/`.                                                                                                              |
+| `npm run lint` / `lint:fix`           | Revisa el código con ESLint (y arregla lo automático).                                                                                  |
+| `npm run format` / `format:check`     | Formatea con Prettier / comprueba que todo está formateado.                                                                             |
+| `npm run docker:build` / `docker:run` | Imagen de producción (nginx) en http://localhost:8080.                                                                                  |
+| `npm run data:*`                      | Regenera datos: `pokedex`, `sprites`, `credits`, `hover`, `icons`, `font` (Python).                                                     |
 
 Puerto: `PORT=4000 npm run dev`. Python: si no está en el PATH, `PYTHON=/ruta/a/python`.
 
@@ -179,8 +181,8 @@ npm run data:credits    # CREDITS.md
 - **Coordenadas.** `(x, y)` de una entidad son sus **pies**. Las colisiones
   ocurren en el plano del suelo; los proyectiles vuelan en ese plano y se dibujan
   elevados con su sombra debajo.
-- **Mundo.** Chunks de 16×16 tiles: los *datos* (terreno, objetos) son baratos y
-  se generan siempre; la *imagen* se hornea a resolución de arte escribiendo en un
+- **Mundo.** Chunks de 16×16 tiles: los _datos_ (terreno, objetos) son baratos y
+  se generan siempre; la _imagen_ se hornea a resolución de arte escribiendo en un
   `ImageData` (~4 ms por chunk en Chrome) y sólo para los visibles.
 - **Rendimiento.** Rejilla espacial de enemigos reconstruida cada frame. Con 420
   enemigos, simulación + render completo ≈ 3 ms por frame en Chrome.

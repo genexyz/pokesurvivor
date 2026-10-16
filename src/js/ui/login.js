@@ -14,11 +14,17 @@ G.LoginUI = (() => {
       const fn = mode === 'login' ? G.DB.login : G.DB.register;
       const r = await fn($('f-user').value, $('f-pass').value);
       $('btn-auth').disabled = false;
-      if (!r.ok) { $('login-err').textContent = r.error; return; }
+      if (!r.ok) {
+        $('login-err').textContent = r.error;
+        return;
+      }
       $('f-pass').value = '';
       G.Flow.afterLogin();
     };
-    $('btn-guest').onclick = () => { G.DB.playAsGuest(); G.Flow.afterLogin(); };
+    $('btn-guest').onclick = () => {
+      G.DB.playAsGuest();
+      G.Flow.afterLogin();
+    };
     $('f-forgot').onclick = e => {
       e.preventDefault();
       $('login-err').textContent = '';
@@ -30,13 +36,20 @@ G.LoginUI = (() => {
       $('rec-link').disabled = true;
       const r = await G.DB.linkGoogle();
       $('rec-link').disabled = false;
-      if (!r.ok) { $('rec-err').textContent = r.error; return; }
+      if (!r.ok) {
+        $('rec-err').textContent = r.error;
+        return;
+      }
       $('scr-recover').classList.add('hidden');
       G.UI.toast('¡Gmail vinculado! Si olvidas la contraseña, entra con Google.', 4500);
     };
     $('rec-later').onclick = () => $('scr-recover').classList.add('hidden');
     $('rec-never').onclick = () => {
-      try { localStorage.setItem('ps.recover.no.' + G.DB.fb.uid, '1'); } catch (e) { /* nada */ }
+      try {
+        localStorage.setItem('ps.recover.no.' + G.DB.fb.uid, '1');
+      } catch (e) {
+        /* nada */
+      }
       $('scr-recover').classList.add('hidden');
     };
     $('btn-google').onclick = async () => {
@@ -44,7 +57,10 @@ G.LoginUI = (() => {
       $('btn-google').disabled = true;
       const r = await G.DB.loginWithGoogle();
       $('btn-google').disabled = false;
-      if (!r.ok) { $('login-err').textContent = r.error; return; }
+      if (!r.ok) {
+        $('login-err').textContent = r.error;
+        return;
+      }
       G.Flow.afterLogin();
     };
   }
@@ -57,7 +73,11 @@ G.LoginUI = (() => {
   let offered = false;
   function offerRecovery() {
     if (offered || G.DB.mode !== 'cloud' || !G.DB.fb || !G.DB.nameAccount || G.DB.hasGoogle) return;
-    try { if (localStorage.getItem('ps.recover.no.' + G.DB.fb.uid)) return; } catch (e) { /* nada */ }
+    try {
+      if (localStorage.getItem('ps.recover.no.' + G.DB.fb.uid)) return;
+    } catch (e) {
+      /* nada */
+    }
     offered = true;
     $('rec-err').textContent = '';
     $('scr-recover').classList.remove('hidden');
@@ -66,15 +86,16 @@ G.LoginUI = (() => {
   /** Explica dónde se guarda la partida según el modo de la base de datos. */
   function modeNote() {
     if (G.DB.mode === 'cloud') return 'Tu partida se guarda en la nube: entra desde cualquier ordenador. Como invitado no se guarda.';
-    const why = G.DB.localReason === 'dev'
-      ? 'Modo desarrollo: la partida sólo se guarda en este navegador.'
-      : G.DB.localReason === 'file'
-      ? 'Abierto desde un archivo: la partida sólo se guarda en este navegador. Para guardar en la nube, juega en la versión publicada.'
-      : G.DB.localReason === 'host'
-        ? 'Esta no es la web oficial: la partida sólo se guarda en este navegador. El juego oficial y gratis está en pokesurvivor.com.'
-      : G.DB.localReason === 'config'
-        ? 'Nube sin configurar: la partida sólo se guarda en este navegador.'
-        : 'No se pudo conectar con la nube: la partida sólo se guarda en este navegador.';
+    const why =
+      G.DB.localReason === 'dev'
+        ? 'Modo desarrollo: la partida sólo se guarda en este navegador.'
+        : G.DB.localReason === 'file'
+          ? 'Abierto desde un archivo: la partida sólo se guarda en este navegador. Para guardar en la nube, juega en la versión publicada.'
+          : G.DB.localReason === 'host'
+            ? 'Esta no es la web oficial: la partida sólo se guarda en este navegador. El juego oficial y gratis está en pokesurvivor.com.'
+            : G.DB.localReason === 'config'
+              ? 'Nube sin configurar: la partida sólo se guarda en este navegador.'
+              : 'No se pudo conectar con la nube: la partida sólo se guarda en este navegador.';
     return why;
   }
 

@@ -19,17 +19,28 @@
  * mismo y el premio es para todos.
  */
 G.Events = (() => {
-  const EVERY = [240, 300], DUR = 30, LOST_TIME = 120;
-  const THIEF_FIRST = [120, 240], THIEF_NEXT = [240, 360], THIEF_LIFE = 15;
+  const EVERY = [240, 300],
+    DUR = 30,
+    LOST_TIME = 120;
+  const THIEF_FIRST = [120, 240],
+    THIEF_NEXT = [240, 360],
+    THIEF_LIFE = 15;
   const authority = () => !G.Coop.active || G.Coop.isHost;
 
-  let nextT = 0, cur = null, last = null, thiefT = 0, thieves = 0;
-  let lost = null;      // { dex, name, x, y, hp, maxHp, state, follow, tx, ty, t, anim, r, hitCd, netT, grant }
+  let nextT = 0,
+    cur = null,
+    last = null,
+    thiefT = 0,
+    thieves = 0;
+  let lost = null; // { dex, name, x, y, hp, maxHp, state, follow, tx, ty, t, anim, r, hitCd, netT, grant }
 
   function reset() {
     nextT = G.U.rand(EVERY[0], EVERY[1]);
-    cur = null; last = null; lost = null;
-    thiefT = G.U.rand(THIEF_FIRST[0], THIEF_FIRST[1]); thieves = 0;
+    cur = null;
+    last = null;
+    lost = null;
+    thiefT = G.U.rand(THIEF_FIRST[0], THIEF_FIRST[1]);
+    thieves = 0;
   }
 
   // ---------------- ciclo ----------------
@@ -46,14 +57,21 @@ G.Events = (() => {
       thiefT -= dt;
       if (thiefT <= 0) {
         if (G.EnemyMgr.bossAlive()) thiefT = 8;
-        else { spawnThief(players, time); thieves++; thiefT = G.U.rand(THIEF_NEXT[0], THIEF_NEXT[1]); }
+        else {
+          spawnThief(players, time);
+          thieves++;
+          thiefT = G.U.rand(THIEF_NEXT[0], THIEF_NEXT[1]);
+        }
       }
     }
 
     if (cur) return;
     nextT -= dt;
     if (nextT > 0) return;
-    if (G.EnemyMgr.bossAlive()) { nextT = 10; return; }
+    if (G.EnemyMgr.bossAlive()) {
+      nextT = 10;
+      return;
+    }
     nextT = G.U.rand(EVERY[0], EVERY[1]);
     const ids = ['horde', 'gold', 'lost'].filter(id => id !== last);
     start(G.U.pick(ids), time, players);
@@ -88,7 +106,9 @@ G.Events = (() => {
     G.Audio.sfx(cur.id === 'gold' ? 'shiny' : 'surge');
   }
 
-  function say(text, secs) { G.Spawner.say(text, secs, true); }
+  function say(text, secs) {
+    G.Spawner.say(text, secs, true);
+  }
 
   function end() {
     if (!cur) return;
@@ -97,7 +117,9 @@ G.Events = (() => {
   }
 
   /** Lo que sale durante una horda (lo usa G.Enemies.bagAt). */
-  function bag() { return cur && cur.id === 'horde' && cur.defs.length ? cur.defs : null; }
+  function bag() {
+    return cur && cur.id === 'horde' && cur.defs.length ? cur.defs : null;
+  }
 
   // ---------------- duende del tesoro ----------------
 
@@ -108,18 +130,32 @@ G.Events = (() => {
     if (!mon || !G.SPRITE_META[dex]) return;
     const pl = G.U.pick(players.filter(p => !p.dead).length ? players.filter(p => !p.dead) : players);
     G.Sprites.preload([dex]);
-    const def = { dex, name: mon.name, behavior: 'thief', hp: Math.round(60 * (1 + time / 95) * (gold ? 1.5 : 1)),
-                  spd: 92, dmg: 0, xp: 10, loot: gold ? 'ticket10' : 'coins' };
+    const def = {
+      dex,
+      name: mon.name,
+      behavior: 'thief',
+      hp: Math.round(60 * (1 + time / 95) * (gold ? 1.5 : 1)),
+      spd: 92,
+      dmg: 0,
+      xp: 10,
+      loot: gold ? 'ticket10' : 'coins'
+    };
     for (let i = 0; i < 12; i++) {
-      const a = Math.random() * 6.2832, d = G.U.rand(230, 300);
-      const x = pl.x + Math.cos(a) * d, y = pl.y + Math.sin(a) * d * 0.8;
+      const a = Math.random() * 6.2832,
+        d = G.U.rand(230, 300);
+      const x = pl.x + Math.cos(a) * d,
+        y = pl.y + Math.sin(a) * d * 0.8;
       if (!G.World.isFree(x, y, 14)) continue;
       const e = new G.Enemy(def, x, y, { hp: 1, spd: 1, dmg: 1 });
       e.life = THIEF_LIFE;
       G.EnemyMgr.add(e);
       G.FX.ring(x, y, 4, 40, '#ffd23f', 0.5, 3);
-      G.Spawner.say(gold ? '¡Un ' + mon.name + ' con un ticket ×10! ¡Atrápalo antes de que huya!'
-                         : '¡Un ' + mon.name + ' cargado de monedas! ¡Atrápalo antes de que huya!', 3.2);
+      G.Spawner.say(
+        gold
+          ? '¡Un ' + mon.name + ' con un ticket ×10! ¡Atrápalo antes de que huya!'
+          : '¡Un ' + mon.name + ' cargado de monedas! ¡Atrápalo antes de que huya!',
+        3.2
+      );
       G.Audio.sfx('shiny');
       return;
     }
@@ -132,15 +168,20 @@ G.Events = (() => {
     const pl = G.U.pick(alive.length ? alive : players);
     const pool = G.DEX.filter(p => p.rarity <= 3 && !p.leg && G.SPRITE_META[p.dex] && !G.Sprites.hovers(p.dex));
     const mon = G.U.pick(pool);
-    let at = null, to = null;
+    let at = null,
+      to = null;
     for (let i = 0; i < 20 && !at; i++) {
-      const a = Math.random() * 6.2832, d = G.U.rand(220, 300);
-      const x = pl.x + Math.cos(a) * d, y = pl.y + Math.sin(a) * d * 0.8;
+      const a = Math.random() * 6.2832,
+        d = G.U.rand(220, 300);
+      const x = pl.x + Math.cos(a) * d,
+        y = pl.y + Math.sin(a) * d * 0.8;
       if (G.World.isFree(x, y, 16)) at = [x, y];
     }
     for (let i = 0; i < 30 && at && !to; i++) {
-      const a = Math.random() * 6.2832, d = G.U.rand(700, 850);
-      const x = at[0] + Math.cos(a) * d, y = at[1] + Math.sin(a) * d * 0.85;
+      const a = Math.random() * 6.2832,
+        d = G.U.rand(700, 850);
+      const x = at[0] + Math.cos(a) * d,
+        y = at[1] + Math.sin(a) * d * 0.85;
       if (G.World.isFree(x, y, 30)) to = [x, y];
     }
     if (!at || !to) return false;
@@ -151,28 +192,49 @@ G.Events = (() => {
 
   function makeLost(o) {
     const mon = G.DEX_BY[o.dex];
-    lost = Object.assign({ name: mon ? mon.name : '', maxHp: 100, t: 0, hitCd: 0, netT: 0, follow: null,
-                           anim: new G.Sprites.Animator(o.dex, 1), r: G.Sprites.bodyRadius(o.dex) }, o);
+    lost = Object.assign(
+      {
+        name: mon ? mon.name : '',
+        maxHp: 100,
+        t: 0,
+        hitCd: 0,
+        netT: 0,
+        follow: null,
+        anim: new G.Sprites.Animator(o.dex, 1),
+        r: G.Sprites.bodyRadius(o.dex)
+      },
+      o
+    );
   }
 
   function lostTick(dt, players) {
     const L = lost;
     L.t += dt;
     L.anim.update(dt);
-    if (!authority()) { L.anim.loop(L.moving ? 'Walk' : 'Idle'); return; }
+    if (!authority()) {
+      L.anim.loop(L.moving ? 'Walk' : 'Idle');
+      return;
+    }
 
     if (L.state === 'wait') {
       const p = players.find(o => !o.dead && G.U.dist2(o.x, o.y, L.x, L.y) < (o.r + L.r + 18) ** 2);
-      if (p) { L.state = 'follow'; L.follow = p; say('¡' + L.name + ' te sigue! Llévalo a la marca verde', 3, '#7dffb0'); G.Audio.sfx('confirm'); }
+      if (p) {
+        L.state = 'follow';
+        L.follow = p;
+        say('¡' + L.name + ' te sigue! Llévalo a la marca verde', 3, '#7dffb0');
+        G.Audio.sfx('confirm');
+      }
       L.moving = false;
     } else {
       const p = L.follow && !L.follow.dead ? L.follow : players.find(o => !o.dead) || L.follow;
-      const d = G.U.dist(L.x, L.y, p.x, p.y), keep = p.r + L.r + 14;
+      const d = G.U.dist(L.x, L.y, p.x, p.y),
+        keep = p.r + L.r + 14;
       L.moving = d > keep;
       if (L.moving) {
         const sp = Math.min(d - keep, Math.max(120, p.spd * 1.15) * dt);
         const [nx, ny] = G.U.norm(p.x - L.x, p.y - L.y);
-        L.x += nx * sp; L.y += ny * sp;
+        L.x += nx * sp;
+        L.y += ny * sp;
         G.World.collide(L);
         L.anim.dir = G.Sprites.dirFromAngle(Math.atan2(ny, nx));
       }
@@ -185,7 +247,10 @@ G.Events = (() => {
       const hits = G.EnemyMgr.queryCircle(L.x, L.y, L.r).filter(e => !e.dead && e.behavior !== 'thief');
       if (hits.length) {
         L.hitCd = 0.5;
-        L.hp -= Math.min(30, hits.reduce((a, e) => a + 4 + e.dmg * 0.12, 0));
+        L.hp -= Math.min(
+          30,
+          hits.reduce((a, e) => a + 4 + e.dmg * 0.12, 0)
+        );
         L.flash = 0.1;
         G.FX.burst(L.x, L.y - 10, '#ff5f6d', 4, 60);
         if (L.hp <= 0) return gone('¡' + L.name + ' se ha asustado y ha huido…!');
@@ -196,8 +261,19 @@ G.Events = (() => {
 
     if (G.Coop.isHost && (L.netT -= dt) <= 0) {
       L.netT = 0.1;
-      G.Coop.broadcast(['ev', 'lp', L.dex, Math.round(L.x), Math.round(L.y), Math.round(L.hp), L.state === 'follow' ? 1 : 0,
-                        Math.round(L.tx), Math.round(L.ty), L.anim.dir, L.moving ? 1 : 0]);
+      G.Coop.broadcast([
+        'ev',
+        'lp',
+        L.dex,
+        Math.round(L.x),
+        Math.round(L.y),
+        Math.round(L.hp),
+        L.state === 'follow' ? 1 : 0,
+        Math.round(L.tx),
+        Math.round(L.ty),
+        L.anim.dir,
+        L.moving ? 1 : 0
+      ]);
     }
   }
 
@@ -214,7 +290,10 @@ G.Events = (() => {
   /** En cada ordenador: cura, y si toca, el Pokémon se une a tu colección. */
   function reward(dex, grant) {
     const pl = G.Game.player;
-    if (pl && !pl.dead) { pl.heal(pl.maxHp * 0.5); G.FX.ring(pl.x, pl.y, 6, 70, '#5fe08a', 0.5, 3); }
+    if (pl && !pl.dead) {
+      pl.heal(pl.maxHp * 0.5);
+      G.FX.ring(pl.x, pl.y, 6, 70, '#5fe08a', 0.5, 3);
+    }
     const name = (G.DEX_BY[dex] || {}).name || '';
     G.FX.burst(lost ? lost.tx : pl.x, lost ? lost.ty - 10 : pl.y, '#7dffb0', 24, 180);
     G.Audio.sfx('legend');
@@ -233,8 +312,12 @@ G.Events = (() => {
 
   function onNet(ev) {
     switch (ev[1]) {
-      case 's': cur = { id: ev[2], t: 0, dur: ev[2] === 'lost' ? Infinity : DUR, type: ev[3] || null }; break;
-      case 'e': cur = null; break;
+      case 's':
+        cur = { id: ev[2], t: 0, dur: ev[2] === 'lost' ? Infinity : DUR, type: ev[3] || null };
+        break;
+      case 'e':
+        cur = null;
+        break;
       case 'lp': {
         const [, , dex, x, y, hp, follow, tx, ty, dir, moving] = ev;
         if (!lost || lost.dex !== dex) makeLost({ dex, x, y, tx, ty, hp, state: follow ? 'follow' : 'wait' });
@@ -242,8 +325,14 @@ G.Events = (() => {
         lost.anim.dir = dir;
         break;
       }
-      case 'rw': reward(ev[2], !!ev[3]); lost = null; break;
-      case 'lx': say(ev[2], 3); lost = null; break;
+      case 'rw':
+        reward(ev[2], !!ev[3]);
+        lost = null;
+        break;
+      case 'lx':
+        say(ev[2], 3);
+        lost = null;
+        break;
     }
   }
 
@@ -255,16 +344,22 @@ G.Events = (() => {
     const L = lost;
     const now = performance.now() / 1000;
     const goal = {
-      y: L.ty - 4000,          // en el suelo, debajo de todo
+      y: L.ty - 4000, // en el suelo, debajo de todo
       draw(ctx) {
         const k = 0.5 + Math.sin(now * 4) * 0.5;
         ctx.save();
         ctx.globalAlpha = 0.25 + k * 0.15;
         ctx.fillStyle = '#5fe08a';
-        ctx.beginPath(); ctx.ellipse(L.tx, L.ty, 56, 40, 0, 0, 6.2832); ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(L.tx, L.ty, 56, 40, 0, 0, 6.2832);
+        ctx.fill();
         ctx.globalAlpha = 0.9;
-        ctx.strokeStyle = '#7dffb0'; ctx.lineWidth = 2; ctx.setLineDash([6, 5]);
-        ctx.beginPath(); ctx.ellipse(L.tx, L.ty, 56, 40, 0, 0, 6.2832); ctx.stroke();
+        ctx.strokeStyle = '#7dffb0';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 5]);
+        ctx.beginPath();
+        ctx.ellipse(L.tx, L.ty, 56, 40, 0, 0, 6.2832);
+        ctx.stroke();
         ctx.restore();
         G.Icons.draw(ctx, 'heart', Math.round(L.tx - 8), Math.round(L.ty - 30 - k * 6), 16);
       }
@@ -275,7 +370,9 @@ G.Events = (() => {
         ctx.save();
         ctx.globalAlpha = 0.3;
         ctx.fillStyle = '#7dffb0';
-        ctx.beginPath(); ctx.ellipse(L.x, L.y, L.r * 1.5, L.r * 0.6, 0, 0, 6.2832); ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(L.x, L.y, L.r * 1.5, L.r * 0.6, 0, 0, 6.2832);
+        ctx.fill();
         ctx.restore();
         G.Sprites.drawShadow(ctx, L.dex, L.x, L.y, 1);
         L.anim.draw(ctx, L.x, L.y, { flash: L.flash > 0 });
@@ -284,14 +381,21 @@ G.Events = (() => {
           // "!" que bota encima: está esperando a que lo toques.
           const by = L.y - h - 14 - Math.abs(Math.sin(now * 5)) * 6;
           ctx.save();
-          ctx.font = '700 16px Pixelify, monospace'; ctx.textAlign = 'center';
-          ctx.lineWidth = 4; ctx.strokeStyle = '#000'; ctx.strokeText('!', L.x, by);
-          ctx.fillStyle = '#7dffb0'; ctx.fillText('!', L.x, by);
+          ctx.font = '700 16px Pixelify, monospace';
+          ctx.textAlign = 'center';
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = '#000';
+          ctx.strokeText('!', L.x, by);
+          ctx.fillStyle = '#7dffb0';
+          ctx.fillText('!', L.x, by);
           ctx.restore();
         }
-        const w = 30, y = L.y - h - 6;
-        ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(L.x - w / 2, y, w, 3.4);
-        ctx.fillStyle = '#5fe08a'; ctx.fillRect(L.x - w / 2, y, w * Math.max(0, L.hp / L.maxHp), 3.4);
+        const w = 30,
+          y = L.y - h - 6;
+        ctx.fillStyle = 'rgba(0,0,0,.6)';
+        ctx.fillRect(L.x - w / 2, y, w, 3.4);
+        ctx.fillStyle = '#5fe08a';
+        ctx.fillRect(L.x - w / 2, y, w * Math.max(0, L.hp / L.maxHp), 3.4);
       }
     };
     return [goal, mon];
@@ -301,9 +405,19 @@ G.Events = (() => {
   function drawHud(ctx, w, h, pl, F) {
     const cam = G.Camera;
     if (lost) {
-      const L = lost, to = L.state === 'wait' ? [L.x, L.y - 10] : [L.tx, L.ty];
-      edgeArrow(ctx, w, h, cam, to[0], to[1], '#7dffb0', (L.state === 'wait' ? L.name : 'Marca') + ' · ' +
-                Math.round(G.U.dist(pl.x, pl.y, to[0], to[1]) / 32) + ' m', F);
+      const L = lost,
+        to = L.state === 'wait' ? [L.x, L.y - 10] : [L.tx, L.ty];
+      edgeArrow(
+        ctx,
+        w,
+        h,
+        cam,
+        to[0],
+        to[1],
+        '#7dffb0',
+        (L.state === 'wait' ? L.name : 'Marca') + ' · ' + Math.round(G.U.dist(pl.x, pl.y, to[0], to[1]) / 32) + ' m',
+        F
+      );
     }
     for (const e of G.EnemyMgr.all()) {
       if (e.behavior === 'thief' && !e.dead) edgeArrow(ctx, w, h, cam, e.x, e.y - 10, '#ffd23f', e.name, F);
@@ -312,8 +426,10 @@ G.Events = (() => {
       const left = Math.max(0, Math.ceil(cur.dur - cur.t));
       const txt = (cur.id === 'gold' ? 'HORA DORADA' : 'HORDA ' + G.U.TYPE_NAME[cur.type].toUpperCase()) + ' · ' + left + ' s';
       ctx.save();
-      ctx.font = F(800, 12); ctx.textAlign = 'center';
-      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.8)';
+      ctx.font = F(800, 12);
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(0,0,0,.8)';
       ctx.strokeText(txt, w / 2, 112);
       ctx.fillStyle = cur.id === 'gold' ? '#ffd23f' : G.U.TYPE_COLOR[cur.type] || '#fff';
       ctx.fillText(txt, w / 2, 112);
@@ -322,10 +438,15 @@ G.Events = (() => {
   }
 
   function edgeArrow(ctx, w, h, cam, x, y, col, label, F) {
-    const sx = (x - cam.left()) * cam.scale, sy = (y - cam.top()) * cam.scale;
+    const sx = (x - cam.left()) * cam.scale,
+      sy = (y - cam.top()) * cam.scale;
     if (sx > 0 && sx < w && sy > 0 && sy < h) return;
-    const M = 44, ex = G.U.clamp(sx, M, w - M), ey = G.U.clamp(sy, M + 70, h - M - 80);
-    const a = Math.atan2(sy - ey, sx - ex), ca = Math.cos(a), sa = Math.sin(a);
+    const M = 44,
+      ex = G.U.clamp(sx, M, w - M),
+      ey = G.U.clamp(sy, M + 70, h - M - 80);
+    const a = Math.atan2(sy - ey, sx - ex),
+      ca = Math.cos(a),
+      sa = Math.sin(a);
     const pulse = 0.65 + Math.sin(performance.now() / 160) * 0.35;
     ctx.save();
     ctx.translate(ex, ey);
@@ -335,24 +456,44 @@ G.Events = (() => {
     ctx.lineTo(Math.cos(a + 2.45) * 15, Math.sin(a + 2.45) * 15);
     ctx.lineTo(Math.cos(a - 2.45) * 15, Math.sin(a - 2.45) * 15);
     ctx.closePath();
-    ctx.lineWidth = 3; ctx.strokeStyle = '#000'; ctx.stroke();
-    ctx.fillStyle = col; ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#000';
+    ctx.stroke();
+    ctx.fillStyle = col;
+    ctx.fill();
     ctx.globalAlpha = 1;
     ctx.font = F(800, 11);
     ctx.textAlign = ca > 0.3 ? 'right' : ca < -0.3 ? 'left' : 'center';
-    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.85)';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(0,0,0,.85)';
     ctx.strokeText(label, -ca * 26, -sa * 24 + 4);
-    ctx.fillStyle = col; ctx.fillText(label, -ca * 26, -sa * 24 + 4);
+    ctx.fillStyle = col;
+    ctx.fillText(label, -ca * 26, -sa * 24 + 4);
     ctx.restore();
   }
 
   return {
-    reset, update, bag, onNet, drawables, drawHud,
-    get golden() { return !!cur && cur.id === 'gold'; },
-    get current() { return cur ? cur.id : null; },
+    reset,
+    update,
+    bag,
+    onNet,
+    drawables,
+    drawHud,
+    get golden() {
+      return !!cur && cur.id === 'gold';
+    },
+    get current() {
+      return cur ? cur.id : null;
+    },
     /** Para pruebas. */
-    debugStart(id) { start(id, G.Game.st.time, G.Game.everyone()); },
-    debugThief() { spawnThief(G.Game.everyone(), G.Game.st.time); },
-    _dbg() { return lost && { x: lost.x, y: lost.y, tx: lost.tx, ty: lost.ty, state: lost.state, hp: lost.hp }; }
+    debugStart(id) {
+      start(id, G.Game.st.time, G.Game.everyone());
+    },
+    debugThief() {
+      spawnThief(G.Game.everyone(), G.Game.st.time);
+    },
+    _dbg() {
+      return lost && { x: lost.x, y: lost.y, tx: lost.tx, ty: lost.ty, state: lost.state, hp: lost.hp };
+    }
   };
 })();

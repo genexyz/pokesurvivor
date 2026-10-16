@@ -21,31 +21,41 @@ G.Gacha = (() => {
     if (n === 10 && use === 't10') return t.t10 >= 1 ? { t1: 0, t10: 1 } : null;
     return t.t1 >= n ? { t1: n, t10: 0 } : null;
   }
-  const RATES = [[1, 45], [2, 30], [3, 17], [4, 6.5], [5, 1.5]];
+  const RATES = [
+    [1, 45],
+    [2, 30],
+    [3, 17],
+    [4, 6.5],
+    [5, 1.5]
+  ];
   const PITY_5 = 70;
   const SHINY_RATE = 1 / 100;
   const REFUND = { 1: 15, 2: 30, 3: 60, 4: 120, 5: 300 };
-  let forceShiny = 0;           // para pruebas y vídeos: las N próximas salen shiny
+  let forceShiny = 0; // para pruebas y vídeos: las N próximas salen shiny
 
   const RARITY_NAME = { 1: 'Común', 2: 'Poco común', 3: 'Rara', 4: 'Épica', 5: 'Legendaria' };
   const RARITY_COLOR = { 1: '#9fb1c9', 2: '#5fe08a', 3: '#4fb4ff', 4: '#c47bff', 5: '#ffcb3d' };
 
   const BANNERS = [
-    { gen: 1, name: 'Kanto',   color: ['#3a1d6e', '#1b2f78', '#0f4d6e'] },
-    { gen: 2, name: 'Johto',   color: ['#5a2a1a', '#7a3d1f', '#2d4a6e'] },
-    { gen: 3, name: 'Hoenn',   color: ['#0f4d6e', '#1b6a5a', '#2a3d78'] },
-    { gen: 4, name: 'Sinnoh',  color: ['#2a2a5e', '#3d3d8a', '#5a2a6e'] },
+    { gen: 1, name: 'Kanto', color: ['#3a1d6e', '#1b2f78', '#0f4d6e'] },
+    { gen: 2, name: 'Johto', color: ['#5a2a1a', '#7a3d1f', '#2d4a6e'] },
+    { gen: 3, name: 'Hoenn', color: ['#0f4d6e', '#1b6a5a', '#2a3d78'] },
+    { gen: 4, name: 'Sinnoh', color: ['#2a2a5e', '#3d3d8a', '#5a2a6e'] },
     { gen: 5, name: 'Teselia', color: ['#1a1a2a', '#3a3a4e', '#2a4a6e'] },
-    { gen: 6, name: 'Kalos',   color: ['#4a1a3a', '#2a3a7a', '#1a5a7a'] },
-    { gen: 7, name: 'Alola',   color: ['#7a3a1a', '#1a6a6a', '#2a4a8a'] },
-    { gen: 8, name: 'Galar',   color: ['#4a1a5a', '#1a3a6a', '#6a1a3a'] },
-    { gen: 9, name: 'Paldea',  color: ['#6a2a1a', '#4a1a5a', '#1a4a6a'] }
+    { gen: 6, name: 'Kalos', color: ['#4a1a3a', '#2a3a7a', '#1a5a7a'] },
+    { gen: 7, name: 'Alola', color: ['#7a3a1a', '#1a6a6a', '#2a4a8a'] },
+    { gen: 8, name: 'Galar', color: ['#4a1a5a', '#1a3a6a', '#6a1a3a'] },
+    { gen: 9, name: 'Paldea', color: ['#6a2a1a', '#4a1a5a', '#1a4a6a'] }
   ];
 
-  function inBanner(p, gen) { return p.gen === gen && !!G.SPRITE_META[p.dex]; }
+  function inBanner(p, gen) {
+    return p.gen === gen && !!G.SPRITE_META[p.dex];
+  }
 
   /** Pokémon de una rareza en un banner. */
-  function pool(rarity, gen) { return G.DEX.filter(p => inBanner(p, gen) && p.rarity === rarity); }
+  function pool(rarity, gen) {
+    return G.DEX.filter(p => inBanner(p, gen) && p.rarity === rarity);
+  }
 
   /** Pool no vacío más cercano (algunas generaciones tienen rarezas casi vacías). */
   function poolNear(rarity, gen) {
@@ -62,14 +72,19 @@ G.Gacha = (() => {
     const rates = RATES.filter(([r]) => r >= min);
     const total = rates.reduce((a, [, w]) => a + w, 0);
     let x = Math.random() * total;
-    for (const [r, w] of rates) { x -= w; if (x <= 0) return r; }
+    for (const [r, w] of rates) {
+      x -= w;
+      if (x <= 0) return r;
+    }
     return rates[rates.length - 1][0];
   }
 
   /** Los 3 más fuertes de la generación, para el cartel del banner. */
   function featured(gen) {
     return G.DEX.filter(p => inBanner(p, gen) && p.rarity === 5)
-      .sort((a, b) => b.bst - a.bst).slice(0, 3).map(p => p.dex);
+      .sort((a, b) => b.bst - a.bst)
+      .slice(0, 3)
+      .map(p => p.dex);
   }
 
   /**
@@ -106,7 +121,8 @@ G.Gacha = (() => {
         else shiny = false;
       }
 
-      let isNew = false, refund = 0;
+      let isNew = false,
+        refund = 0;
       if (shiny) {
         isNew = !save.shiny[mon.dex];
         if (isNew) save.shiny[mon.dex] = { at: Date.now(), from: 'gacha' };
@@ -124,7 +140,20 @@ G.Gacha = (() => {
     return out;
   }
 
-  return { debugForceShiny(n = 1) { forceShiny = n; },
-           costOf, RATES, PITY_5, SHINY_RATE, REFUND, RARITY_NAME, RARITY_COLOR, BANNERS,
-           pool, featured, pull };
+  return {
+    debugForceShiny(n = 1) {
+      forceShiny = n;
+    },
+    costOf,
+    RATES,
+    PITY_5,
+    SHINY_RATE,
+    REFUND,
+    RARITY_NAME,
+    RARITY_COLOR,
+    BANNERS,
+    pool,
+    featured,
+    pull
+  };
 })();

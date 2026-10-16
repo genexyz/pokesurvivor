@@ -12,18 +12,42 @@ G.Projectiles = (() => {
   let list = [];
   let nextId = 1;
 
-  function clear() { list = []; }
-  function all() { return list; }
+  function clear() {
+    list = [];
+  }
+  function all() {
+    return list;
+  }
 
   /** Proyectil del jugador. */
   function spawn(o) {
-    const p = Object.assign({
-      id: nextId++, x: 0, y: 0, vx: 0, vy: 0,
-      dmg: 10, r: 6, life: 1.4, t: 0,
-      pierce: 0, hits: null, friendly: true,
-      color: '#fff', homing: 0, slow: 0, burn: 0, poison: 0, knock: 0,
-      orb: false, rehit: 0.34, hitLog: null, phits: null
-    }, o);
+    const p = Object.assign(
+      {
+        id: nextId++,
+        x: 0,
+        y: 0,
+        vx: 0,
+        vy: 0,
+        dmg: 10,
+        r: 6,
+        life: 1.4,
+        t: 0,
+        pierce: 0,
+        hits: null,
+        friendly: true,
+        color: '#fff',
+        homing: 0,
+        slow: 0,
+        burn: 0,
+        poison: 0,
+        knock: 0,
+        orb: false,
+        rehit: 0.34,
+        hitLog: null,
+        phits: null
+      },
+      o
+    );
     if (p.friendly && !p.orb && !p.phits) p.phits = new Set();
     list.push(p);
     return p;
@@ -31,13 +55,23 @@ G.Projectiles = (() => {
 
   /** Orbe anclado a un jugador (`owner`): vive mientras el movimiento esté activo. */
   function spawnOrb(o) {
-    return spawn(Object.assign({
-      orb: true, life: Infinity, pierce: Infinity, hitLog: new Map()
-    }, o));
+    return spawn(
+      Object.assign(
+        {
+          orb: true,
+          life: Infinity,
+          pierce: Infinity,
+          hitLog: new Map()
+        },
+        o
+      )
+    );
   }
 
   /** Borra los orbes de un jugador (o todos) al cambiar de movimiento activo. */
-  function clearOrbs(owner) { list = list.filter(p => !p.orb || (owner && p.owner !== owner)); }
+  function clearOrbs(owner) {
+    list = list.filter(p => !p.orb || (owner && p.owner !== owner));
+  }
 
   function update(dt, player, enemies) {
     for (let i = list.length - 1; i >= 0; i--) {
@@ -53,18 +87,27 @@ G.Projectiles = (() => {
         continue;
       }
 
-      if (p.t >= p.life) { list.splice(i, 1); continue; }
+      if (p.t >= p.life) {
+        list.splice(i, 1);
+        continue;
+      }
 
       // Bumerán: a los `boom` segundos se da la vuelta (y puede volver a
       // golpear a los mismos) y vuelve a su dueño; al llegar, desaparece.
       if (p.boom) {
         const o = p.owner || player;
-        if (!p.back && p.t >= p.boom) { p.back = true; p.hits = new Set(); }
+        if (!p.back && p.t >= p.boom) {
+          p.back = true;
+          p.hits = new Set();
+        }
         if (p.back) {
           const [dx, dy] = G.U.norm(o.x - p.x, o.y - p.y);
           p.vx = G.U.damp(p.vx, dx * p.bsp, 7, dt);
           p.vy = G.U.damp(p.vy, dy * p.bsp, 7, dt);
-          if (G.U.dist2(p.x, p.y, o.x, o.y) < (o.r + 8) ** 2) { list.splice(i, 1); continue; }
+          if (G.U.dist2(p.x, p.y, o.x, o.y) < (o.r + 8) ** 2) {
+            list.splice(i, 1);
+            continue;
+          }
         }
       }
 
@@ -79,25 +122,36 @@ G.Projectiles = (() => {
         }
       }
 
-      p.px = p.x; p.py = p.y;          // para la colisión barrida (ver combat.js)
+      p.px = p.x;
+      p.py = p.y; // para la colisión barrida (ver combat.js)
       if (p.vis && p.vis.trail && G.Camera.sees(p.x, p.y, 20)) {
         p.trailT = (p.trailT || 0) - dt;
-        if (p.trailT <= 0) { p.trailT = 0.04; G.FX.trail(p.vis.trail, p.vis.pal, p.x, p.y - G.LIFT, p.vx, p.vy); }
+        if (p.trailT <= 0) {
+          p.trailT = 0.04;
+          G.FX.trail(p.vis.trail, p.vis.pal, p.x, p.y - G.LIFT, p.vx, p.vy);
+        }
       }
       p.x += p.vx * dt;
       p.y += p.vy * dt;
 
       // Fuera de la vista con margen generoso -> se descarta.
-      if (!G.Camera.sees(p.x, p.y, 260)) { list.splice(i, 1); continue; }
+      if (!G.Camera.sees(p.x, p.y, 260)) {
+        list.splice(i, 1);
+        continue;
+      }
     }
   }
 
   function nearest(enemies, x, y, maxDist) {
-    let best = null, bd = maxDist * maxDist;
+    let best = null,
+      bd = maxDist * maxDist;
     for (const e of enemies) {
       if (e.dead) continue;
       const d = G.U.dist2(x, y, e.x, e.cy());
-      if (d < bd) { bd = d; best = e; }
+      if (d < bd) {
+        bd = d;
+        best = e;
+      }
     }
     return best;
   }
@@ -112,13 +166,17 @@ G.Projectiles = (() => {
     // Sombras primero, todas juntas.
     ctx.fillStyle = 'rgba(0,0,0,.25)';
     for (const p of list) {
-      ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r * 0.9, p.r * 0.38, 0, 0, 6.2832); ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, p.r * 0.9, p.r * 0.38, 0, 0, 6.2832);
+      ctx.fill();
     }
     // Los disparos enemigos llevan un aro rojo en el suelo: "esto te hace daño".
     ctx.fillStyle = 'rgba(255,60,80,.35)';
     for (const p of list) {
       if (p.friendly) continue;
-      ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r * 1.5, p.r * 0.6, 0, 0, 6.2832); ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, p.r * 1.5, p.r * 0.6, 0, 0, 6.2832);
+      ctx.fill();
     }
     for (const p of list) {
       const v = p.vis || G.VFX.forType('normal');
@@ -128,12 +186,26 @@ G.Projectiles = (() => {
       if (G.VFX.isDir(shape)) angle = p.orb ? p.oa + Math.PI / 2 : Math.atan2(p.vy, p.vx);
       else if (G.VFX.spins(shape)) angle = p.t * 9;
       G.VFX.draw(ctx, shape, v.pal, p.x, p.y - L, {
-        angle, alpha: a, scale: p.r >= 8 ? 1.5 : 1,
+        angle,
+        alpha: a,
+        scale: p.r >= 8 ? 1.5 : 1,
         frame: Math.floor(p.t * 12)
       });
     }
   }
 
-  return { clear, all, spawn, spawnOrb, clearOrbs, update, remove, draw, nearest,
-           get count() { return list.length; } };
+  return {
+    clear,
+    all,
+    spawn,
+    spawnOrb,
+    clearOrbs,
+    update,
+    remove,
+    draw,
+    nearest,
+    get count() {
+      return list.length;
+    }
+  };
 })();

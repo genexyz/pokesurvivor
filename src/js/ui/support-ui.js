@@ -6,13 +6,14 @@
 G.SupportUI = (() => {
   const $ = G.UI.$;
   const F = G.Funding;
-  const val = v => typeof v === 'number'
-    ? (Math.round(v * 100) / 100).toLocaleString(G.I18n.lang === 'en' ? 'en' : 'es', { style: 'currency', currency: 'EUR' }) + ' / mes'
-    : v;
+  const val = v =>
+    typeof v === 'number'
+      ? (Math.round(v * 100) / 100).toLocaleString(G.I18n.lang === 'en' ? 'en' : 'es', { style: 'currency', currency: 'EUR' }) + ' / mes'
+      : v;
 
   function init() {
     const b = $('btn-support');
-    if (!F.url) return;                       // aún sin cuenta de Ko-fi: no sale
+    if (!F.url) return; // aún sin cuenta de Ko-fi: no sale
     b.classList.remove('hidden');
     b.innerHTML = G.Icons.html('heart', 18) + ' <span>Apoyar</span>';
     b.onclick = open;
@@ -34,7 +35,9 @@ G.SupportUI = (() => {
       </div>`;
     $('scr-support').classList.remove('hidden');
   }
-  function close() { $('scr-support').classList.add('hidden'); }
+  function close() {
+    $('scr-support').classList.add('hidden');
+  }
 
   return { init, open, close };
 })();

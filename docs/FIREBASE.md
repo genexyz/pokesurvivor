@@ -78,12 +78,12 @@ npx firebase-tools deploy --only firestore,database --project TU-PROYECTO
 - `jpter78.github.io` (si lo publicas en GitHub Pages)
 - `localhost`, para probar en tu ordenador (en proyectos nuevos ya no viene puesto).
 
-Sin esto, "Entrar con Google" da el error *dominio no autorizado*.
+Sin esto, "Entrar con Google" da el error _dominio no autorizado_.
 
 ## 6. Recomendado: limitar la clave
 
 En <https://console.cloud.google.com/apis/credentials> (mismo proyecto), abre la
-**Browser key** → *Restricciones de aplicaciones* → *Sitios web* y añade:
+**Browser key** → _Restricciones de aplicaciones_ → _Sitios web_ y añade:
 
 - `https://jpter78.github.io/*`
 - `http://localhost:*`
@@ -99,7 +99,7 @@ python -m http.server 8000
 ```
 
 y abre <http://localhost:8000>. En la pantalla de inicio debe salir el botón
-**Entrar con Google** y el texto *"Tu partida se guarda en la nube"*.
+**Entrar con Google** y el texto _"Tu partida se guarda en la nube"_.
 Arriba a la derecha, junto a tu nombre, un cuadradito **verde** indica que está
 guardado en la nube (amarillo = guardando, rojo = sin conexión).
 
@@ -108,16 +108,17 @@ guardado en la nube (amarillo = guardando, rojo = sin conexión).
 Firestore: unas 50.000 lecturas y 20.000 escrituras al día y 1 GB de datos.
 El juego está pensado para gastar lo mínimo (medido en el emulador):
 
-| Acción | Lecturas | Escrituras |
-|---|---|---|
-| Ver una pestaña del ranking | 1 (0 si la viste hace menos de 10 min) | 0 |
-| Ver tu puesto si no estás en el top 50 | 1 la primera vez en ese navegador | 0 |
-| Terminar una partida | ~3 | ~3-9 (sólo donde mejoras) |
-| Guardar la partida | 1 cada 30 s como mucho | 1 cada 30 s como mucho |
-| Estar conectado | 0 | 1 cada 10 min (el "en línea") |
-| Abrir Amigos o la sala | 1 por amigo (vale 1 min) | 0 |
+| Acción                                 | Lecturas                               | Escrituras                    |
+| -------------------------------------- | -------------------------------------- | ----------------------------- |
+| Ver una pestaña del ranking            | 1 (0 si la viste hace menos de 10 min) | 0                             |
+| Ver tu puesto si no estás en el top 50 | 1 la primera vez en ese navegador      | 0                             |
+| Terminar una partida                   | ~3                                     | ~3-9 (sólo donde mejoras)     |
+| Guardar la partida                     | 1 cada 30 s como mucho                 | 1 cada 30 s como mucho        |
+| Estar conectado                        | 0                                      | 1 cada 10 min (el "en línea") |
+| Abrir Amigos o la sala                 | 1 por amigo (vale 1 min)               | 0                             |
 
 Cómo se consigue:
+
 - **Ranking**: cada tabla tiene un documento resumen `lbs/{tabla}` con el
   top 50 (las reglas comprueban que cada fila coincide con una marca validada
   contra trampas en `lb/{tabla}/e/{id}`). Lo leído se guarda 10 min en el

@@ -1,0 +1,19 @@
+dist/
+.cache/
+node_modules/
+videos/
+package-lock.json
+public/assets/
+
+# Generados por scripts/*.py
+src/js/data/pokedex.js
+src/js/data/sprites-meta.js
+CREDITS.md
+
+# HTML: scripts/make_seo_pages.py y scripts/build.js buscan cadenas exactas en él
+src/index.html
+public/contacto/
+
+# Textos legales, tal cual
+LICENSE
+LICENSE-NONCOMMERCIAL.md

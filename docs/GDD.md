@@ -33,6 +33,7 @@ Menú principal  (el mundo de fondo, con Pokémon salvajes paseando)
 ```
 
 ### 2.3 Multijugador cooperativo (hasta 4)
+
 - **Amigos por apodo.** Las cuentas de nombre y contraseña usan su nombre; las
   de Google eligen un apodo único (su nombre real nunca se enseña).
 - **Sala:** el que invita es el anfitrión; los amigos en línea reciben la
@@ -53,6 +54,7 @@ Menú principal  (el mundo de fondo, con Pokémon salvajes paseando)
 - La pausa no para el juego; si se va el anfitrión, la partida acaba para todos.
 
 ### 2.4 Ranking
+
 - Tiempo aguantado. Pestañas **Solo / Grupo**; periodos **diario, semanal,
   mensual, anual e histórico** (hora de España); **todos o sólo amigos**;
   **filtro por Pokémon**; tu puesto abajo aunque no salgas en el top 50.
@@ -62,12 +64,14 @@ Menú principal  (el mundo de fondo, con Pokémon salvajes paseando)
   no aceptan un tiempo mayor que el tiempo real transcurrido.
 
 ### 2.1 Cuentas
+
 - Entrar, crear cuenta o **jugar como invitado** (no se guarda nada).
 - Provisional en `localStorage` detrás de `js/core/db.js`. Contraseñas con sal +
   SHA-256, pero es local: no es seguridad real.
 - La sesión se recuerda al reabrir el juego.
 
 ### 2.2 Test de personalidad
+
 - 8 preguntas estilo Mundo Misterioso; cada respuesta suma puntos de rasgo.
 - El rasgo dominante decide el compañero entre los **29 iniciales**: starters de
   las 9 generaciones + Psyduck + Slowpoke. Se puede rechazar y elegir otro.
@@ -91,75 +95,78 @@ Menú principal  (el mundo de fondo, con Pokémon salvajes paseando)
 Arena abierta e infinita, generada con ruido determinista y pintada en pixel art
 desde código (16 px por tile, ×2).
 
-| Elemento | Efecto |
-|---|---|
-| Formaciones rocosas | Bloquean a quien camina y a los proyectiles |
-| Agua | Ralentiza (×0,6 jugador, ×0,55 enemigos) |
-| Lava (bioma volcán) | Quema a quien la pisa — se puede atraer a los enemigos |
-| Árboles / cristales | Bloquean; dan cobertura contra disparos enemigos |
-| Rocas | Se rompen; sueltan XP, monedas o bayas |
-| Cofres | Se rompen; buen botín de monedas |
-| Hierba alta | Se corta con cualquier ataque; a veces suelta algo |
-| **Altar de poder** | Al tocarlo, 25 s de Furia (daño ×2), Rayo (+45% velocidad), Imán (×4) o Prisa (−40% recarga); luego se apaga |
-| **Manantial** | Cura mientras estás encima; se agota y se recarga solo en ~45 s |
+| Elemento              | Efecto                                                                                                           |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Formaciones rocosas   | Bloquean a quien camina y a los proyectiles                                                                      |
+| Agua                  | Ralentiza (×0,6 jugador, ×0,55 enemigos)                                                                         |
+| Lava (bioma volcán)   | Quema a quien la pisa — se puede atraer a los enemigos                                                           |
+| Árboles / cristales   | Bloquean; dan cobertura contra disparos enemigos                                                                 |
+| Rocas                 | Se rompen; sueltan XP, monedas o bayas                                                                           |
+| Cofres                | Se rompen; buen botín de monedas                                                                                 |
+| Hierba alta           | Se corta con cualquier ataque; a veces suelta algo                                                               |
+| **Altar de poder**    | Al tocarlo, 25 s de Furia (daño ×2), Rayo (+45% velocidad), Imán (×4) o Prisa (−40% recarga); luego se apaga     |
+| **Manantial**         | Cura mientras estás encima; se agota y se recarga solo en ~45 s                                                  |
 | **Cofre con candado** | Quédate 3,5 s a su lado (aunque te ataquen): monedas, 1-3 tickets (15% un ×10) y experiencia para subir un nivel |
-| **Trampas** | Veneno, pegajosa (te frena) o explosiva; saltan al pisarlas, también con los enemigos |
-| **Grieta** | Rara (cada 30 s, 14% desde el minuto 1:15; dura 45 s). Te lleva a la arena de un legendario |
+| **Trampas**           | Veneno, pegajosa (te frena) o explosiva; saltan al pisarlas, también con los enemigos                            |
+| **Grieta**            | Rara (cada 30 s, 14% desde el minuto 1:15; dura 45 s). Te lleva a la arena de un legendario                      |
 
 - **Voladores, fantasmas y jefes** ignoran el terreno.
 - **3 biomas** que rotan cada 4 minutos, cada uno con su música:
   Bosque Umbrío, Cueva Cristal, Volcán Ceniza. El cambio es un **fundido**
   de 2,6 s entre la paleta vieja y la nueva (suelo y objetos).
-- **Grieta → arena:** zona redonda cerrada en el bioma *Grieta Distorsión*,
+- **Grieta → arena:** zona redonda cerrada en el bioma _Grieta Distorsión_,
   contra un **legendario** (2 min). Ganas: ticket ×10 extra, 3 tickets y
   monedas, y vuelves donde estabas. Pierdes (caéis todos o se acaba el tiempo):
   vuelves sin premio con el 30% de vida. Mientras, los enemigos del mapa esperan.
 
 ### 4.0 Arenas de la grieta (una por tipo)
+
 El legendario te espera en la arena de **uno de sus dos tipos, al azar**. Cada
 arena tiene su paleta, su decoración, su terreno y su clima, y suena un tema
 propio ("rift"). El legendario choca con paredes y columnas como tú y no puede
 salir del círculo.
 
-| Tipo | Arena | Terreno | Clima |
-|---|---|---|---|
-| Normal | Pradera Eterna | columnas | — |
-| Fuego | Volcán Ígneo | ríos de lava (quema) | sol |
-| Agua | Gruta Marina | charcos (frenan) | lluvia |
-| Planta | Selva Esmeralda | ciénaga (frena mucho), árboles | — |
-| Eléctrico | Central Voltio | charcos con descarga | lluvia |
-| Hielo | Glaciar Eterno | placas de hielo (resbalas) | nieve |
-| Lucha | Dojo Ancestral | muchas columnas | — |
-| Veneno | Ciénaga Tóxica | charcos de veneno | — |
-| Tierra | Desierto Rojo | arenas movedizas | arena |
-| Volador | Pico Celeste | árboles-nube | — |
-| Psíquico | Templo Mental | cristales rosas, columnas | — |
-| Bicho | Bosque Colmena | ciénaga, mucha hierba | — |
-| Roca | Cantera Antigua | muchas columnas y rocas | arena |
-| Fantasma | Cementerio Sombrío | árboles muertos | niebla |
-| Dragón | Santuario Dragón | llamas dracónicas (queman) | — |
-| Siniestro | Callejón Oscuro | columnas | — |
-| Acero | Fortaleza de Acero | muchas columnas | — |
-| Hada | Bosque Encantado | árboles rosas, fuentes | — |
+| Tipo      | Arena              | Terreno                        | Clima  |
+| --------- | ------------------ | ------------------------------ | ------ |
+| Normal    | Pradera Eterna     | columnas                       | —      |
+| Fuego     | Volcán Ígneo       | ríos de lava (quema)           | sol    |
+| Agua      | Gruta Marina       | charcos (frenan)               | lluvia |
+| Planta    | Selva Esmeralda    | ciénaga (frena mucho), árboles | —      |
+| Eléctrico | Central Voltio     | charcos con descarga           | lluvia |
+| Hielo     | Glaciar Eterno     | placas de hielo (resbalas)     | nieve  |
+| Lucha     | Dojo Ancestral     | muchas columnas                | —      |
+| Veneno    | Ciénaga Tóxica     | charcos de veneno              | —      |
+| Tierra    | Desierto Rojo      | arenas movedizas               | arena  |
+| Volador   | Pico Celeste       | árboles-nube                   | —      |
+| Psíquico  | Templo Mental      | cristales rosas, columnas      | —      |
+| Bicho     | Bosque Colmena     | ciénaga, mucha hierba          | —      |
+| Roca      | Cantera Antigua    | muchas columnas y rocas        | arena  |
+| Fantasma  | Cementerio Sombrío | árboles muertos                | niebla |
+| Dragón    | Santuario Dragón   | llamas dracónicas (queman)     | —      |
+| Siniestro | Callejón Oscuro    | columnas                       | —      |
+| Acero     | Fortaleza de Acero | muchas columnas                | —      |
+| Hada      | Bosque Encantado   | árboles rosas, fuentes         | —      |
 
 Inmunidades al terreno: Fuego a la lava, Veneno/Acero al veneno,
 Eléctrico/Tierra a la descarga, Hielo al hielo. El legendario no sufre su arena.
 
 ### 4.1 Climas (evento raro)
+
 Desde el minuto 2, cada minuto hay un 18% de que llegue un clima (~1 minuto):
 
-| Clima | Efecto |
-|---|---|
-| Sol abrasador | Fuego ×1,5 · Agua ×0,5 |
-| Lluvia | Agua ×1,5 · Eléctrico ×1,2 · Fuego ×0,5 |
+| Clima             | Efecto                                                                         |
+| ----------------- | ------------------------------------------------------------------------------ |
+| Sol abrasador     | Fuego ×1,5 · Agua ×0,5                                                         |
+| Lluvia            | Agua ×1,5 · Eléctrico ×1,2 · Fuego ×0,5                                        |
 | Tormenta de arena | Roca, Tierra y Acero ×1,3; el resto pierde un 1,2% de vida cada 2 s (nunca KO) |
-| Nevada | Hielo ×1,5; el resto pierde vida igual y va un 10% más lento |
-| Niebla | Fantasma, Hada y Psíquico ×1,3; la viñeta se cierra un poco |
+| Nevada            | Hielo ×1,5; el resto pierde vida igual y va un 10% más lento                   |
+| Niebla            | Fantasma, Hada y Psíquico ×1,3; la viñeta se cierra un poco                    |
 
 Afecta a todos (tú y los enemigos). Cada bioma prefiere unos climas. Lo visual
 es suave: tinte leve y pocas partículas pixel. En grupo lo decide el anfitrión.
 
 ### 4.2 Tabla de tipos (suavizada)
+
 La de los juegos, pero ×1,6 / ×0,6 / ×0,3 en vez de ×2 / ×0,5 / ×0 (con un
 solo ataque activo, una inmunidad total dejaría enemigos imposibles). Dos
 tipos se multiplican, con tope ×0,3–×2,4. Tus ataques usan el tipo del
@@ -184,19 +191,20 @@ amarillo cuando es muy eficaz; gris si no (sin texto, para no cargar la pantalla
   Rowlet o Pidgey caminan aunque sean Voladores; Gastly o Zubat flotan.
 
 ### 5.1 Personalidades
+
 En cada run, cada tramo de enemigos trae al menos 2 con personalidad (1 en el
 primero, para ir aprendiendo). Los ataques "con aviso" se ven antes en el suelo.
 
-| Personalidad | Quién | Qué hace |
-|---|---|---|
-| Curandero | Chansey, Blissey, Audino, Clefairy... | Cura un 15% a los de alrededor cada 3,5 s |
-| Escudo | Shuckle, Bronzong, Mr. Mime, Bastiodon... | Escudo del 35% de vida a 6 compañeros |
-| Invocador | Nidoqueen, Vespiquen, Golbat, Gyarados... | Llama a 2 de su manada (Nidoran, Combee...) |
-| Kamikaze | Voltorb, Electrode, Koffing, Geodude... | Se acerca y explota (aviso de 1 s) |
-| Rayo | Eléctrico, Psíquico, Dragón, Hielo (algunos) | Rayo con franja de aviso |
-| Zonas | Fuego, Tierra, Veneno (algunos) | Círculos bajo tus pies que estallan |
-| Abanico | Agua, Planta, Bicho, Hada (algunos) | 3 disparos en abanico (5 más adelante) |
-| Saltador | Lucha, Tierra, Normal, Roca (algunos) | Salta y cae donde estabas |
+| Personalidad | Quién                                        | Qué hace                                    |
+| ------------ | -------------------------------------------- | ------------------------------------------- |
+| Curandero    | Chansey, Blissey, Audino, Clefairy...        | Cura un 15% a los de alrededor cada 3,5 s   |
+| Escudo       | Shuckle, Bronzong, Mr. Mime, Bastiodon...    | Escudo del 35% de vida a 6 compañeros       |
+| Invocador    | Nidoqueen, Vespiquen, Golbat, Gyarados...    | Llama a 2 de su manada (Nidoran, Combee...) |
+| Kamikaze     | Voltorb, Electrode, Koffing, Geodude...      | Se acerca y explota (aviso de 1 s)          |
+| Rayo         | Eléctrico, Psíquico, Dragón, Hielo (algunos) | Rayo con franja de aviso                    |
+| Zonas        | Fuego, Tierra, Veneno (algunos)              | Círculos bajo tus pies que estallan         |
+| Abanico      | Agua, Planta, Bicho, Hada (algunos)          | 3 disparos en abanico (5 más adelante)      |
+| Saltador     | Lucha, Tierra, Normal, Roca (algunos)        | Salta y cae donde estabas                   |
 
 ## 6. Shinies
 
@@ -213,29 +221,34 @@ primero, para ir aprendiendo). Los ataques "con aviso" se ven antes en el suelo.
 ## 7. Progresión
 
 ### 7.1 Pokémonedas
+
 Al terminar una run: `tiempo/5 + derrotados/4 + 80 por jefe + monedas recogidas`,
 multiplicado por la mejora Fortuna. Cuenta nueva: 500 de regalo.
 
 Las monedas sirven para las **mejoras**; el gacha va con tickets.
 
 ### 7.2 Mejoras permanentes — de cada Pokémon
+
 Vitalidad, Fuerza, Zancada, Reflejos, Coraza, Síntesis, Imán, Sabiduría, Fortuna
 y **Repertorio (empezar con 2 movimientos)**. Cada Pokémon tiene las suyas y
 sólo cuentan cuando juegas con él (en la pantalla de Mejoras se elige cuál).
 Las que se compraron cuando eran de la cuenta pasaron al compañero de entonces.
 
 ### 7.2a Objetos equipables (uno por run)
+
 Restos, Cinta Elección, Garra Rápida, Banda Focus, Cascabel Concha, Moneda
 Amuleto, Huevo Suerte, Vidasfera, Pañuelo Elección, Casco Dentado y Chaleco
 Asalto. Los sueltan **todos los jefes**, los cofres con candado (50%) y a veces
 los normales (8%). Si ya llevas uno, eliges (en solitario el juego se para).
 
 ### 7.2c Evolución de movimientos
+
 Un movimiento al nivel máximo evoluciona si en esa run has cogido su mejora de
 condición (Ascuas + Potencia → Llamarada, Burbuja + Carrera → Surf...): sale
 una **carta dorada** (siempre, si está lista). Los 47 de ataque evolucionan.
 
 ### 7.2d Misiones, logros y perfil
+
 - **3 diarias + 2 semanales** (premio en tickets y monedas); una diaria se puede
   cambiar al día. Mismas misiones en cualquier ordenador (semilla por cuenta).
 - **Logros** con medalla (bronce, plata, oro), premio y a veces **título**;
@@ -244,6 +257,7 @@ una **carta dorada** (siempre, si está lista). Los 47 de ataque evolucionan.
   título, mejores marcas y las 8 mejores medallas.
 
 ### 7.2b Tickets del gacha
+
 - **Ticket** (×1): cada Pokémon derrotado tiene 1/400 de soltar uno; los cofres
   con candado dan 1-3.
 - **Ticket ×10**: los jefes, el legendario de la grieta (2) y, a veces, los
@@ -251,17 +265,18 @@ una **carta dorada** (siempre, si está lista). Los 47 de ataque evolucionan.
 - En grupo los tickets son del equipo: todos se llevan los que se recogen.
 
 ### 7.3 Gacha — un banner por región
+
 Kanto, Johto, Hoenn, Sinnoh, Teselia, Kalos, Alola, Galar y Paldea, cada uno con
 **sus Pokémon, sus 3 destacados y su propio pity**.
 
-| Rareza | Prob. | Repetido devuelve |
-|---|---|---|
-| Común | 45% | 15 |
-| Poco común | 30% | 30 |
-| Rara | 17% | 60 |
-| Épica | 6,5% | 120 |
-| Legendaria | 1,5% | 300 |
-| *Shiny* | *1% (cualquier rareza)* | *×3* |
+| Rareza     | Prob.                   | Repetido devuelve |
+| ---------- | ----------------------- | ----------------- |
+| Común      | 45%                     | 15                |
+| Poco común | 30%                     | 30                |
+| Rara       | 17%                     | 60                |
+| Épica      | 6,5%                    | 120               |
+| Legendaria | 1,5%                    | 300               |
+| _Shiny_    | _1% (cualquier rareza)_ | _×3_              |
 
 - Tirada ×1: 1 ticket · ×10: **10 tickets normales o 1 ticket ×10** (dos botones,
   eliges con qué pagar), con **al menos una
@@ -279,13 +294,13 @@ Kanto, Johto, Hoenn, Sinnoh, Teselia, Kalos, Alola, Galar y Paldea, cada uno con
 Compuesto para el juego y tocado por un sintetizador Web Audio (flauta, marimba,
 guitarra punteada, bajo, pad, lead y batería, con reverb). Cero ficheros.
 
-| Tema | Dónde | Estilo |
-|---|---|---|
-| Aldea | Menús | Fa mayor, 100 bpm con swing, flauta y marimba |
-| Bosque | Run (bosque) | Re menor aventurero, 122 bpm |
-| Cueva | Run (cueva) | La menor misterioso, 92 bpm, campanitas |
-| Volcán | Run (volcán) | Mi frigio tenso, 132 bpm |
-| Jefe | Combate de jefe | Mi menor intenso, 150 bpm |
+| Tema   | Dónde           | Estilo                                        |
+| ------ | --------------- | --------------------------------------------- |
+| Aldea  | Menús           | Fa mayor, 100 bpm con swing, flauta y marimba |
+| Bosque | Run (bosque)    | Re menor aventurero, 122 bpm                  |
+| Cueva  | Run (cueva)     | La menor misterioso, 92 bpm, campanitas       |
+| Volcán | Run (volcán)    | Mi frigio tenso, 132 bpm                      |
+| Jefe   | Combate de jefe | Mi menor intenso, 150 bpm                     |
 
 - Efectos para botones, cada familia de ataque (con tono según el tipo),
   golpes, caídas, experiencia (sube de tono en racha), monedas, nivel, jefe,
@@ -326,9 +341,11 @@ guitarra punteada, bajo, pad, lead y batería, con reverb). Cero ficheros.
 ## Registro de decisiones
 
 **2026-10-07 · primera versión**
+
 - Stack vanilla + Canvas. 1 movimiento activo que se cambia con 1–4. Combate primero.
 
 **2026-10-07 · segunda versión**
+
 - Todo en local: fuera la API en tiempo de ejecución.
 - Sprites de Mundo Misterioso (SpriteCollab) con animaciones de ataque.
 - Tiles pintados en código (los de PMD sólo existen ripeando la ROM).
@@ -336,6 +353,7 @@ guitarra punteada, bajo, pad, lead y batería, con reverb). Cero ficheros.
 - Guardado: `localStorage` detrás de una capa de datos única.
 
 **2026-10-07 · tercera versión**
+
 - **Todas las generaciones** (966 con sprite). Gacha: **un banner por región**.
 - **Shinies:** 1/4096 salvaje, 1/100 en gacha; el compañero se elige en versión
   normal o shiny desde la colección.
@@ -343,6 +361,7 @@ guitarra punteada, bajo, pad, lead y batería, con reverb). Cero ficheros.
 - **Fuera los emojis**: iconos pixel art propios.
 
 **2026-10-07 · arreglo de combate**
+
 - Bug: los proyectiles nacían en el borde del Pokémon y avanzaban hasta 8 unidades
   por fotograma, así que **los enemigos pegados al jugador eran inmunes** a todos
   los movimientos de proyectil (en un survivor, casi siempre hay alguno pegado).
@@ -351,6 +370,7 @@ guitarra punteada, bajo, pad, lead y batería, con reverb). Cero ficheros.
 - Vídeos de demostración en `videos/` (jefe, shiny salvaje, shiny en el gacha).
 
 **2026-10-07 · efectos y retoques visuales**
+
 - **Ataques con sprites pixel art** (`js/entities/vfx.js`): 23 formas (llama,
   gota, burbuja, hoja, rayo, cristal, roca, lodo, aguijón, estrella, viento,
   telaraña, onda, media luna, sonido, impacto, zarpazo, mandíbulas, flecha,
@@ -368,6 +388,7 @@ guitarra punteada, bajo, pad, lead y batería, con reverb). Cero ficheros.
   lo que tienes pegado.
 
 **2026-10-07 · base de datos y publicación**
+
 - **Firebase** (Authentication + Firestore): cuentas con nombre + contraseña o
   Google; la partida se sigue en cualquier ordenador. Copia local para jugar
   sin conexión, escucha en tiempo real de otros ordenadores y **fusión** al
@@ -382,6 +403,7 @@ guitarra punteada, bajo, pad, lead y batería, con reverb). Cero ficheros.
   sprites ripeados de los juegos (los de CHUNSOFT).
 
 **2026-10-08 · nuevo nombre**
+
 - El juego pasa a llamarse **PokéSurvivor** (sin "Pokémon" en el nombre, como
   PokéRogue o Showdown). Repositorio: `pokesurvivor`.
 - Firebase: proyecto nuevo **`pokesurvivor-jpter`** (Firestore en eur3, correo/
@@ -390,6 +412,7 @@ guitarra punteada, bajo, pad, lead y batería, con reverb). Cero ficheros.
   recuperables en Google Cloud).
 
 **2026-10-09 · móvil y ajustes**
+
 - **Jugable en móvil y tablet, en horizontal** (en vertical sale "Gira el
   móvil" y la partida se pausa). **Joystick flotante**: aparece donde pones el
   dedo. Los iconos de ataque se tocan para cambiarlo (en PC también con clic) y
@@ -408,6 +431,7 @@ guitarra punteada, bajo, pad, lead y batería, con reverb). Cero ficheros.
   aviso claro si un archivo del juego no llega a cargar.
 
 **2026-10-09 · gastar lo mínimo de Firebase (plan gratuito)**
+
 - **Ranking con resumen**: un documento `lbs/{tabla}` con el top 50 por
   tabla (1 lectura por pestaña en vez de ~52) y caché de 10 min en el
   navegador; las marcas propias se recuerdan para no leer antes de escribir.
@@ -424,6 +448,7 @@ guitarra punteada, bajo, pad, lead y batería, con reverb). Cero ficheros.
   ×1,35 daño, ×2,6 experiencia) y sin textos de "¡Muy eficaz!".
 
 **2026-10-08 · multijugador, amigos y ranking**
+
 - **Cooperativo hasta 4** con **lista de amigos** (no códigos de sala ni salas
   públicas). Experiencia compartida y **cartas que esperan a todos**; un caído
   se **revive** quedándose a su lado.
@@ -439,6 +464,7 @@ guitarra punteada, bajo, pad, lead y batería, con reverb). Cero ficheros.
   pueden verse la IP (como en una videollamada).
 
 **2026-10-08 · mejoras por Pokémon, tickets, grietas e interactivos**
+
 - **Mejoras de cada Pokémon** (no de la cuenta); las ya compradas pasan al
   compañero actual. Las monedas quedan sólo para mejoras.
 - **Gacha con tickets** que se ganan jugando (sin regalo inicial ni conversión
@@ -450,23 +476,27 @@ guitarra punteada, bajo, pad, lead y batería, con reverb). Cero ficheros.
 - Pokédex: campo `leg` (legendario o singular) de PokeAPI.
 
 **2026-10-08 · climas, tabla de tipos y tragaperras**
+
 - **Climas** como evento raro (sol, lluvia, arena, nieve, niebla), visual suave.
 - **Tabla de tipos suavizada** en los dos sentidos.
 - Gacha con **tragaperras pixel art** en vez de la Poké Ball.
 
 **2026-10-08 · arenas por tipo**
+
 - Bug: los legendarios (jefes = voladores) atravesaban las rocas de la arena y
   no se les podía disparar (Celebi). Ahora chocan y no salen del círculo.
 - 18 arenas de grieta, una por tipo, con terreno que afecta y clima propio;
   tema musical nuevo para la grieta.
 
 **2026-10-08 · iconos más Pokémon**
+
 - Shiny: **estrella roja** con destello (como la marca de shiny de los juegos),
   en vez de la gema.
 - Rareza: ya no hay estrellas; cada rareza es su **Poké Ball** — Poké (Común),
   Super (Poco común), Ultra (Rara), Lujo (Épica) y **Master (Legendaria)**.
 
 **2026-10-08 · cámara, rendimiento e IA**
+
 - Cámara un 20% más lejos (768 de ancho de mundo en vez de 640).
 - Rendimiento: el destello al golpear usaba `ctx.filter` (×95 más caro que una
   silueta blanca precalculada, que es lo que se usa ahora); tope de 70 números
@@ -475,6 +505,7 @@ guitarra punteada, bajo, pad, lead y batería, con reverb). Cero ficheros.
 - Los enemigos rodean obstáculos; vuelan sólo los que flotan en su sprite.
 
 **2026-10-08 · misiones, logros, objetos, evoluciones y enemigos con personalidad**
+
 - Misiones 3+2, logros con premio y título, perfil público (todos lo ven).
 - Objetos equipables de un solo uso por run (cofres y jefes).
 - Evolución de movimientos: nivel máximo + condición, carta dorada.
@@ -483,6 +514,7 @@ guitarra punteada, bajo, pad, lead y batería, con reverb). Cero ficheros.
   automático: la supervivencia media es parecida a la de antes (89 s frente a 60 s).
 
 **2026-10-10 · últimos detalles antes de la web**
+
 - Los Pokémon de tipo Agua no se frenan en el agua ni en el pantano.
 - Se sube de nivel la mitad de rápido (experiencia por nivel ×2).
 - Menos enemigos a la vez (tope 64) pero bastante más duros. Los que se quedan

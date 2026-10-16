@@ -5,16 +5,16 @@ Todo lo técnico ya está preparado en el código. Falta lo que sólo puedes hac
 
 ## Qué hay preparado
 
-| Archivo | Para qué |
-|---|---|
+| Archivo                                | Para qué                                                                                                                                                                                                                                                                                        |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/index.html` (→ `dist/index.html`) | Título y descripción pensados para búsquedas ("juego Pokémon gratis online", "estilo Survivor.io"), dirección canónica, tarjetas para redes (Open Graph / Twitter), datos estructurados `VideoGame` (gratis, 1-4 jugadores, navegador/Android/iOS) y un texto real mientras carga (con `<h1>`). |
-| `guia/` | Guía con cómo se juega, características, consejos y **preguntas frecuentes** (con datos `FAQPage`, que Google puede enseñar desplegables en los resultados). |
-| `pokedex/` | Los 966 Pokémon jugables con sus tipos y sprites: atrae búsquedas tipo "juego con Pikachu gratis". |
-| `404.html` | Página de "no existe" con enlaces al juego (nginx la usa con `error_page`). |
-| `robots.txt` | Permite rastrear todo e indica el sitemap. |
-| `sitemap.xml` | Las páginas que hay que indexar. |
-| `public/assets/og-image.jpg` | La imagen que sale al compartir el enlace (1200×630). |
-| `manifest.webmanifest`, iconos | App instalable, icono en el navegador y en el móvil. |
+| `guia/`                                | Guía con cómo se juega, características, consejos y **preguntas frecuentes** (con datos `FAQPage`, que Google puede enseñar desplegables en los resultados).                                                                                                                                    |
+| `pokedex/`                             | Los 966 Pokémon jugables con sus tipos y sprites: atrae búsquedas tipo "juego con Pikachu gratis".                                                                                                                                                                                              |
+| `404.html`                             | Página de "no existe" con enlaces al juego (nginx la usa con `error_page`).                                                                                                                                                                                                                     |
+| `robots.txt`                           | Permite rastrear todo e indica el sitemap.                                                                                                                                                                                                                                                      |
+| `sitemap.xml`                          | Las páginas que hay que indexar.                                                                                                                                                                                                                                                                |
+| `public/assets/og-image.jpg`           | La imagen que sale al compartir el enlace (1200×630).                                                                                                                                                                                                                                           |
+| `manifest.webmanifest`, iconos         | App instalable, icono en el navegador y en el móvil.                                                                                                                                                                                                                                            |
 
 Las páginas (en `dist/`) se regeneran con `npm run build` (por ejemplo, si
 cambian los Pokémon o las características).

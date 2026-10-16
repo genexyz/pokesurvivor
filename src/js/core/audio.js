@@ -11,12 +11,28 @@
  */
 G.Audio = (() => {
   const KEY = 'ps.audio';
-  let ctx = null, master, outNode, musicBus, sfxBus, reverb, wet;
+  let ctx = null,
+    master,
+    outNode,
+    musicBus,
+    sfxBus,
+    reverb,
+    wet;
   let settings = { music: 0.55, sfx: 0.7, muted: false };
-  try { Object.assign(settings, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { /* nada */ }
+  try {
+    Object.assign(settings, JSON.parse(localStorage.getItem(KEY) || '{}'));
+  } catch (e) {
+    /* nada */
+  }
   let noiseBuf = null;
 
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch (e) { /* nada */ } }
+  function save() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(settings));
+    } catch (e) {
+      /* nada */
+    }
+  }
 
   // ---------------- arranque ----------------
 
@@ -26,12 +42,16 @@ G.Audio = (() => {
     if (!AC) return false;
     ctx = new AC();
     master = ctx.createDynamicsCompressor();
-    master.threshold.value = -14; master.ratio.value = 4;
-    const out = outNode = ctx.createGain(); out.gain.value = 0.9;
+    master.threshold.value = -14;
+    master.ratio.value = 4;
+    const out = (outNode = ctx.createGain());
+    out.gain.value = 0.9;
     master.connect(out).connect(ctx.destination);
 
-    musicBus = ctx.createGain(); sfxBus = ctx.createGain();
-    musicBus.connect(master); sfxBus.connect(master);
+    musicBus = ctx.createGain();
+    sfxBus = ctx.createGain();
+    musicBus.connect(master);
+    sfxBus.connect(master);
 
     // Reverb: respuesta al impulso generada (ruido que se apaga en 1,8 s).
     // Se rellena un momento después, a trozos: hacerlo de golpe bloqueaba la
@@ -42,11 +62,16 @@ G.Audio = (() => {
     let ch = 0;
     const fill = () => {
       const d = ir.getChannelData(ch);
-      for (let i = 0; i < len; i++) { const g = 1 - i / len; d[i] = (Math.random() * 2 - 1) * g * g * Math.sqrt(g); }
-      if (++ch < 2) setTimeout(fill, 30); else reverb.buffer = ir;
+      for (let i = 0; i < len; i++) {
+        const g = 1 - i / len;
+        d[i] = (Math.random() * 2 - 1) * g * g * Math.sqrt(g);
+      }
+      if (++ch < 2) setTimeout(fill, 30);
+      else reverb.buffer = ir;
     };
     setTimeout(fill, 300);
-    wet = ctx.createGain(); wet.gain.value = 0.3;
+    wet = ctx.createGain();
+    wet.gain.value = 0.3;
     reverb.connect(wet).connect(musicBus);
 
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
@@ -75,8 +100,17 @@ G.Audio = (() => {
     sfxBus.gain.setTargetAtTime(settings.muted ? 0 : settings.sfx * 2.4, t, 0.05);
   }
 
-  function setVolume(which, v) { settings[which] = G.U.clamp(v, 0, 1); save(); applyVolumes(); }
-  function toggleMute() { settings.muted = !settings.muted; save(); applyVolumes(); return settings.muted; }
+  function setVolume(which, v) {
+    settings[which] = G.U.clamp(v, 0, 1);
+    save();
+    applyVolumes();
+  }
+  function toggleMute() {
+    settings.muted = !settings.muted;
+    save();
+    applyVolumes();
+    return settings.muted;
+  }
 
   // ---------------- piezas básicas ----------------
 
@@ -84,8 +118,11 @@ G.Audio = (() => {
 
   function osc(type, f, t, end, dest) {
     const o = ctx.createOscillator();
-    o.type = type; o.frequency.setValueAtTime(f, t);
-    o.connect(dest); o.start(t); o.stop(end + 0.05);
+    o.type = type;
+    o.frequency.setValueAtTime(f, t);
+    o.connect(dest);
+    o.start(t);
+    o.stop(end + 0.05);
     return o;
   }
 
@@ -102,19 +139,24 @@ G.Audio = (() => {
   function noise(t, dur, dest) {
     const s = ctx.createBufferSource();
     s.buffer = noiseBuf;
-    s.connect(dest); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05);
+    s.connect(dest);
+    s.start(t, Math.random() * 0.5);
+    s.stop(t + dur + 0.05);
     return s;
   }
 
   function filt(type, f, q, dest) {
     const b = ctx.createBiquadFilter();
-    b.type = type; b.frequency.value = f; b.Q.value = q;
+    b.type = type;
+    b.frequency.value = f;
+    b.Q.value = q;
     b.connect(dest);
     return b;
   }
 
   function send(node, amount) {
-    const s = ctx.createGain(); s.gain.value = amount;
+    const s = ctx.createGain();
+    s.gain.value = amount;
     node.connect(s).connect(reverb);
   }
 
@@ -126,34 +168,52 @@ G.Audio = (() => {
       const g = gainEnv(lp, t, 0.045, 0.2 * v, d, 0.14, 0.82);
       send(g, 0.35);
       const o1 = osc('triangle', f, t, t + d + 0.3, g);
-      const g2 = ctx.createGain(); g2.gain.value = 0.18; g2.connect(g);
+      const g2 = ctx.createGain();
+      g2.gain.value = 0.18;
+      g2.connect(g);
       const o2 = osc('sine', f * 2, t, t + d + 0.3, g2);
       // Vibrato que entra poco a poco, como un flautista.
-      const lfo = ctx.createOscillator(); lfo.frequency.value = 5.3;
-      const lg = ctx.createGain(); lg.gain.setValueAtTime(0, t);
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 5.3;
+      const lg = ctx.createGain();
+      lg.gain.setValueAtTime(0, t);
       lg.gain.linearRampToValueAtTime(f * 0.007, t + Math.min(0.35, d));
-      lfo.connect(lg); lg.connect(o1.frequency); lg.connect(o2.frequency);
-      lfo.start(t); lfo.stop(t + d + 0.35);
+      lfo.connect(lg);
+      lg.connect(o1.frequency);
+      lg.connect(o2.frequency);
+      lfo.start(t);
+      lfo.stop(t + d + 0.35);
       // Soplo al atacar la nota.
       const bp = filt('bandpass', f * 2.2, 2, g);
-      const ng = ctx.createGain(); ng.gain.setValueAtTime(0.25, t); ng.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-      ng.connect(bp); noise(t, 0.09, ng);
+      const ng = ctx.createGain();
+      ng.gain.setValueAtTime(0.25, t);
+      ng.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+      ng.connect(bp);
+      noise(t, 0.09, ng);
     },
     bell(t, f, d, v, bus) {
-      const g = ctx.createGain(); g.connect(bus); send(g, 0.3);
+      const g = ctx.createGain();
+      g.connect(bus);
+      send(g, 0.3);
       g.gain.setValueAtTime(0.0001, t);
       g.gain.linearRampToValueAtTime(0.22 * v, t + 0.004);
       g.gain.exponentialRampToValueAtTime(0.0008, t + Math.min(d, 0.45) + 0.45);
       osc('sine', f, t, t + 1, g);
-      const g2 = ctx.createGain(); g2.connect(g);
-      g2.gain.setValueAtTime(0.35, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+      const g2 = ctx.createGain();
+      g2.connect(g);
+      g2.gain.setValueAtTime(0.35, t);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
       osc('sine', f * 4, t, t + 0.12, g2);
     },
     pluck(t, f, d, v, bus) {
-      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 2;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.Q.value = 2;
       lp.frequency.setValueAtTime(3200, t);
       lp.frequency.exponentialRampToValueAtTime(Math.max(300, f * 1.8), t + 0.22);
-      const g = ctx.createGain(); g.connect(bus); send(g, 0.2);
+      const g = ctx.createGain();
+      g.connect(bus);
+      send(g, 0.2);
       g.gain.setValueAtTime(0.0001, t);
       g.gain.linearRampToValueAtTime(0.11 * v, t + 0.005);
       g.gain.exponentialRampToValueAtTime(0.0008, t + Math.min(d, 0.35) + 0.25);
@@ -164,7 +224,9 @@ G.Audio = (() => {
       const lp = filt('lowpass', 900, 0.7, bus);
       const g = gainEnv(lp, t, 0.008, 0.34 * v, d * 0.9, 0.08, 0.65);
       osc('triangle', f, t, t + d + 0.2, g);
-      const g2 = ctx.createGain(); g2.gain.value = 0.25; g2.connect(g);
+      const g2 = ctx.createGain();
+      g2.gain.value = 0.25;
+      g2.connect(g);
       osc('square', f, t, t + d + 0.2, g2);
     },
     pad(t, f, d, v, bus) {
@@ -180,36 +242,51 @@ G.Audio = (() => {
       send(g, 0.2);
       const o1 = osc('square', f, t, t + d + 0.2, g);
       const o2 = osc('square', f * 1.006, t, t + d + 0.2, g);
-      const lfo = ctx.createOscillator(); lfo.frequency.value = 6;
-      const lg = ctx.createGain(); lg.gain.setValueAtTime(0, t);
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 6;
+      const lg = ctx.createGain();
+      lg.gain.setValueAtTime(0, t);
       lg.gain.linearRampToValueAtTime(f * 0.008, t + 0.2);
-      lfo.connect(lg); lg.connect(o1.frequency); lg.connect(o2.frequency);
-      lfo.start(t); lfo.stop(t + d + 0.25);
+      lfo.connect(lg);
+      lg.connect(o1.frequency);
+      lg.connect(o2.frequency);
+      lfo.start(t);
+      lfo.stop(t + d + 0.25);
     },
     kick(t, v, bus) {
-      const g = ctx.createGain(); g.connect(bus);
-      g.gain.setValueAtTime(0.55 * v, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+      const g = ctx.createGain();
+      g.connect(bus);
+      g.gain.setValueAtTime(0.55 * v, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
       const o = osc('sine', 150, t, t + 0.25, g);
       o.frequency.exponentialRampToValueAtTime(42, t + 0.13);
     },
     snare(t, v, bus) {
       const hp = filt('highpass', 1300, 0.7, bus);
-      const g = ctx.createGain(); g.connect(hp); send(g, 0.15);
-      g.gain.setValueAtTime(0.22 * v, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
+      const g = ctx.createGain();
+      g.connect(hp);
+      send(g, 0.15);
+      g.gain.setValueAtTime(0.22 * v, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
       noise(t, 0.15, g);
-      const g2 = ctx.createGain(); g2.connect(bus);
-      g2.gain.setValueAtTime(0.12 * v, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+      const g2 = ctx.createGain();
+      g2.connect(bus);
+      g2.gain.setValueAtTime(0.12 * v, t);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
       osc('triangle', 190, t, t + 0.1, g2);
     },
     hat(t, v, bus) {
       const hp = filt('highpass', 7500, 0.7, bus);
-      const g = ctx.createGain(); g.connect(hp);
-      g.gain.setValueAtTime(0.08 * v, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
+      const g = ctx.createGain();
+      g.connect(hp);
+      g.gain.setValueAtTime(0.08 * v, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
       noise(t, 0.05, g);
     },
     shaker(t, v, bus) {
       const bp = filt('bandpass', 5200, 1.2, bus);
-      const g = ctx.createGain(); g.connect(bp);
+      const g = ctx.createGain();
+      g.connect(bp);
       g.gain.setValueAtTime(0.0001, t);
       g.gain.linearRampToValueAtTime(0.07 * v, t + 0.012);
       g.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
@@ -280,7 +357,8 @@ G.Audio = (() => {
           else if (c === 'F') midi = base + ch.root + 7;
           else if (c === 'O') midi = base + ch.root + 12;
           else if (c === 'T') midi = base + ch.root + (ch.minor ? 3 : 4);
-          else if (c === 'C') {           // acorde entero (pad)
+          else if (c === 'C') {
+            // acorde entero (pad)
             for (let i = 0; i < 3; i++) ev[b * 16 + s].push({ inst: tr.inst, f: midiFreq(chordTone(ch, i, base)), len, v: tr.vel || 1 });
             continue;
           } else midi = chordTone(ch, +c, base);
@@ -297,7 +375,8 @@ G.Audio = (() => {
     return { steps, ev, bpm: song.bpm, swing: song.swing || 0 };
   }
 
-  let wanted = null, current = null;
+  let wanted = null,
+    current = null;
   const compiled = {};
 
   function startSong(name) {
@@ -324,7 +403,7 @@ G.Audio = (() => {
   function music(name) {
     if (wanted === name) return;
     wanted = name;
-    if (!ctx) return;                    // arrancará al primer clic
+    if (!ctx) return; // arrancará al primer clic
     stopCurrent();
     if (name) startSong(name);
   }
@@ -332,7 +411,8 @@ G.Audio = (() => {
   // Planificador: programa con 150 ms de antelación.
   setInterval(() => {
     if (!ctx || !current || ctx.state !== 'running') return;
-    const c = current, sd = 60 / c.song.bpm / 4;
+    const c = current,
+      sd = 60 / c.song.bpm / 4;
     while (c.next < ctx.currentTime + 0.15) {
       const i = c.step % c.song.steps;
       // Swing: retrasa las corcheas a contratiempo.
@@ -349,17 +429,35 @@ G.Audio = (() => {
   // ---------------- efectos de sonido ----------------
 
   const last = {};
-  let xpCombo = 0, xpT = 0, voices = 0;
+  let xpCombo = 0,
+    xpT = 0,
+    voices = 0;
 
   const SHOT_PITCH = {
-    fire: 520, water: 700, electric: 1100, psychic: 800, grass: 640, ice: 900, poison: 400,
-    ghost: 350, dragon: 300, fairy: 1200, normal: 600, fighting: 450, rock: 260, ground: 240,
-    steel: 750, bug: 980, dark: 330, flying: 820
+    fire: 520,
+    water: 700,
+    electric: 1100,
+    psychic: 800,
+    grass: 640,
+    ice: 900,
+    poison: 400,
+    ghost: 350,
+    dragon: 300,
+    fairy: 1200,
+    normal: 600,
+    fighting: 450,
+    rock: 260,
+    ground: 240,
+    steel: 750,
+    bug: 980,
+    dark: 330,
+    flying: 820
   };
 
   function tone(type, f0, f1, dur, vol, at = 0, bus = sfxBus) {
     const t = ctx.currentTime + at;
-    const g = ctx.createGain(); g.connect(bus);
+    const g = ctx.createGain();
+    g.connect(bus);
     g.gain.setValueAtTime(0.0001, t);
     g.gain.linearRampToValueAtTime(vol, t + 0.006);
     g.gain.exponentialRampToValueAtTime(0.0005, t + dur);
@@ -369,71 +467,135 @@ G.Audio = (() => {
 
   function hiss(dur, vol, type, f0, f1, at = 0, q = 1) {
     const t = ctx.currentTime + at;
-    const b = ctx.createBiquadFilter(); b.type = type; b.Q.value = q;
+    const b = ctx.createBiquadFilter();
+    b.type = type;
+    b.Q.value = q;
     b.frequency.setValueAtTime(f0, t);
     if (f1) b.frequency.exponentialRampToValueAtTime(f1, t + dur);
-    const g = ctx.createGain(); b.connect(g); g.connect(sfxBus);
-    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0005, t + dur);
+    const g = ctx.createGain();
+    b.connect(g);
+    g.connect(sfxBus);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + dur);
     noise(t, dur, b);
   }
 
-  function arp(type, freqs, gap, dur, vol) { freqs.forEach((f, i) => tone(type, f, f, dur, vol, i * gap)); }
+  function arp(type, freqs, gap, dur, vol) {
+    freqs.forEach((f, i) => tone(type, f, f, dur, vol, i * gap));
+  }
 
   const SFX = {
-    hover:   () => tone('square', 1400, 1400, 0.025, 0.025),
-    click:   () => { tone('square', 660, 990, 0.05, 0.06); },
-    back:    () => tone('square', 880, 520, 0.07, 0.05),
+    hover: () => tone('square', 1400, 1400, 0.025, 0.025),
+    click: () => {
+      tone('square', 660, 990, 0.05, 0.06);
+    },
+    back: () => tone('square', 880, 520, 0.07, 0.05),
     confirm: () => arp('triangle', [784, 988, 1319], 0.05, 0.12, 0.09),
-    select:  () => tone('square', 990, 1180, 0.04, 0.045),
-    error:   () => arp('square', [330, 262], 0.08, 0.09, 0.05),
+    select: () => tone('square', 990, 1180, 0.04, 0.045),
+    error: () => arp('square', [330, 262], 0.08, 0.09, 0.05),
     shot(o) {
       const f = SHOT_PITCH[o.type] || 600;
       if (o.kind === 'melee') hiss(0.12, 0.13, 'bandpass', 600, 2800, 0, 1.4);
-      else if (o.kind === 'beam') { tone('sawtooth', f * 0.6, f * 0.35, 0.3, 0.05); hiss(0.25, 0.04, 'bandpass', f * 2, f, 0, 3); }
-      else if (o.kind === 'nova') { hiss(0.2, 0.1, 'lowpass', 2400, 300); tone('sine', 140, 60, 0.16, 0.12); }
-      else if (o.kind === 'aura') { tone('sine', f * 0.5, f * 0.55, 0.25, 0.04); tone('sine', f * 0.75, f * 0.8, 0.25, 0.03); }
-      else if (o.kind === 'buff') arp('sine', [f, f * 1.25, f * 1.5], 0.05, 0.12, 0.05);
+      else if (o.kind === 'beam') {
+        tone('sawtooth', f * 0.6, f * 0.35, 0.3, 0.05);
+        hiss(0.25, 0.04, 'bandpass', f * 2, f, 0, 3);
+      } else if (o.kind === 'nova') {
+        hiss(0.2, 0.1, 'lowpass', 2400, 300);
+        tone('sine', 140, 60, 0.16, 0.12);
+      } else if (o.kind === 'aura') {
+        tone('sine', f * 0.5, f * 0.55, 0.25, 0.04);
+        tone('sine', f * 0.75, f * 0.8, 0.25, 0.03);
+      } else if (o.kind === 'buff') arp('sine', [f, f * 1.25, f * 1.5], 0.05, 0.12, 0.05);
       else if (o.kind === 'orbit') tone('triangle', f, f * 1.5, 0.15, 0.04);
-      else { tone('triangle', f * 1.5, f * 0.5, 0.09, 0.05); if (o.type === 'fire' || o.type === 'electric') hiss(0.06, 0.03, 'highpass', 3000); }
+      else {
+        tone('triangle', f * 1.5, f * 0.5, 0.09, 0.05);
+        if (o.type === 'fire' || o.type === 'electric') hiss(0.06, 0.03, 'highpass', 3000);
+      }
     },
-    hit:     () => tone('triangle', 230, 90, 0.045, 0.045),
-    faint:   () => tone('sine', 720, 240, 0.08, 0.04),
-    bossDown() { hiss(0.7, 0.18, 'lowpass', 1500, 100); arp('triangle', [262, 330, 392, 523], 0.09, 0.4, 0.08); },
+    hit: () => tone('triangle', 230, 90, 0.045, 0.045),
+    faint: () => tone('sine', 720, 240, 0.08, 0.04),
+    bossDown() {
+      hiss(0.7, 0.18, 'lowpass', 1500, 100);
+      arp('triangle', [262, 330, 392, 523], 0.09, 0.4, 0.08);
+    },
     xp() {
       const now = ctx.currentTime;
-      xpCombo = now - xpT < 0.45 ? Math.min(xpCombo + 1, 24) : 0; xpT = now;
+      xpCombo = now - xpT < 0.45 ? Math.min(xpCombo + 1, 24) : 0;
+      xpT = now;
       tone('sine', 880 * Math.pow(2, xpCombo / 12), 0, 0.06, 0.035);
     },
-    coin:    () => { tone('square', 1320, 1320, 0.05, 0.035); tone('square', 1760, 1760, 0.14, 0.035, 0.05); },
-    heal:    () => arp('triangle', [523, 659, 784, 1047], 0.06, 0.18, 0.06),
-    levelup: () => { arp('square', [523, 659, 784, 1047], 0.07, 0.14, 0.05); arp('triangle', [1047, 1319, 1568], 0.07, 0.3, 0.05); },
-    hurt:    () => { tone('square', 150, 70, 0.14, 0.06); hiss(0.1, 0.06, 'lowpass', 900); },
-    boss:    () => { [82, 123, 165].forEach(f => tone('sawtooth', f, f * 0.98, 1.3, 0.05)); INST.kick(ctx.currentTime, 1, sfxBus); },
-    surge:   () => hiss(0.7, 0.12, 'lowpass', 500, 120),
-    shiny:   () => [2093, 2637, 3136, 2349, 3520, 4186].forEach((f, i) => INST.bell(ctx.currentTime + i * 0.07, f, 0.3, 0.8, sfxBus)),
-    shinyGet() { SFX.shiny(); arp('square', [784, 988, 1175, 1568], 0.1, 0.35, 0.05); },
-    break:   () => { hiss(0.16, 0.12, 'lowpass', 1100, 200); tone('triangle', 140, 60, 0.12, 0.08); },
-    chest:   () => { SFX.break(); arp('square', [1047, 1319, 1568, 2093], 0.06, 0.12, 0.04); },
-    grass:   () => hiss(0.06, 0.03, 'highpass', 2600),
-    ball:    () => { tone('triangle', 220, 70, 0.12, 0.12); hiss(0.08, 0.06, 'lowpass', 800); },
-    shake:   () => tone('square', 420, 380, 0.04, 0.05),
+    coin: () => {
+      tone('square', 1320, 1320, 0.05, 0.035);
+      tone('square', 1760, 1760, 0.14, 0.035, 0.05);
+    },
+    heal: () => arp('triangle', [523, 659, 784, 1047], 0.06, 0.18, 0.06),
+    levelup: () => {
+      arp('square', [523, 659, 784, 1047], 0.07, 0.14, 0.05);
+      arp('triangle', [1047, 1319, 1568], 0.07, 0.3, 0.05);
+    },
+    hurt: () => {
+      tone('square', 150, 70, 0.14, 0.06);
+      hiss(0.1, 0.06, 'lowpass', 900);
+    },
+    boss: () => {
+      [82, 123, 165].forEach(f => tone('sawtooth', f, f * 0.98, 1.3, 0.05));
+      INST.kick(ctx.currentTime, 1, sfxBus);
+    },
+    surge: () => hiss(0.7, 0.12, 'lowpass', 500, 120),
+    shiny: () => [2093, 2637, 3136, 2349, 3520, 4186].forEach((f, i) => INST.bell(ctx.currentTime + i * 0.07, f, 0.3, 0.8, sfxBus)),
+    shinyGet() {
+      SFX.shiny();
+      arp('square', [784, 988, 1175, 1568], 0.1, 0.35, 0.05);
+    },
+    break: () => {
+      hiss(0.16, 0.12, 'lowpass', 1100, 200);
+      tone('triangle', 140, 60, 0.12, 0.08);
+    },
+    chest: () => {
+      SFX.break();
+      arp('square', [1047, 1319, 1568, 2093], 0.06, 0.12, 0.04);
+    },
+    grass: () => hiss(0.06, 0.03, 'highpass', 2600),
+    ball: () => {
+      tone('triangle', 220, 70, 0.12, 0.12);
+      hiss(0.08, 0.06, 'lowpass', 800);
+    },
+    shake: () => tone('square', 420, 380, 0.04, 0.05),
     burst(o) {
       hiss(0.5, 0.14, 'bandpass', 400, 4000, 0, 0.8);
       const r = (o && o.rarity) || 1;
-      const chord = [[523, 659, 784], [587, 740, 880], [659, 831, 988], [698, 880, 1047], [784, 988, 1175, 1568]][r - 1];
+      const chord = [
+        [523, 659, 784],
+        [587, 740, 880],
+        [659, 831, 988],
+        [698, 880, 1047],
+        [784, 988, 1175, 1568]
+      ][r - 1];
       chord.forEach(f => tone('triangle', f, f, 0.6 + r * 0.15, 0.04));
     },
-    reveal(o) { INST.bell(ctx.currentTime, [523, 659, 784, 988, 1319][((o && o.rarity) || 1) - 1], 0.3, 0.8, sfxBus); },
-    rift:    () => { [196, 233, 277, 330].forEach((f, i) => INST.pad(ctx.currentTime + i * 0.08, f, 1.4, 1.2, sfxBus)); hiss(0.9, 0.08, 'bandpass', 900, 300); },
-    legend:  () => { arp('square', [523, 659, 784, 1047, 1319, 1568], 0.08, 0.3, 0.05); SFX.shiny(); },
+    reveal(o) {
+      INST.bell(ctx.currentTime, [523, 659, 784, 988, 1319][((o && o.rarity) || 1) - 1], 0.3, 0.8, sfxBus);
+    },
+    rift: () => {
+      [196, 233, 277, 330].forEach((f, i) => INST.pad(ctx.currentTime + i * 0.08, f, 1.4, 1.2, sfxBus));
+      hiss(0.9, 0.08, 'bandpass', 900, 300);
+    },
+    legend: () => {
+      arp('square', [523, 659, 784, 1047, 1319, 1568], 0.08, 0.3, 0.05);
+      SFX.shiny();
+    },
     gameover: () => arp('triangle', [523, 440, 349, 262], 0.2, 0.35, 0.08),
-    biome:   () => [392, 494, 587, 784].forEach(f => INST.pad(ctx.currentTime, f, 1.2, 1.4, sfxBus)),
+    biome: () => [392, 494, 587, 784].forEach(f => INST.pad(ctx.currentTime, f, 1.2, 1.4, sfxBus)),
     // La Sentencia de Arceus (systems/judgment.js).
-    quake:   () => { hiss(2.4, 0.18, 'lowpass', 320, 50); tone('sine', 52, 30, 2.2, 0.22); },
+    quake: () => {
+      hiss(2.4, 0.18, 'lowpass', 320, 50);
+      tone('sine', 52, 30, 2.2, 0.22);
+    },
     toll() {
       const t = ctx.currentTime;
       [110, 165, 220, 330].forEach((f, i) => INST.bell(t, f, 1.4, 1.5 - i * 0.3, sfxBus));
-      INST.pad(t, 55, 2.4, 2.6, sfxBus); INST.pad(t, 82.4, 2.4, 2, sfxBus);
+      INST.pad(t, 55, 2.4, 2.6, sfxBus);
+      INST.pad(t, 82.4, 2.4, 2, sfxBus);
       tone('sine', 55, 52, 2.4, 0.16);
     },
     descend() {
@@ -441,13 +603,22 @@ G.Audio = (() => {
       [262, 330, 392, 523, 659].forEach((f, i) => INST.pad(ctx.currentTime + i * 0.3, f, 2.2, 1.6, sfxBus));
     },
     land() {
-      hiss(1.6, 0.32, 'lowpass', 2400, 50); tone('sine', 95, 26, 1.4, 0.36);
-      INST.kick(ctx.currentTime, 1.6, sfxBus); INST.kick(ctx.currentTime + 0.12, 1.1, sfxBus);
+      hiss(1.6, 0.32, 'lowpass', 2400, 50);
+      tone('sine', 95, 26, 1.4, 0.36);
+      INST.kick(ctx.currentTime, 1.6, sfxBus);
+      INST.kick(ctx.currentTime + 0.12, 1.1, sfxBus);
       arp('square', [523, 659, 784, 1047, 1319], 0.07, 0.6, 0.045);
     },
-    judge:   () => { tone('sine', 1760, 700, 0.45, 0.04); hiss(0.35, 0.07, 'highpass', 1800, 6000); tone('triangle', 120, 50, 0.3, 0.1); },
-    pause:   () => arp('square', [784, 523], 0.06, 0.07, 0.04),
-    buy:     () => { SFX.coin(); arp('triangle', [659, 784, 1047], 0.05, 0.12, 0.06); }
+    judge: () => {
+      tone('sine', 1760, 700, 0.45, 0.04);
+      hiss(0.35, 0.07, 'highpass', 1800, 6000);
+      tone('triangle', 120, 50, 0.3, 0.1);
+    },
+    pause: () => arp('square', [784, 523], 0.06, 0.07, 0.04),
+    buy: () => {
+      SFX.coin();
+      arp('triangle', [659, 784, 1047], 0.05, 0.12, 0.06);
+    }
   };
 
   // Separación mínima entre repeticiones del mismo efecto (ms).
@@ -460,10 +631,15 @@ G.Audio = (() => {
     const now = performance.now();
     const key = name === 'shot' && opts ? 'shot' + opts.kind : name;
     if (now - (last[key] || 0) < (MIN_GAP[name] || 0)) return;
-    if (voices > 24) return;                    // tope de voces simultáneas
+    if (voices > 24) return; // tope de voces simultáneas
     last[key] = now;
-    voices++; setTimeout(() => voices--, 150);
-    try { fn(opts); } catch (e) { /* un efecto nunca debe romper el juego */ }
+    voices++;
+    setTimeout(() => voices--, 150);
+    try {
+      fn(opts);
+    } catch (e) {
+      /* un efecto nunca debe romper el juego */
+    }
   }
 
   /** Para pruebas: mide pico y RMS de la salida durante `ms` milisegundos. */
@@ -473,14 +649,22 @@ G.Audio = (() => {
     an.fftSize = 2048;
     master.connect(an);
     const buf = new Float32Array(an.fftSize);
-    let peak = 0, sum = 0, n = 0;
+    let peak = 0,
+      sum = 0,
+      n = 0;
     return new Promise(res => {
       const t0 = performance.now();
       const id = setInterval(() => {
         an.getFloatTimeDomainData(buf);
-        for (const v of buf) { const a = Math.abs(v); if (a > peak) peak = a; sum += v * v; n++; }
+        for (const v of buf) {
+          const a = Math.abs(v);
+          if (a > peak) peak = a;
+          sum += v * v;
+          n++;
+        }
         if (performance.now() - t0 > ms) {
-          clearInterval(id); master.disconnect(an);
+          clearInterval(id);
+          master.disconnect(an);
           res({ peak: +peak.toFixed(3), rms: +Math.sqrt(sum / n).toFixed(4) });
         }
       }, 40);
@@ -496,16 +680,36 @@ G.Audio = (() => {
     if (!ctx) return null;
     const d = ctx.createMediaStreamDestination();
     outNode.connect(d);
-    if (solo) { try { outNode.disconnect(ctx.destination); } catch (e) { /* ya estaba */ } }
+    if (solo) {
+      try {
+        outNode.disconnect(ctx.destination);
+      } catch (e) {
+        /* ya estaba */
+      }
+    }
     return d.stream;
   }
 
   return {
-    music, sfx, setVolume, toggleMute, unlock, debugMeter, debugStream,
+    music,
+    sfx,
+    setVolume,
+    toggleMute,
+    unlock,
+    debugMeter,
+    debugStream,
     /** ¿Ya puede sonar? (el navegador sólo deja tras tocar algo, salvo excepciones) */
-    canPlay() { return !!ctx && ctx.state === 'running'; },
-    get settings() { return settings; },
-    get running() { return !!ctx && ctx.state === 'running'; },
-    get track() { return current && current.name; }
+    canPlay() {
+      return !!ctx && ctx.state === 'running';
+    },
+    get settings() {
+      return settings;
+    },
+    get running() {
+      return !!ctx && ctx.state === 'running';
+    },
+    get track() {
+      return current && current.name;
+    }
   };
 })();

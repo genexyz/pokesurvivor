@@ -3,11 +3,13 @@
  * ventana, así el juego se siente igual en cualquier pantalla.
  */
 G.Camera = {
-  x: 0, y: 0,
+  x: 0,
+  y: 0,
   scale: 1,
-  VIEW_W: 768,              // un 20% más de vista que al principio (640)
+  VIEW_W: 768, // un 20% más de vista que al principio (640)
   shake: 0,
-  _sx: 0, _sy: 0,
+  _sx: 0,
+  _sy: 0,
 
   /** Recalcula la escala para el tamaño actual del canvas. */
   dpr: 1,
@@ -31,11 +33,13 @@ G.Camera = {
       const a = this.shake * 7;
       this._sx = G.U.rand(-a, a);
       this._sy = G.U.rand(-a, a);
-    } else { this._sx = this._sy = 0; }
+    } else {
+      this._sx = this._sy = 0;
+    }
   },
 
   kick(amount) {
-    if (G.Settings.get('calm')) amount *= 0.25;      // "menos sacudidas"
+    if (G.Settings.get('calm')) amount *= 0.25; // "menos sacudidas"
     this.shake = Math.min(1.2, this.shake + amount);
   },
 
@@ -44,19 +48,23 @@ G.Camera = {
     // Redondea a píxeles físicos de pantalla: sin esto aparecen juntas de
     // 1 px entre chunks y los sprites "tiemblan" al moverse.
     const k = this.scale * this.dpr;
-    ctx.translate(Math.round((-this.left() + this._sx) * k) / k,
-                  Math.round((-this.top() + this._sy) * k) / k);
+    ctx.translate(Math.round((-this.left() + this._sx) * k) / k, Math.round((-this.top() + this._sy) * k) / k);
   },
 
-  left() { return this.x - this.w / 2; },
-  top() { return this.y - this.h / 2; },
+  left() {
+    return this.x - this.w / 2;
+  },
+  top() {
+    return this.y - this.h / 2;
+  },
 
   /** ¿Está el punto dentro de la vista (con margen)? */
   sees(x, y, pad = 60) {
-    return x > this.left() - pad && x < this.left() + this.w + pad &&
-           y > this.top() - pad && y < this.top() + this.h + pad;
+    return x > this.left() - pad && x < this.left() + this.w + pad && y > this.top() - pad && y < this.top() + this.h + pad;
   },
 
   /** Radio del círculo que envuelve la vista: usado para spawnear fuera. */
-  outerRadius() { return Math.hypot(this.w, this.h) / 2 + 40; }
+  outerRadius() {
+    return Math.hypot(this.w, this.h) / 2 + 40;
+  }
 };

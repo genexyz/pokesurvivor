@@ -15,6 +15,10 @@
     "build:debug": "node scripts/build.js --expose && npm run build:pages",
     "build:pages": "node scripts/export_data.js && node scripts/py.js scripts/make_seo_pages.py",
     "start": "node scripts/dev-server.js --dist",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "clean": "node -e \"for (const d of ['dist', '.cache']) require('fs').rmSync(d, { recursive: true, force: true })\"",
     "data:pokedex": "node scripts/py.js scripts/fetch_pokedex.py",
     "data:sprites": "node scripts/py.js scripts/fetch_sprites.py",
@@ -26,7 +30,12 @@
     "docker:run": "docker run --rm -p 8080:80 pokesurvivor"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.13.0",
     "javascript-obfuscator": "4.1.1",
+    "prettier": "^3.9.10",
     "terser": "^5.31.0"
   }
 }

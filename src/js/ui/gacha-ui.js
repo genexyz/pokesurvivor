@@ -18,7 +18,10 @@ G.GachaUI = (() => {
       t.className = 'gen-tab';
       t.dataset.gen = b.gen;
       t.innerHTML = `<b>${b.name}</b><small>Gen ${b.gen}</small>`;
-      t.onclick = () => { gen = b.gen; refresh(); };
+      t.onclick = () => {
+        gen = b.gen;
+        refresh();
+      };
       tabs.appendChild(t);
     });
   }
@@ -37,14 +40,12 @@ G.GachaUI = (() => {
     const owned = all.filter(p => s.owned[p.dex]).length;
     const shinies = all.filter(p => s.shiny && s.shiny[p.dex]).length;
     const [c1, c2, c3] = banner.color;
-    $('banner').style.background =
-      `radial-gradient(circle at 80% 30%, rgba(255,210,63,.3), transparent 45%),
+    $('banner').style.background = `radial-gradient(circle at 80% 30%, rgba(255,210,63,.3), transparent 45%),
        radial-gradient(circle at 15% 80%, rgba(196,123,255,.3), transparent 50%),
        linear-gradient(135deg, ${c1}, ${c2} 55%, ${c3})`;
     $('banner-title').textContent = banner.name + ' Misterioso';
     $('banner-desc').textContent = `Los ${all.length} Pokémon de la generación ${gen}. ¡Los legendarios esperan!`;
-    $('gacha-owned').innerHTML = `Tienes ${owned} de ${all.length}` +
-      (shinies ? ` · ${G.Icons.html('shiny', 12)} ${shinies} shiny` : '');
+    $('gacha-owned').innerHTML = `Tienes ${owned} de ${all.length}` + (shinies ? ` · ${G.Icons.html('shiny', 12)} ${shinies} shiny` : '');
 
     const feat = $('gacha-feat');
     feat.innerHTML = '';
@@ -55,9 +56,16 @@ G.GachaUI = (() => {
     const pity = (s.pity && s.pity[gen]) || 0;
     $('gacha-pity').textContent = `Tiradas sin legendaria en ${banner.name}: ${pity} / ${G.Gacha.PITY_5}`;
 
-    $('gacha-rates').innerHTML = '<h3>Probabilidades</h3>' + G.Gacha.RATES.slice().reverse().map(([r, w]) => `
+    $('gacha-rates').innerHTML =
+      '<h3>Probabilidades</h3>' +
+      G.Gacha.RATES.slice()
+        .reverse()
+        .map(
+          ([r, w]) => `
       <div><span style="color:${G.Gacha.RARITY_COLOR[r]}">${G.UI.stars(r, 10)} ${G.Gacha.RARITY_NAME[r]}</span>
-      <span>${w}% · ${G.Gacha.pool(r, gen).length}</span></div>`).join('') +
+      <span>${w}% · ${G.Gacha.pool(r, gen).length}</span></div>`
+        )
+        .join('') +
       `<div><span>${G.Icons.html('shiny', 12)} Shiny</span><span>1%</span></div>
        <p class="note">· La tirada ×10 garantiza al menos una Épica.<br>
        · A las ${G.Gacha.PITY_5} tiradas sin Legendaria en un banner, la siguiente lo es.<br>
@@ -69,7 +77,8 @@ G.GachaUI = (() => {
     $('cost-1').innerHTML = `${G.Icons.html('ticket', 18)} 1`;
     $('cost-10').innerHTML = `${G.Icons.html('ticket', 18)} 10`;
     $('cost-10b').innerHTML = `${G.Icons.html('ticket10', 18)} 1`;
-    $('gacha-tickets').innerHTML = `Tienes ${G.Icons.html('ticket', 18)} <b>${t.t1}</b> tickets y ${G.Icons.html('ticket10', 18)} <b>${t.t10}</b> tickets ×10`;
+    $('gacha-tickets').innerHTML =
+      `Tienes ${G.Icons.html('ticket', 18)} <b>${t.t1}</b> tickets y ${G.Icons.html('ticket10', 18)} <b>${t.t10}</b> tickets ×10`;
     $('pull-1').disabled = !G.Gacha.costOf(s, 1);
     $('pull-10').disabled = !G.Gacha.costOf(s, 10, 't1');
     $('pull-10b').disabled = !G.Gacha.costOf(s, 10, 't10');
@@ -81,13 +90,19 @@ G.GachaUI = (() => {
   async function pull(n, use = 't1') {
     if (busy) return;
     const res = G.Gacha.pull(G.DB.save, n, gen, use);
-    if (!res) { G.Audio.sfx('error'); G.UI.toast('No tienes tickets suficientes: consíguelos jugando'); return; }
+    if (!res) {
+      G.Audio.sfx('error');
+      G.UI.toast('No tienes tickets suficientes: consíguelos jugando');
+      return;
+    }
     G.Progress.checkAch();
     G.DB.commit(true);
     busy = true;
 
     const best = Math.max(...res.map(r => r.rarity));
-    const fx = $('pull-fx'), slot = $('slot'), out = $('pull-results');
+    const fx = $('pull-fx'),
+      slot = $('slot'),
+      out = $('pull-results');
     out.innerHTML = '';
     $('pull-close').classList.add('hidden');
     slot.style.display = '';
@@ -122,5 +137,11 @@ G.GachaUI = (() => {
     refresh();
   }
 
-  return { init, open, get open_() { return !$('pull-fx').classList.contains('hidden'); } };
+  return {
+    init,
+    open,
+    get open_() {
+      return !$('pull-fx').classList.contains('hidden');
+    }
+  };
 })();

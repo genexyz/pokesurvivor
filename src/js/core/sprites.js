@@ -12,12 +12,17 @@
 G.Sprites = (() => {
   /** Unidades de mundo por píxel de arte. Tiles y sprites comparten escala. */
   const PX = 2;
-  const sheets = new Map();          // "dex/Anim[/s]" -> {img, ready, failed}
+  const sheets = new Map(); // "dex/Anim[/s]" -> {img, ready, failed}
 
-  function meta(dex) { return G.SPRITE_META[dex] || null; }
+  function meta(dex) {
+    return G.SPRITE_META[dex] || null;
+  }
 
   /** ¿Flota en su sprite? (scripts/hover_flags.py) Pasa por encima de rocas y agua. */
-  function hovers(dex) { const m = meta(dex); return !!(m && m.hv); }
+  function hovers(dex) {
+    const m = meta(dex);
+    return !!(m && m.hv);
+  }
 
   /**
    * Versión blanca de una imagen (para el destello al recibir un golpe).
@@ -30,7 +35,8 @@ G.Sprites = (() => {
     let c = whites.get(img);
     if (c) return c;
     c = document.createElement('canvas');
-    c.width = img.width; c.height = img.height;
+    c.width = img.width;
+    c.height = img.height;
     const x = c.getContext('2d');
     x.drawImage(img, 0, 0);
     x.globalCompositeOperation = 'source-in';
@@ -41,7 +47,10 @@ G.Sprites = (() => {
   }
 
   /** ¿Tiene versión shiny? (assets/pokemon/{dex}/s/) */
-  function hasShiny(dex) { const m = meta(dex); return !!(m && m.sh); }
+  function hasShiny(dex) {
+    const m = meta(dex);
+    return !!(m && m.sh);
+  }
 
   /** Animaciones disponibles para esa variante. */
   function has(m, anim, shiny) {
@@ -68,14 +77,15 @@ G.Sprites = (() => {
   // Hojas en memoria como mucho. Antes no se soltaba ninguna: en partidas de
   // más de una hora pasaban cientos de especies, se llenaba la memoria gráfica
   // y la pantalla se quedaba en negro hasta que el navegador recargaba la página.
-  const MAX_SHEETS = 200, IDLE_MS = 20000;   // ~0,66 MB cada una ya dibujada: ~130 MB
+  const MAX_SHEETS = 200,
+    IDLE_MS = 20000; // ~0,66 MB cada una ya dibujada: ~130 MB
   function evict(now) {
     const old = [...sheets].filter(([, s]) => now - s.at > IDLE_MS).sort((a, b) => a[1].at - b[1].at);
     const drop = old.slice(0, Math.max(sheets.size - Math.floor(MAX_SHEETS * 0.75), 0));
     for (const [k, s] of drop) {
       sheets.delete(k);
       s.img.onload = s.img.onerror = null;
-      s.img.src = '';                 // suelta la imagen decodificada
+      s.img.src = ''; // suelta la imagen decodificada
     }
   }
 
@@ -90,14 +100,29 @@ G.Sprites = (() => {
     if (s) {
       s.at = now;
       // Si la descarga se cortó (red mala, servidor saturado), reintenta más tarde.
-      if (s.failed && performance.now() > s.retryAt) { s.failed = false; s.img.src = s.src + '?r=' + s.tries; }
+      if (s.failed && performance.now() > s.retryAt) {
+        s.failed = false;
+        s.img.src = s.src + '?r=' + s.tries;
+      }
       return s;
     }
     if (sheets.size >= MAX_SHEETS) evict(now);
-    s = { ready: false, failed: false, img: new Image(), tries: 0, retryAt: 0, at: now,
-          src: `assets/pokemon/${dex}/${shiny ? 's/' : ''}${name}.png` };
-    s.img.onload = () => { s.ready = true; };
-    s.img.onerror = () => { s.failed = true; s.retryAt = performance.now() + 1000 * Math.min(8, 2 ** s.tries++); };
+    s = {
+      ready: false,
+      failed: false,
+      img: new Image(),
+      tries: 0,
+      retryAt: 0,
+      at: now,
+      src: `assets/pokemon/${dex}/${shiny ? 's/' : ''}${name}.png`
+    };
+    s.img.onload = () => {
+      s.ready = true;
+    };
+    s.img.onerror = () => {
+      s.failed = true;
+      s.retryAt = performance.now() + 1000 * Math.min(8, 2 ** s.tries++);
+    };
     s.img.src = s.src;
     sheets.set(k, s);
     return s;
@@ -108,7 +133,11 @@ G.Sprites = (() => {
   /** Precarga todas las animaciones de esos Pokémon. */
   function preload(dexes, timeout = 8000, shiny = false) {
     const hs = [];
-    for (const d of dexes) for (const a of ANIMS) { const s = sheet(d, a, shiny); if (s) hs.push(s); }
+    for (const d of dexes)
+      for (const a of ANIMS) {
+        const s = sheet(d, a, shiny);
+        if (s) hs.push(s);
+      }
     return new Promise(res => {
       const t0 = performance.now();
       (function check() {
@@ -163,10 +192,10 @@ G.Sprites = (() => {
       this.base = 'Idle';
       this.cur = 'Idle';
       this.frame = 0;
-      this.t = 0;              // tiempo dentro del fotograma, en 1/60 s
+      this.t = 0; // tiempo dentro del fotograma, en 1/60 s
       this.speed = 1;
       this.once = false;
-      this.hold = false;       // se queda en el último fotograma (Faint)
+      this.hold = false; // se queda en el último fotograma (Faint)
       this.done = false;
       this.dir = 0;
       // Las hojas se cargan al dibujarse por primera vez; la run las precarga
@@ -187,21 +216,29 @@ G.Sprites = (() => {
     }
 
     /** ¿Está sonando una animación de una vez sin terminar? */
-    busy() { return this.once && !this.done; }
+    busy() {
+      return this.once && !this.done;
+    }
 
     /** Progreso 0..1 de la animación actual. */
     progress() {
       const m = animMeta(this.dex, this.cur, this.shiny);
       if (!m) return 1;
-      let total = 0, before = 0;
-      for (let i = 0; i < m.n; i++) { if (i < this.frame) before += m.d[i]; total += m.d[i]; }
+      let total = 0,
+        before = 0;
+      for (let i = 0; i < m.n; i++) {
+        if (i < this.frame) before += m.d[i];
+        total += m.d[i];
+      }
       return total ? (before + this.t) / total : 1;
     }
 
     _start(anim, once) {
       this.cur = animName(this.dex, anim, this.shiny) || 'Idle';
-      this.frame = 0; this.t = 0;
-      this.once = once; this.done = false;
+      this.frame = 0;
+      this.t = 0;
+      this.once = once;
+      this.done = false;
     }
 
     update(dt) {
@@ -213,7 +250,11 @@ G.Sprites = (() => {
         this.frame++;
         if (this.frame >= m.n) {
           if (this.once) {
-            if (this.hold) { this.frame = m.n - 1; this.done = true; return; }
+            if (this.hold) {
+              this.frame = m.n - 1;
+              this.done = true;
+              return;
+            }
             // Vuelve a la animación de fondo.
             this._start(this.base, false);
             this.speed = 1;
@@ -232,20 +273,27 @@ G.Sprites = (() => {
       if (s && !s.ready) {
         // Mientras carga esta animación, enseña Idle si ya está.
         const idle = sheet(this.dex, 'Idle', this.shiny);
-        if (idle && idle.ready) { s = idle; m = animMeta(this.dex, 'Idle', this.shiny); }
+        if (idle && idle.ready) {
+          s = idle;
+          m = animMeta(this.dex, 'Idle', this.shiny);
+        }
       }
       const frame = s === sheet(this.dex, this.cur, this.shiny) ? this.frame : 0;
       if (!m || !s || !s.ready) {
         // Respaldo: bolita, por si falta el fichero.
         ctx.fillStyle = opts.color || '#6b7a94';
-        ctx.beginPath(); ctx.arc(x, y - 12 * k, 8 * k, 0, 6.2832); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x, y - 12 * k, 8 * k, 0, 6.2832);
+        ctx.fill();
         return;
       }
       const row = Math.min(this.dir, m.r - 1);
       const alpha = opts.alpha == null ? 1 : opts.alpha;
       if (alpha <= 0) return;
-      const sx = Math.min(frame, m.n - 1) * m.w, sy = row * m.h;
-      const dx = Math.round(x - m.ax * k), dy = Math.round(y - m.ay * k);
+      const sx = Math.min(frame, m.n - 1) * m.w,
+        sy = row * m.h;
+      const dx = Math.round(x - m.ax * k),
+        dy = Math.round(y - m.ay * k);
       const prev = ctx.globalAlpha;
       if (alpha < 1) ctx.globalAlpha = prev * alpha;
       // Destello: blanco entero (enemigos) o medio blanco encima (tu Pokémon).
@@ -258,6 +306,23 @@ G.Sprites = (() => {
     }
   }
 
-  return { PX, meta, hasShiny, hovers, white, animMeta, sheet, preload, dirFromAngle, bodyRadius, bodyHeight,
-           drawShadow, Animator, ANIMS, get sheetCount() { return sheets.size; } };
+  return {
+    PX,
+    meta,
+    hasShiny,
+    hovers,
+    white,
+    animMeta,
+    sheet,
+    preload,
+    dirFromAngle,
+    bodyRadius,
+    bodyHeight,
+    drawShadow,
+    Animator,
+    ANIMS,
+    get sheetCount() {
+      return sheets.size;
+    }
+  };
 })();

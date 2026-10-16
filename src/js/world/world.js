@@ -27,22 +27,26 @@
  * resolución de arte y sólo para los visibles).
  */
 G.World = (() => {
-  const T = G.Tiles.T;                     // px de arte por tile
-  const N = 16;                            // tiles por chunk
-  const TS = T * G.Sprites.PX;             // tamaño de tile en mundo (32)
-  const CW = N * TS;                       // tamaño de chunk en mundo (512)
-  const FLOOR = 0, WALL = 1, LIQUID = 2;
+  const T = G.Tiles.T; // px de arte por tile
+  const N = 16; // tiles por chunk
+  const TS = T * G.Sprites.PX; // tamaño de tile en mundo (32)
+  const CW = N * TS; // tamaño de chunk en mundo (512)
+  const FLOOR = 0,
+    WALL = 1,
+    LIQUID = 2;
   const KIND = ['floor', 'wall', 'liquid'];
 
-  let seed = 1, biome = 0;
-  let arena = null;                        // { tx, ty, r } en tiles
-  const data = new Map();                  // "cx,cy" -> datos del chunk
-  let images = new Map();                  // "cx,cy" -> canvas horneado
+  let seed = 1,
+    biome = 0;
+  let arena = null; // { tx, ty, r } en tiles
+  const data = new Map(); // "cx,cy" -> datos del chunk
+  let images = new Map(); // "cx,cy" -> canvas horneado
   // Cambio de bioma: durante FADE segundos se funde la paleta vieja con la nueva.
   const FADE = 2.6;
-  let fade = null;                         // { from, images, t }
-  const MAX_IMAGES = 48, MAX_DATA = 400;
-  const broken = new Set();                // props destruidos: "tx,ty"
+  let fade = null; // { from, images, t }
+  const MAX_IMAGES = 48,
+    MAX_DATA = 400;
+  const broken = new Set(); // props destruidos: "tx,ty"
   let nextPropId = 1;
 
   // ---------------- ruido ----------------
@@ -50,25 +54,37 @@ G.World = (() => {
   const H = (x, y, s) => G.U.hash(x, y, s);
 
   function vnoise(x, y, s) {
-    const xi = Math.floor(x), yi = Math.floor(y);
-    const xf = x - xi, yf = y - yi;
-    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
-    const a = H(xi, yi, s), b = H(xi + 1, yi, s), c = H(xi, yi + 1, s), d = H(xi + 1, yi + 1, s);
+    const xi = Math.floor(x),
+      yi = Math.floor(y);
+    const xf = x - xi,
+      yf = y - yi;
+    const u = xf * xf * (3 - 2 * xf),
+      v = yf * yf * (3 - 2 * yf);
+    const a = H(xi, yi, s),
+      b = H(xi + 1, yi, s),
+      c = H(xi, yi + 1, s),
+      d = H(xi + 1, yi + 1, s);
     return (a + (b - a) * u) * (1 - v) + (c + (d - c) * u) * v;
   }
   const fbm = (x, y, s) => vnoise(x, y, s) * 0.65 + vnoise(x * 2.13 + 17, y * 2.13 - 9, s + 1) * 0.35;
 
   /** Terreno "puro" de un tile (sin caché). */
-  function arenaDist(tx, ty) { return arena ? Math.hypot(tx - arena.tx, ty - arena.ty) : Infinity; }
+  function arenaDist(tx, ty) {
+    return arena ? Math.hypot(tx - arena.tx, ty - arena.ty) : Infinity;
+  }
 
   /**
    * Pasillo libre de la arena: donde aparecéis (sur) y el legendario (norte).
    * Con `clear` en el tema, además un claro donde aterriza Arceus (5 al norte).
    */
   function arenaSafe(tx, ty) {
-    const lx = tx - arena.tx, ly = ty - arena.ty;
-    return (Math.abs(lx) <= 2 && ly >= -6 && ly <= 5) || Math.hypot(lx, ly) < 2.5 ||
-           (arena.th.clear > 0 && Math.hypot(lx, ly + 5) < arena.th.clear);
+    const lx = tx - arena.tx,
+      ly = ty - arena.ty;
+    return (
+      (Math.abs(lx) <= 2 && ly >= -6 && ly <= 5) ||
+      Math.hypot(lx, ly) < 2.5 ||
+      (arena.th.clear > 0 && Math.hypot(lx, ly + 5) < arena.th.clear)
+    );
   }
 
   function terrainRaw(tx, ty) {
@@ -83,8 +99,8 @@ G.World = (() => {
       return FLOOR;
     }
     const d = Math.hypot(tx, ty);
-    if (d < 9) return FLOOR;                          // claro inicial
-    const ramp = G.U.clamp((d - 9) / 8, 0, 1);       // aparición suave
+    if (d < 9) return FLOOR; // claro inicial
+    const ramp = G.U.clamp((d - 9) / 8, 0, 1); // aparición suave
     if (fbm(tx / 13, ty / 13, seed + 101) < 0.04 + 0.23 * ramp) return LIQUID;
     if (fbm(tx / 8, ty / 8, seed + 202) > 1 - 0.27 * ramp) return WALL;
     return FLOOR;
@@ -97,14 +113,15 @@ G.World = (() => {
     let c = data.get(k);
     if (c) return c;
 
-    c = { cx, cy, terr: new Uint8Array(N * N),
-          props: [], propAt: new Map(), liquids: [] };
-    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-      const tx = cx * N + i, ty = cy * N + j;
-      const t = terrainRaw(tx, ty);
-      c.terr[j * N + i] = t;
-      if (t === LIQUID) c.liquids.push(tx, ty);
-    }
+    c = { cx, cy, terr: new Uint8Array(N * N), props: [], propAt: new Map(), liquids: [] };
+    for (let j = 0; j < N; j++)
+      for (let i = 0; i < N; i++) {
+        const tx = cx * N + i,
+          ty = cy * N + j;
+        const t = terrainRaw(tx, ty);
+        c.terr[j * N + i] = t;
+        if (t === LIQUID) c.liquids.push(tx, ty);
+      }
     if (data.size > MAX_DATA) data.delete(data.keys().next().value);
     data.set(k, c);
     placeProps(c);
@@ -112,7 +129,8 @@ G.World = (() => {
   }
 
   function terrainAt(tx, ty) {
-    const cx = Math.floor(tx / N), cy = Math.floor(ty / N);
+    const cx = Math.floor(tx / N),
+      cy = Math.floor(ty / N);
     const c = data.get(cx + ',' + cy) || chunkData(cx, cy);
     return c.terr[(ty - cy * N) * N + (tx - cx * N)];
   }
@@ -120,73 +138,98 @@ G.World = (() => {
   const arena_outer = () => (arena ? arena.r + 7 : 0);
 
   function placeProps(c) {
-    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-      if (c.terr[j * N + i] !== FLOOR) continue;
-      const tx = c.cx * N + i, ty = c.cy * N + j;
-      if (Math.hypot(tx, ty) < 7) continue;
-      if (broken.has(tx + ',' + ty)) continue;
+    for (let j = 0; j < N; j++)
+      for (let i = 0; i < N; i++) {
+        if (c.terr[j * N + i] !== FLOOR) continue;
+        const tx = c.cx * N + i,
+          ty = c.cy * N + j;
+        if (Math.hypot(tx, ty) < 7) continue;
+        if (broken.has(tx + ',' + ty)) continue;
 
-      // Necesita suelo alrededor para no pegarse a paredes / agua.
-      let open = true;
-      for (let b = -1; b <= 1 && open; b++) for (let a = -1; a <= 1; a++)
-        if (terrainRaw(tx + a, ty + b) !== FLOOR) { open = false; break; }
+        // Necesita suelo alrededor para no pegarse a paredes / agua.
+        let open = true;
+        for (let b = -1; b <= 1 && open; b++)
+          for (let a = -1; a <= 1; a++)
+            if (terrainRaw(tx + a, ty + b) !== FLOOR) {
+              open = false;
+              break;
+            }
 
-      // Dentro de la arena: la decoración de su tipo (y nada en el pasillo).
-      const ad = arenaDist(tx, ty);
-      if (ad < arena_outer() + 2) {
-        if (!arena || ad >= arena.r - 1.2 || arenaSafe(tx, ty)) continue;
-        const pr = arena.th.props, hh = H(tx, ty, seed + 777);
-        let at = null;
-        if (open && hh < (pr.tree || 0)) at = 'tree';
-        else if (open && hh < (pr.tree || 0) + (pr.rock || 0)) at = 'rock';
-        else if (hh > 1 - (pr.grass || 0)) at = 'grass';
-        if (at) { const p = makeProp(at, tx, ty); c.props.push(p); if (p.solid) c.propAt.set(tx + ',' + ty, p); }
-        continue;
+        // Dentro de la arena: la decoración de su tipo (y nada en el pasillo).
+        const ad = arenaDist(tx, ty);
+        if (ad < arena_outer() + 2) {
+          if (!arena || ad >= arena.r - 1.2 || arenaSafe(tx, ty)) continue;
+          const pr = arena.th.props,
+            hh = H(tx, ty, seed + 777);
+          let at = null;
+          if (open && hh < (pr.tree || 0)) at = 'tree';
+          else if (open && hh < (pr.tree || 0) + (pr.rock || 0)) at = 'rock';
+          else if (hh > 1 - (pr.grass || 0)) at = 'grass';
+          if (at) {
+            const p = makeProp(at, tx, ty);
+            c.props.push(p);
+            if (p.solid) c.propAt.set(tx + ',' + ty, p);
+          }
+          continue;
+        }
+
+        const h = H(tx, ty, seed + 404);
+        const grove = fbm(tx / 10, ty / 10, seed + 505) > 0.6;
+        let type = null,
+          kind = 0;
+        // Interactivos (raros), lejos del claro del principio.
+        const hs = H(tx, ty, seed + 909);
+        if (open && Math.hypot(tx, ty) > 12 && hs < 0.0032) {
+          type = hs < 0.0004 ? 'altar' : hs < 0.0008 ? 'spring' : hs < 0.0011 ? 'bigchest' : 'trap';
+          kind = Math.floor(H(tx, ty, seed + 910) * (type === 'altar' ? 4 : 3));
+        }
+        if (type) {
+          /* ya elegido */
+        } else if (open && h < (grove ? 0.07 : 0.006)) type = 'tree';
+        else if (open && h > 0.992) type = 'rock';
+        else if (open && h > 0.985 && h <= 0.992 && H(tx, ty, seed + 606) < 0.07) type = 'chest';
+        else if (fbm(tx / 5, ty / 5, seed + 707) > 0.66 && H(tx, ty, seed + 808) < 0.75) type = 'grass';
+        if (!type) continue;
+
+        const p = makeProp(type, tx, ty, kind);
+        c.props.push(p);
+        if (p.solid) c.propAt.set(tx + ',' + ty, p);
       }
-
-      const h = H(tx, ty, seed + 404);
-      const grove = fbm(tx / 10, ty / 10, seed + 505) > 0.6;
-      let type = null, kind = 0;
-      // Interactivos (raros), lejos del claro del principio.
-      const hs = H(tx, ty, seed + 909);
-      if (open && Math.hypot(tx, ty) > 12 && hs < 0.0032) {
-        type = hs < 0.0004 ? 'altar' : hs < 0.0008 ? 'spring' : hs < 0.0011 ? 'bigchest' : 'trap';
-        kind = Math.floor(H(tx, ty, seed + 910) * (type === 'altar' ? 4 : 3));
-      }
-      if (type) { /* ya elegido */ }
-      else if (open && h < (grove ? 0.07 : 0.006)) type = 'tree';
-      else if (open && h > 0.992) type = 'rock';
-      else if (open && h > 0.985 && h <= 0.992 && H(tx, ty, seed + 606) < 0.07) type = 'chest';
-      else if (fbm(tx / 5, ty / 5, seed + 707) > 0.66 && H(tx, ty, seed + 808) < 0.75) type = 'grass';
-      if (!type) continue;
-
-      const p = makeProp(type, tx, ty, kind);
-      c.props.push(p);
-      if (p.solid) c.propAt.set(tx + ',' + ty, p);
-    }
   }
 
   const PROP = {
-    tree:  { solid: true,  hp: Infinity, r: 13 },
-    rock:  { solid: true,  hp: 34,       r: 12 },
-    chest: { solid: true,  hp: 22,       r: 12 },
-    grass: { solid: false, hp: 1,        r: 14 },
-    altar:    { solid: true,  hp: Infinity, r: 9 },
-    spring:   { solid: false, hp: Infinity, r: 22, flat: true },
-    bigchest: { solid: true,  hp: Infinity, r: 14 },
-    trap:     { solid: false, hp: Infinity, r: 9, flat: true }
+    tree: { solid: true, hp: Infinity, r: 13 },
+    rock: { solid: true, hp: 34, r: 12 },
+    chest: { solid: true, hp: 22, r: 12 },
+    grass: { solid: false, hp: 1, r: 14 },
+    altar: { solid: true, hp: Infinity, r: 9 },
+    spring: { solid: false, hp: Infinity, r: 22, flat: true },
+    bigchest: { solid: true, hp: Infinity, r: 14 },
+    trap: { solid: false, hp: Infinity, r: 9, flat: true }
   };
   const SPECIAL = new Set(['altar', 'spring', 'bigchest', 'trap']);
 
   function makeProp(type, tx, ty, kind = 0) {
     const d = PROP[type];
     return {
-      id: nextPropId++, type, tx, ty, kind,
-      x: tx * TS + TS / 2, y: ty * TS + TS - 4,
-      r: d.r, hp: d.hp, maxHp: d.hp, solid: d.solid, flat: !!d.flat,
-      destructible: d.hp !== Infinity, flash: 0,
+      id: nextPropId++,
+      type,
+      tx,
+      ty,
+      kind,
+      x: tx * TS + TS / 2,
+      y: ty * TS + TS - 4,
+      r: d.r,
+      hp: d.hp,
+      maxHp: d.hp,
+      solid: d.solid,
+      flat: !!d.flat,
+      destructible: d.hp !== Infinity,
+      flash: 0,
       wiggle: H(tx, ty, 9) * 6.28,
-      used: false, charge: 1, open: 0          // altar / manantial / cofre con candado
+      used: false,
+      charge: 1,
+      open: 0 // altar / manantial / cofre con candado
     };
   }
 
@@ -194,10 +237,18 @@ G.World = (() => {
 
   const tileOf = v => Math.floor(v / TS);
 
-  function kindAt(x, y) { return KIND[terrainAt(tileOf(x), tileOf(y))]; }
-  function isWall(x, y) { return terrainAt(tileOf(x), tileOf(y)) === WALL; }
-  function isLiquid(x, y) { return terrainAt(tileOf(x), tileOf(y)) === LIQUID; }
-  function liquidKind() { return G.Tiles.BIOMES[biome].liquid; }
+  function kindAt(x, y) {
+    return KIND[terrainAt(tileOf(x), tileOf(y))];
+  }
+  function isWall(x, y) {
+    return terrainAt(tileOf(x), tileOf(y)) === WALL;
+  }
+  function isLiquid(x, y) {
+    return terrainAt(tileOf(x), tileOf(y)) === LIQUID;
+  }
+  function liquidKind() {
+    return G.Tiles.BIOMES[biome].liquid;
+  }
 
   /**
    * Efecto del charco actual sobre un Pokémon de estos tipos:
@@ -205,12 +256,12 @@ G.World = (() => {
    * Los de su tipo no sufren el suyo (Fuego en lava, Veneno en veneno...).
    */
   const LIQ = {
-    water: { slow: 0.6, immune: ['water'] },     // los de tipo agua nadan sin frenarse
+    water: { slow: 0.6, immune: ['water'] }, // los de tipo agua nadan sin frenarse
     swamp: { slow: 0.45, immune: ['water'] },
-    lava:   { dmg: 0.06, flat: 5, every: 0.5, color: '#ff8a3d', immune: ['fire'] },
+    lava: { dmg: 0.06, flat: 5, every: 0.5, color: '#ff8a3d', immune: ['fire'] },
     poison: { dmg: 0.035, flat: 3, every: 0.5, color: '#c86bdc', immune: ['poison', 'steel'] },
-    spark:  { dmg: 0.045, flat: 4, every: 0.7, color: '#ffe14d', immune: ['electric', 'ground'] },
-    ice:    { slide: true, immune: ['ice'] }
+    spark: { dmg: 0.045, flat: 4, every: 0.7, color: '#ffe14d', immune: ['electric', 'ground'] },
+    ice: { slide: true, immune: ['ice'] }
   };
   function liquidEffect(types) {
     const e = LIQ[liquidKind()] || LIQ.water;
@@ -219,7 +270,8 @@ G.World = (() => {
   }
 
   function propAtTile(tx, ty) {
-    const cx = Math.floor(tx / N), cy = Math.floor(ty / N);
+    const cx = Math.floor(tx / N),
+      cy = Math.floor(ty / N);
     const c = data.get(cx + ',' + cy) || chunkData(cx, cy);
     return c.propAt.get(tx + ',' + ty) || null;
   }
@@ -228,58 +280,72 @@ G.World = (() => {
   function walkable(tx, ty) {
     const t = terrainAt(tx, ty);
     if (t === WALL) return false;
-    if (t === LIQUID && (LIQ[liquidKind()] || {}).dmg) return false;   // lava, veneno, descarga
+    if (t === LIQUID && (LIQ[liquidKind()] || {}).dmg) return false; // lava, veneno, descarga
     const p = propAtTile(tx, ty);
     return !(p && p.solid);
   }
 
   /** ¿Hay sitio para que algo de radio r esté aquí? */
   function isFree(x, y, r = 12, allowLiquid = false) {
-    const t0x = tileOf(x - r), t1x = tileOf(x + r), t0y = tileOf(y - r), t1y = tileOf(y + r);
-    for (let ty = t0y; ty <= t1y; ty++) for (let tx = t0x; tx <= t1x; tx++) {
-      const t = terrainAt(tx, ty);
-      if (t === WALL || (!allowLiquid && t === LIQUID)) return false;
-      const p = propAtTile(tx, ty);
-      if (p && G.U.dist2(x, y, p.x, p.y) < (r + p.r) ** 2) return false;
-    }
+    const t0x = tileOf(x - r),
+      t1x = tileOf(x + r),
+      t0y = tileOf(y - r),
+      t1y = tileOf(y + r);
+    for (let ty = t0y; ty <= t1y; ty++)
+      for (let tx = t0x; tx <= t1x; tx++) {
+        const t = terrainAt(tx, ty);
+        if (t === WALL || (!allowLiquid && t === LIQUID)) return false;
+        const p = propAtTile(tx, ty);
+        if (p && G.U.dist2(x, y, p.x, p.y) < (r + p.r) ** 2) return false;
+      }
     return true;
   }
 
   /** Objetos destructibles (incluida la hierba) que tocan un círculo. */
   function propsInCircle(x, y, r) {
     const out = [];
-    const c0x = Math.floor((x - r) / CW), c1x = Math.floor((x + r) / CW);
-    const c0y = Math.floor((y - r) / CW), c1y = Math.floor((y + r) / CW);
-    for (let cy = c0y; cy <= c1y; cy++) for (let cx = c0x; cx <= c1x; cx++) {
-      const c = chunkData(cx, cy);
-      for (const p of c.props) {
-        if (!p.destructible || p.hp <= 0) continue;
-        if (G.U.dist2(x, y, p.x, p.y) <= (r + p.r) ** 2) out.push(p);
+    const c0x = Math.floor((x - r) / CW),
+      c1x = Math.floor((x + r) / CW);
+    const c0y = Math.floor((y - r) / CW),
+      c1y = Math.floor((y + r) / CW);
+    for (let cy = c0y; cy <= c1y; cy++)
+      for (let cx = c0x; cx <= c1x; cx++) {
+        const c = chunkData(cx, cy);
+        for (const p of c.props) {
+          if (!p.destructible || p.hp <= 0) continue;
+          if (G.U.dist2(x, y, p.x, p.y) <= (r + p.r) ** 2) out.push(p);
+        }
       }
-    }
     return out;
   }
 
   /** Objetos interactivos (altares, manantiales, cofres con candado, trampas) cerca. */
   function specialsNear(x, y, r) {
     const out = [];
-    const c0x = Math.floor((x - r) / CW), c1x = Math.floor((x + r) / CW);
-    const c0y = Math.floor((y - r) / CW), c1y = Math.floor((y + r) / CW);
-    for (let cy = c0y; cy <= c1y; cy++) for (let cx = c0x; cx <= c1x; cx++) {
-      for (const p of chunkData(cx, cy).props) {
-        if (SPECIAL.has(p.type) && G.U.dist2(x, y, p.x, p.y) <= (r + p.r) ** 2) out.push(p);
+    const c0x = Math.floor((x - r) / CW),
+      c1x = Math.floor((x + r) / CW);
+    const c0y = Math.floor((y - r) / CW),
+      c1y = Math.floor((y + r) / CW);
+    for (let cy = c0y; cy <= c1y; cy++)
+      for (let cx = c0x; cx <= c1x; cx++) {
+        for (const p of chunkData(cx, cy).props) {
+          if (SPECIAL.has(p.type) && G.U.dist2(x, y, p.x, p.y) <= (r + p.r) ** 2) out.push(p);
+        }
       }
-    }
     return out;
   }
 
   /** Roca o cofre más cercano (para apuntar cuando no hay enemigos). */
   function nearestBreakable(x, y, r) {
-    let best = null, bd = r * r;
+    let best = null,
+      bd = r * r;
     for (const p of propsInCircle(x, y, r)) {
       if (!p.solid) continue;
       const d = G.U.dist2(x, y, p.x, p.y);
-      if (d < bd) { bd = d; best = p; }
+      if (d < bd) {
+        bd = d;
+        best = p;
+      }
     }
     return best;
   }
@@ -292,50 +358,70 @@ G.World = (() => {
     const r = e.r;
     let hit = false;
     for (let pass = 0; pass < 2; pass++) {
-      const t0x = tileOf(e.x - r), t1x = tileOf(e.x + r), t0y = tileOf(e.y - r), t1y = tileOf(e.y + r);
-      for (let ty = t0y; ty <= t1y; ty++) for (let tx = t0x; tx <= t1x; tx++) {
-        if (terrainAt(tx, ty) === WALL) {
-          // Punto más cercano de la caja del tile al centro del círculo.
-          const bx0 = tx * TS, by0 = ty * TS, bx1 = bx0 + TS, by1 = by0 + TS;
-          const qx = G.U.clamp(e.x, bx0, bx1), qy = G.U.clamp(e.y, by0, by1);
-          let dx = e.x - qx, dy = e.y - qy;
-          const d2 = dx * dx + dy * dy;
-          if (d2 >= r * r) continue;
-          hit = true;
-          if (d2 > 1e-6) {
-            const d = Math.sqrt(d2);
-            e.x += dx / d * (r - d); e.y += dy / d * (r - d);
-          } else {
-            // Centro dentro de la caja: sal por el lado más cercano.
-            const l = e.x - bx0, rr = bx1 - e.x, u = e.y - by0, b = by1 - e.y;
-            const m = Math.min(l, rr, u, b);
-            if (m === l) e.x = bx0 - r; else if (m === rr) e.x = bx1 + r;
-            else if (m === u) e.y = by0 - r; else e.y = by1 + r;
-          }
-        }
-        const p = propAtTile(tx, ty);
-        if (p && p.solid) {
-          const dx = e.x - p.x, dy = e.y - p.y;
-          const min = r + p.r, d2 = dx * dx + dy * dy;
-          if (d2 < min * min) {
+      const t0x = tileOf(e.x - r),
+        t1x = tileOf(e.x + r),
+        t0y = tileOf(e.y - r),
+        t1y = tileOf(e.y + r);
+      for (let ty = t0y; ty <= t1y; ty++)
+        for (let tx = t0x; tx <= t1x; tx++) {
+          if (terrainAt(tx, ty) === WALL) {
+            // Punto más cercano de la caja del tile al centro del círculo.
+            const bx0 = tx * TS,
+              by0 = ty * TS,
+              bx1 = bx0 + TS,
+              by1 = by0 + TS;
+            const qx = G.U.clamp(e.x, bx0, bx1),
+              qy = G.U.clamp(e.y, by0, by1);
+            let dx = e.x - qx,
+              dy = e.y - qy;
+            const d2 = dx * dx + dy * dy;
+            if (d2 >= r * r) continue;
             hit = true;
-            const d = Math.sqrt(d2) || 0.01;
-            e.x = p.x + dx / d * min; e.y = p.y + dy / d * min;
+            if (d2 > 1e-6) {
+              const d = Math.sqrt(d2);
+              e.x += (dx / d) * (r - d);
+              e.y += (dy / d) * (r - d);
+            } else {
+              // Centro dentro de la caja: sal por el lado más cercano.
+              const l = e.x - bx0,
+                rr = bx1 - e.x,
+                u = e.y - by0,
+                b = by1 - e.y;
+              const m = Math.min(l, rr, u, b);
+              if (m === l) e.x = bx0 - r;
+              else if (m === rr) e.x = bx1 + r;
+              else if (m === u) e.y = by0 - r;
+              else e.y = by1 + r;
+            }
+          }
+          const p = propAtTile(tx, ty);
+          if (p && p.solid) {
+            const dx = e.x - p.x,
+              dy = e.y - p.y;
+            const min = r + p.r,
+              d2 = dx * dx + dy * dy;
+            if (d2 < min * min) {
+              hit = true;
+              const d = Math.sqrt(d2) || 0.01;
+              e.x = p.x + (dx / d) * min;
+              e.y = p.y + (dy / d) * min;
+            }
           }
         }
-      }
     }
     return hit;
   }
 
   /** ¿Choca un proyectil aquí? Devuelve 'wall', el prop sólido, o null. */
   function projectileBlock(x, y, r) {
-    const tx = tileOf(x), ty = tileOf(y);
+    const tx = tileOf(x),
+      ty = tileOf(y);
     if (terrainAt(tx, ty) === WALL) return 'wall';
-    for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) {
-      const p = propAtTile(tx + a, ty + b);
-      if (p && p.solid && G.U.dist2(x, y, p.x, p.y) < (r + p.r) ** 2) return p;
-    }
+    for (let b = -1; b <= 1; b++)
+      for (let a = -1; a <= 1; a++) {
+        const p = propAtTile(tx + a, ty + b);
+        if (p && p.solid && G.U.dist2(x, y, p.x, p.y) < (r + p.r) ** 2) return p;
+      }
     return null;
   }
 
@@ -346,7 +432,10 @@ G.World = (() => {
     p.hp -= amount;
     p.flash = 0.08;
     if (p.type !== 'grass') G.FX.spark(p.x, p.y - 10, color, 0, -1, 3);
-    if (p.hp <= 0) { destroyProp(p); return true; }
+    if (p.hp <= 0) {
+      destroyProp(p);
+      return true;
+    }
     return false;
   }
 
@@ -356,13 +445,15 @@ G.World = (() => {
     if (broken.has(k)) return;
     const c = data.get(Math.floor(tx / N) + ',' + Math.floor(ty / N));
     const p = c && c.props.find(o => o.tx === tx && o.ty === ty);
-    if (p) destroyProp(p, true); else broken.add(k);
+    if (p) destroyProp(p, true);
+    else broken.add(k);
   }
 
   function destroyProp(p, fromNet = false) {
     broken.add(p.tx + ',' + p.ty);
     if (G.Coop.active && !fromNet) G.Coop.propBroken(p);
-    const cx = Math.floor(p.tx / N), cy = Math.floor(p.ty / N);
+    const cx = Math.floor(p.tx / N),
+      cy = Math.floor(p.ty / N);
     const c = data.get(cx + ',' + cy);
     if (c) {
       c.props.splice(c.props.indexOf(p), 1);
@@ -381,7 +472,7 @@ G.World = (() => {
       G.FX.burst(p.x, p.y - 10, B.rock[1], 14, 140);
       G.FX.ring(p.x, p.y - 8, 4, 26, B.rock[2], 0.3, 3);
       const r = Math.random();
-      if (r < 0.40) G.Pickups.dropXp(p.x, p.y, 6);
+      if (r < 0.4) G.Pickups.dropXp(p.x, p.y, 6);
       if (r > 0.75) G.Pickups.drop('coin', p.x, p.y, 2);
       if (r > 0.94) G.Pickups.drop('heal', p.x + 8, p.y);
       return;
@@ -432,12 +523,18 @@ G.World = (() => {
   }
 
   /** 0..1 del fundido de bioma (suavizado), o null si no hay. */
-  function fadeK() { if (!fade) return null; const x = Math.min(1, fade.t / FADE); return x * x * (3 - 2 * x); }
+  function fadeK() {
+    if (!fade) return null;
+    const x = Math.min(1, fade.t / FADE);
+    return x * x * (3 - 2 * x);
+  }
 
   function visibleChunks(cam, pad = 0) {
     const out = [];
-    const x0 = Math.floor((cam.left() - pad) / CW), x1 = Math.floor((cam.left() + cam.w + pad) / CW);
-    const y0 = Math.floor((cam.top() - pad) / CW), y1 = Math.floor((cam.top() + cam.h + pad) / CW);
+    const x0 = Math.floor((cam.left() - pad) / CW),
+      x1 = Math.floor((cam.left() + cam.w + pad) / CW);
+    const y0 = Math.floor((cam.top() - pad) / CW),
+      y1 = Math.floor((cam.top() + cam.h + pad) / CW);
     for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) out.push([cx, cy]);
     return out;
   }
@@ -447,7 +544,10 @@ G.World = (() => {
     const k = fadeK();
     for (const [cx, cy] of visibleChunks(cam)) {
       // +1 de solape: con escalas no enteras evita juntas entre chunks.
-      if (k == null) { ctx.drawImage(chunkImage(cx, cy), cx * CW, cy * CW, CW + 1, CW + 1); continue; }
+      if (k == null) {
+        ctx.drawImage(chunkImage(cx, cy), cx * CW, cy * CW, CW + 1, CW + 1);
+        continue;
+      }
       // Fundido: el bioma viejo debajo y el nuevo apareciendo encima.
       ctx.drawImage(chunkImage(cx, cy, fade.from, fade.images), cx * CW, cy * CW, CW + 1, CW + 1);
       ctx.globalAlpha = k;
@@ -465,8 +565,10 @@ G.World = (() => {
     for (const [cx, cy] of visibleChunks(cam)) {
       const c = chunkData(cx, cy);
       for (let i = 0; i < c.liquids.length; i += 2) {
-        const tx = c.liquids[i], ty = c.liquids[i + 1];
-        const x = tx * TS, y = ty * TS;
+        const tx = c.liquids[i],
+          ty = c.liquids[i + 1];
+        const x = tx * TS,
+          y = ty * TS;
         if (!cam.sees(x + TS / 2, y + TS / 2, TS)) continue;
         const ph = H(tx, ty, 77) * 6.28;
         const k = (Math.sin(t * (lava ? 2.2 : 1.6) + ph) + 1) / 2;
@@ -491,13 +593,27 @@ G.World = (() => {
 
   function drawProp(ctx, p, t) {
     const P = G.Sprites.PX;
-    const variant = p.type === 'grass' ? (Math.sin(t * 2.4 + p.wiggle) > 0.55 ? 1 : 0)
-                  : p.type === 'rock' ? (p.hp < p.maxHp * 0.5 ? 1 : 0)
-                  : p.type === 'altar' ? p.kind * 2 + (p.used ? 1 : 0)
-                  : p.type === 'spring' ? (p.charge < 0.15 ? 1 : 0)
-                  : p.type === 'trap' ? p.kind : 0;
+    const variant =
+      p.type === 'grass'
+        ? Math.sin(t * 2.4 + p.wiggle) > 0.55
+          ? 1
+          : 0
+        : p.type === 'rock'
+          ? p.hp < p.maxHp * 0.5
+            ? 1
+            : 0
+          : p.type === 'altar'
+            ? p.kind * 2 + (p.used ? 1 : 0)
+            : p.type === 'spring'
+              ? p.charge < 0.15
+                ? 1
+                : 0
+              : p.type === 'trap'
+                ? p.kind
+                : 0;
     const img = G.Tiles.propSprite(biome, p.type, variant);
-    const w = img.width * P, h = img.height * P;
+    const w = img.width * P,
+      h = img.height * P;
     if (p.flat) {
       // Planos (manantial, trampa): pegados al suelo, centrados en su casilla.
       ctx.drawImage(img, Math.round(p.x - w / 2), Math.round(p.y - 8 - h / 2), w, h);
@@ -512,12 +628,15 @@ G.World = (() => {
       ctx.save();
       ctx.globalAlpha = 0.22 + Math.sin(t * 3 + p.wiggle) * 0.1;
       ctx.fillStyle = col;
-      ctx.beginPath(); ctx.arc(p.x, p.y - h + 11 * P, 13, 0, 6.2832); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y - h + 11 * P, 13, 0, 6.2832);
+      ctx.fill();
       ctx.restore();
     }
     if (p.type === 'bigchest' && p.open > 0) {
       ctx.save();
-      ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 3;
+      ctx.strokeStyle = '#ffd23f';
+      ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(p.x, p.y - h / 2, 26, -Math.PI / 2, -Math.PI / 2 + 6.2832 * Math.min(1, p.open / G.Interact.CHEST_TIME));
       ctx.stroke();
@@ -525,20 +644,32 @@ G.World = (() => {
     }
     if (p.type !== 'grass') {
       ctx.fillStyle = 'rgba(0,0,0,.3)';
-      ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r * 1.1, p.r * 0.38, 0, 0, 6.2832); ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, p.r * 1.1, p.r * 0.38, 0, 0, 6.2832);
+      ctx.fill();
     }
     ctx.save();
-    const x = Math.round(p.x - w / 2), y = Math.round(p.y - h + (p.type === 'grass' ? 4 : 2));
+    const x = Math.round(p.x - w / 2),
+      y = Math.round(p.y - h + (p.type === 'grass' ? 4 : 2));
     const k = fadeK();
     if (k != null) {
       // El objeto viejo se desvanece mientras aparece el nuevo.
       const old = G.Tiles.propSprite(fade.from, p.type, variant);
       ctx.globalAlpha = 1 - k;
-      ctx.drawImage(old, Math.round(p.x - old.width * P / 2), Math.round(p.y - old.height * P + (p.type === 'grass' ? 4 : 2)), old.width * P, old.height * P);
+      ctx.drawImage(
+        old,
+        Math.round(p.x - (old.width * P) / 2),
+        Math.round(p.y - old.height * P + (p.type === 'grass' ? 4 : 2)),
+        old.width * P,
+        old.height * P
+      );
       ctx.globalAlpha = k;
     }
     ctx.drawImage(img, x, y, w, h);
-    if (p.flash > 0) { ctx.globalAlpha = 0.6; ctx.drawImage(G.Sprites.white(img), x, y, w, h); }
+    if (p.flash > 0) {
+      ctx.globalAlpha = 0.6;
+      ctx.drawImage(G.Sprites.white(img), x, y, w, h);
+    }
     ctx.restore();
   }
 
@@ -552,9 +683,12 @@ G.World = (() => {
   // ---------------- control ----------------
 
   function reset(s) {
-    seed = (s | 0) || 1;
-    data.clear(); images.clear(); broken.clear();
-    fade = null; arena = null;
+    seed = s | 0 || 1;
+    data.clear();
+    images.clear();
+    broken.clear();
+    fade = null;
+    arena = null;
   }
 
   /**
@@ -574,7 +708,9 @@ G.World = (() => {
     images = new Map();
   }
 
-  function biomeName() { return G.Tiles.BIOMES[biome].name; }
+  function biomeName() {
+    return G.Tiles.BIOMES[biome].name;
+  }
 
   /** Viñeta en coordenadas de pantalla. */
   function drawVignette(ctx, w, h) {
@@ -586,10 +722,29 @@ G.World = (() => {
   }
 
   return {
-    TS, CW, reset, setBiome, biomeName, liquidKind, liquidEffect, walkable,
-    kindAt, isWall, isLiquid, isFree, collide, projectileBlock, propsInCircle, nearestBreakable,
-    damageProp, breakAt, specialsNear, update,
-    breakProp(p) { if (!broken.has(p.tx + ',' + p.ty)) destroyProp(p); },
+    TS,
+    CW,
+    reset,
+    setBiome,
+    biomeName,
+    liquidKind,
+    liquidEffect,
+    walkable,
+    kindAt,
+    isWall,
+    isLiquid,
+    isFree,
+    collide,
+    projectileBlock,
+    propsInCircle,
+    nearestBreakable,
+    damageProp,
+    breakAt,
+    specialsNear,
+    update,
+    breakProp(p) {
+      if (!broken.has(p.tx + ',' + p.ty)) destroyProp(p);
+    },
     /** Arena de la grieta: { tx, ty, r } (en tiles) o null. */
     setArena(a) {
       arena = a;
@@ -599,10 +754,22 @@ G.World = (() => {
       const R = a.r + 9;
       for (const k of [...data.keys(), ...images.keys()]) {
         const [cx, cy] = k.split(',').map(Number);
-        if (Math.abs(cx * N + N / 2 - a.tx) < R + N && Math.abs(cy * N + N / 2 - a.ty) < R + N) { data.delete(k); images.delete(k); }
+        if (Math.abs(cx * N + N / 2 - a.tx) < R + N && Math.abs(cy * N + N / 2 - a.ty) < R + N) {
+          data.delete(k);
+          images.delete(k);
+        }
       }
     },
-    get arena() { return arena; }, drawGround, drawLiquid, visibleProps, drawProp, drawVignette,
-    get biome() { return biome; }
+    get arena() {
+      return arena;
+    },
+    drawGround,
+    drawLiquid,
+    visibleProps,
+    drawProp,
+    drawVignette,
+    get biome() {
+      return biome;
+    }
   };
 })();

@@ -22,15 +22,29 @@ G.Rift = (() => {
   // Menos azar (12-10-2026): cada vez que no sale, la siguiente es más
   // probable (20 %, 40 %, 60 %, 80 %, 100 %): como mucho 2,5 min sin grieta.
   // Desde 2 min antes de la Sentencia de Arceus (minuto 30) ya no se abren.
-  const CHECK = 30, CHANCE = 0.2, TTL = 45;
-  const ARENA_R = 11, ARENA_TIME = 120, FROM = 75;
-  let rift = null;          // { x, y, ttl, t }
-  let arena = null;         // { tx, ty, r, dex, shiny, x, y, back, biome, t, phase, endT, bossId }
-  let checkT = CHECK, asked = false, downT = 0, misses = 0;
+  const CHECK = 30,
+    CHANCE = 0.2,
+    TTL = 45;
+  const ARENA_R = 11,
+    ARENA_TIME = 120,
+    FROM = 75;
+  let rift = null; // { x, y, ttl, t }
+  let arena = null; // { tx, ty, r, dex, shiny, x, y, back, biome, t, phase, endT, bossId }
+  let checkT = CHECK,
+    asked = false,
+    downT = 0,
+    misses = 0;
   const authority = () => !G.Coop.active || G.Coop.isHost;
   const TS = () => G.Tiles.T * G.Sprites.PX;
 
-  function reset() { rift = null; arena = null; checkT = CHECK; asked = false; downT = 0; misses = 0; }
+  function reset() {
+    rift = null;
+    arena = null;
+    checkT = CHECK;
+    asked = false;
+    downT = 0;
+    misses = 0;
+  }
 
   // ---------------- grieta en el mapa ----------------
 
@@ -38,15 +52,20 @@ G.Rift = (() => {
     if (rift) {
       rift.t += dt;
       rift.ttl -= dt;
-      if (rift.ttl <= 0) { rift = null; return; }
+      if (rift.ttl <= 0) {
+        rift = null;
+        return;
+      }
       if (!arena && !pl.dead && G.U.dist2(pl.x, pl.y, rift.x, rift.y - 10) < 30 * 30) enter();
     } else if (!arena && authority() && time > FROM && time < G.Judgment.AT - 120) {
       checkT -= dt;
       if (checkT <= 0) {
         checkT = CHECK;
-        if (G.EnemyMgr.bossAlive()) return;           // con un jefe vivo no cuenta como intento
-        if (Math.random() < CHANCE * (1 + misses)) { misses = 0; open(); }
-        else misses++;
+        if (G.EnemyMgr.bossAlive()) return; // con un jefe vivo no cuenta como intento
+        if (Math.random() < CHANCE * (1 + misses)) {
+          misses = 0;
+          open();
+        } else misses++;
       }
     }
     if (arena) arenaTick(dt, pl);
@@ -56,8 +75,10 @@ G.Rift = (() => {
     const alive = G.Game.everyone().filter(p => !p.dead);
     const near = G.U.pick(alive.length ? alive : [G.Game.player]);
     for (let i = 0; i < 24; i++) {
-      const a = Math.random() * 6.2832, d = G.U.rand(380, 560);
-      const x = near.x + Math.cos(a) * d, y = near.y + Math.sin(a) * d * 0.85;
+      const a = Math.random() * 6.2832,
+        d = G.U.rand(380, 560);
+      const x = near.x + Math.cos(a) * d,
+        y = near.y + Math.sin(a) * d * 0.85;
       if (!G.World.isFree(x, y, 22)) continue;
       show(x, y, TTL);
       if (G.Coop.isHost) G.Coop.broadcast(['rift', Math.round(x), Math.round(y), TTL]);
@@ -84,22 +105,27 @@ G.Rift = (() => {
   // ---------------- arena ----------------
 
   /** Quien manda: elige legendario y lugar, y avisa a todos. */
-  let nextType = null;          // pruebas/vídeos: tipo de la próxima arena
+  let nextType = null; // pruebas/vídeos: tipo de la próxima arena
 
   function start(forceType) {
     if (arena) return;
-    forceType = forceType || nextType; nextType = null;
+    forceType = forceType || nextType;
+    nextType = null;
     let pool = G.DEX.filter(p => p.leg && G.SPRITE_META[p.dex]);
     if (forceType && pool.some(p => p.types.includes(forceType))) pool = pool.filter(p => p.types.includes(forceType));
     // Los legendarios que aún no has vencido salen 4 veces más (menos repetidos).
     const beaten = (G.DB.save && G.DB.save.legends) || {};
     const ws = pool.map(p => (beaten[p.dex] ? 1 : 4));
-    let r = Math.random() * ws.reduce((a, b) => a + b, 0), mi = 0;
+    let r = Math.random() * ws.reduce((a, b) => a + b, 0),
+      mi = 0;
     while (mi < pool.length - 1 && (r -= ws[mi]) > 0) mi++;
     const mon = pool[mi];
     const cfg = {
-      tx: 5000 + Math.floor(Math.random() * 3000), ty: 5000 + Math.floor(Math.random() * 3000), r: ARENA_R,
-      dex: mon.dex, shiny: G.Sprites.hasShiny(mon.dex) && Math.random() < 1 / 512,
+      tx: 5000 + Math.floor(Math.random() * 3000),
+      ty: 5000 + Math.floor(Math.random() * 3000),
+      r: ARENA_R,
+      dex: mon.dex,
+      shiny: G.Sprites.hasShiny(mon.dex) && Math.random() < 1 / 512,
       // La arena es la de uno de sus tipos, al azar.
       type: forceType || G.U.pick(mon.types)
     };
@@ -113,11 +139,20 @@ G.Rift = (() => {
     const pl = G.Game.player;
     const ts = TS();
     arena = Object.assign({}, cfg, {
-      x: cfg.tx * ts + ts / 2, y: cfg.ty * ts + ts / 2,
-      back: { x: pl.x, y: pl.y }, biome: G.World.biome, t: 0, phase: 'fight', endT: 0, bossId: 0
+      x: cfg.tx * ts + ts / 2,
+      y: cfg.ty * ts + ts / 2,
+      back: { x: pl.x, y: pl.y },
+      biome: G.World.biome,
+      t: 0,
+      phase: 'fight',
+      endT: 0,
+      bossId: 0
     });
-    rift = null; asked = false; downT = 0;
-    if (authority()) G.EnemyMgr.stash(); else G.EnemyMgr.clearRemote();
+    rift = null;
+    asked = false;
+    downT = 0;
+    if (authority()) G.EnemyMgr.stash();
+    else G.EnemyMgr.clearRemote();
     G.Projectiles.clear();
     G.Combat.clearFields();
     G.Hazards.clear();
@@ -128,8 +163,12 @@ G.Rift = (() => {
     if (th && th.weather) G.Weather.force(th.weather, ARENA_TIME + 15);
     // Todos al sur de la arena, en fila; el legendario aparece al norte.
     const ps = G.Game.everyone();
-    ps.forEach((p, i) => { p.x = arena.x + (i - (ps.length - 1) / 2) * 34; p.y = arena.y + ts * 3; });
-    G.Camera.x = pl.x; G.Camera.y = pl.y;
+    ps.forEach((p, i) => {
+      p.x = arena.x + (i - (ps.length - 1) / 2) * 34;
+      p.y = arena.y + ts * 3;
+    });
+    G.Camera.x = pl.x;
+    G.Camera.y = pl.y;
     G.Game.flash('#c9a6ff', 0.9);
     G.Audio.sfx('rift');
     G.Spawner.say('Has entrado en la grieta…', 2.4, true);
@@ -141,12 +180,18 @@ G.Rift = (() => {
     const n = G.Game.everyone().length;
     const ts = TS();
     const def = {
-      dex: mon.dex, name: mon.name,
+      dex: mon.dex,
+      name: mon.name,
       hp: Math.round((3200 + t * 9) * G.Coop.scaleHp(n) * (n > 1 ? 1.4 : 1)),
       spd: Math.round(G.U.clamp(48 + (mon.spd - 78) * 0.6, 48, 105)),
-      dmg: Math.round(36 + t / 20), xp: Math.round(500 + t * 1.2),
-      behavior: mon.types.some(x => ['psychic', 'electric', 'ghost', 'fairy', 'fire', 'water', 'ice', 'dragon'].includes(x)) ? 'ranged' : 'charger',
-      shotDmg: Math.round(18 + t / 40), shotCd: 0.9, range: 300
+      dmg: Math.round(36 + t / 20),
+      xp: Math.round(500 + t * 1.2),
+      behavior: mon.types.some(x => ['psychic', 'electric', 'ghost', 'fairy', 'fire', 'water', 'ice', 'dragon'].includes(x))
+        ? 'ranged'
+        : 'charger',
+      shotDmg: Math.round(18 + t / 40),
+      shotCd: 0.9,
+      range: 300
     };
     const e = new G.Enemy(def, arena.x, arena.y - ts * 3.5, { hp: 1, spd: 1, dmg: 1 }, true);
     e.legend = true;
@@ -163,11 +208,17 @@ G.Rift = (() => {
 
   /** Nadie sale del círculo de la arena (por si algo empuja demasiado). */
   function keepInside() {
-    const ts = TS(), max = (arena.r - 1.4) * ts;
+    const ts = TS(),
+      max = (arena.r - 1.4) * ts;
     for (const e of G.EnemyMgr.all()) {
       if (e.remote) continue;
-      const dx = e.x - arena.x, dy = e.y - arena.y, d = Math.hypot(dx, dy);
-      if (d > max) { e.x = arena.x + dx / d * max; e.y = arena.y + dy / d * max; }
+      const dx = e.x - arena.x,
+        dy = e.y - arena.y,
+        d = Math.hypot(dx, dy);
+      if (d > max) {
+        e.x = arena.x + (dx / d) * max;
+        e.y = arena.y + (dy / d) * max;
+      }
     }
   }
 
@@ -177,10 +228,17 @@ G.Rift = (() => {
       if (!authority()) return;
       keepInside();
       const boss = G.EnemyMgr.get(arena.bossId);
-      if (!boss || boss.dead) { G.Coop.isHost && G.Coop.broadcast(['aw']); won(); return; }
+      if (!boss || boss.dead) {
+        G.Coop.isHost && G.Coop.broadcast(['aw']);
+        won();
+        return;
+      }
       const allDown = G.Game.everyone().every(p => p.dead);
       downT = allDown ? downT + dt : 0;
-      if (downT > 1.4 || arena.t > ARENA_TIME) { G.Coop.isHost && G.Coop.broadcast(['al']); lost(); }
+      if (downT > 1.4 || arena.t > ARENA_TIME) {
+        G.Coop.isHost && G.Coop.broadcast(['al']);
+        lost();
+      }
       return;
     }
     arena.endT -= dt;
@@ -189,7 +247,8 @@ G.Rift = (() => {
 
   function won() {
     if (!arena || arena.phase !== 'fight') return;
-    arena.phase = 'won'; arena.endT = 5;
+    arena.phase = 'won';
+    arena.endT = 5;
     G.Progress.event('rift', { type: arena.type });
     G.Pickups.pullAll();
     G.Spawner.say('¡Has vencido a ' + G.DEX_BY[arena.dex].name + '! Recoge el premio…', 3.4, true);
@@ -204,7 +263,8 @@ G.Rift = (() => {
 
   function lost() {
     if (!arena || arena.phase !== 'fight') return;
-    arena.phase = 'lost'; arena.endT = 1.2;
+    arena.phase = 'lost';
+    arena.endT = 1.2;
     G.Spawner.say('La grieta os ha expulsado…', 2.6, true);
     G.Audio.sfx('back');
   }
@@ -224,10 +284,15 @@ G.Rift = (() => {
     G.Projectiles.clear();
     G.Combat.clearFields();
     G.Hazards.clear();
-    for (const p of G.Game.everyone()) { p.x = a.back.x; p.y = a.back.y; }
-    pl.x = a.back.x; pl.y = a.back.y;
+    for (const p of G.Game.everyone()) {
+      p.x = a.back.x;
+      p.y = a.back.y;
+    }
+    pl.x = a.back.x;
+    pl.y = a.back.y;
     if (pl.dead) pl.revive(0.3);
-    G.Camera.x = pl.x; G.Camera.y = pl.y;
+    G.Camera.x = pl.x;
+    G.Camera.y = pl.y;
     G.Game.flash('#c9a6ff', 0.8);
     if (pl.bonds > 0) G.Game.offerBond();
   }
@@ -242,12 +307,16 @@ G.Rift = (() => {
       draw(ctx) {
         const P = G.Sprites.PX;
         const img = G.Tiles.propSprite(0, 'rift', Math.floor(rift.t * 8) % 4);
-        const w = img.width * P, h = img.height * P;
-        const fadeIn = Math.min(1, rift.t * 2), fadeOut = Math.min(1, rift.ttl / 1.5);
+        const w = img.width * P,
+          h = img.height * P;
+        const fadeIn = Math.min(1, rift.t * 2),
+          fadeOut = Math.min(1, rift.ttl / 1.5);
         ctx.save();
         ctx.globalAlpha = 0.25 * fadeIn * fadeOut;
         ctx.fillStyle = '#7b3cff';
-        ctx.beginPath(); ctx.ellipse(rift.x, rift.y, 34, 12, 0, 0, 6.2832); ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(rift.x, rift.y, 34, 12, 0, 0, 6.2832);
+        ctx.fill();
         ctx.globalAlpha = fadeIn * fadeOut;
         ctx.drawImage(img, Math.round(rift.x - w / 2), Math.round(rift.y - h + 4), w, h);
         ctx.restore();
@@ -260,23 +329,54 @@ G.Rift = (() => {
 
   function onEvent(ev) {
     switch (ev[0]) {
-      case 'rift': show(ev[1], ev[2], ev[3]); break;
-      case 'riftx': rift = null; break;
-      case 'arena': begin(ev[1]); break;
-      case 'aw': won(); break;
-      case 'al': lost(); break;
+      case 'rift':
+        show(ev[1], ev[2], ev[3]);
+        break;
+      case 'riftx':
+        rift = null;
+        break;
+      case 'arena':
+        begin(ev[1]);
+        break;
+      case 'aw':
+        won();
+        break;
+      case 'al':
+        lost();
+        break;
     }
   }
 
   return {
-    reset, update, drawable, onEvent, enterRequest() { if (!arena) start(); },
-    get rift() { return rift; }, get arena() { return arena; },
-    get inArena() { return !!arena; },
-    get timeLeft() { return arena ? Math.max(0, ARENA_TIME - arena.t) : 0; },
-    debugOpen() { open(); },
+    reset,
+    update,
+    drawable,
+    onEvent,
+    enterRequest() {
+      if (!arena) start();
+    },
+    get rift() {
+      return rift;
+    },
+    get arena() {
+      return arena;
+    },
+    get inArena() {
+      return !!arena;
+    },
+    get timeLeft() {
+      return arena ? Math.max(0, ARENA_TIME - arena.t) : 0;
+    },
+    debugOpen() {
+      open();
+    },
     /** Para pruebas: arena de un tipo ya. */
-    debugArena(type) { start(type); },
+    debugArena(type) {
+      start(type);
+    },
     /** Para vídeos: la próxima grieta en la que entres será de este tipo. */
-    debugNextType(type) { nextType = type; }
+    debugNextType(type) {
+      nextType = type;
+    }
   };
 })();
