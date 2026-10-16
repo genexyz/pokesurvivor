@@ -48,6 +48,7 @@ import { Weather } from './systems/weather.js';
 import { Path } from './systems/pathing.js';
 import { Progress } from './systems/progress.js';
 import { Hazards } from './systems/hazards.js';
+import { Recount } from './systems/recount.js';
 import { Social } from './net/social.js';
 import { Coop } from './net/coop.js';
 import { Ranking } from './net/ranking.js';
@@ -58,6 +59,7 @@ import { LoginUI } from './ui/login.js';
 import { TestUI } from './ui/test.js';
 import { MenuUI } from './ui/menu.js';
 import { GachaUI } from './ui/gacha-ui.js';
+import { MoveTip } from './ui/move-tip.js';
 import { RunUI } from './ui/run-ui.js';
 import { LobbyUI, SocialUI } from './ui/social-ui.js';
 import { RankingUI } from './ui/ranking-ui.js';
@@ -94,15 +96,24 @@ export const Game = (() => {
 
   // ---------------- boot ----------------
 
+  let pullFx = null;
   function init() {
     cv = document.getElementById('game');
     ctx = cv.getContext('2d');
+    pullFx = document.getElementById('pull-fx');
     resize();
     addEventListener('resize', resize);
+    // Resolution setting, or automatic quality dropping to low: new canvas size.
+    Settings.on(k => {
+      if (k === 'res' || k === 'quality' || k === 'autoLevel') resize();
+    });
+    watchDpr();
     Touch.init(cv);
     // On mobile: switching apps or turning it to portrait pauses the run.
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) autoPause();
+      // The sound engine stops in the background (not in co-op: the run goes on there).
+      if (!document.hidden || !Coop.active) Audio.background(document.hidden);
     });
     RunUI.wirePause(() => {
       state = 'playing';
@@ -113,10 +124,31 @@ export const Game = (() => {
     requestAnimationFrame(loop);
   }
 
+  /*
+   * Internal resolution (setting `res`). At most ×1.5: on ×2 screens drawing twice the
+   * pixels was one of the most expensive things, and with pixel art it doesn't show.
+   *   'high'  up to ×1.5 · 'low'  ×1 (much lighter on big or ×2 screens; text a bit blockier)
+   *   'auto'  ×1.5, and ×1 when the effects quality is (or drops to) low
+   */
+  function computeDpr() {
+    const raw = window.devicePixelRatio || 1;
+    const res = Settings.get('res');
+    if (res === 'low' || (res !== 'high' && Settings.fx === 0)) return 1;
+    return Math.min(1.5, raw);
+  }
+  /** Moving the window to a screen with another pixel density also resizes. */
+  function watchDpr() {
+    const mq = matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+    const on = () => {
+      mq.removeEventListener('change', on);
+      resize();
+      watchDpr();
+    };
+    mq.addEventListener('change', on);
+  }
+
   function resize() {
-    // Internal resolution at most ×1.5: on ×2 screens drawing twice the
-    // pixels was one of the most expensive things, and with pixel art it doesn't show.
-    dpr = Math.min(1.5, window.devicePixelRatio || 1);
+    dpr = computeDpr();
     w = cv.clientWidth;
     h = cv.clientHeight;
     cv.width = Math.round(w * dpr);
@@ -209,6 +241,7 @@ export const Game = (() => {
     tampered = false;
 
     pl = new Player(mon, perks, !!save.partnerShiny && DB.ownsShiny(mon.dex));
+    Recount.reset(pl);
     banked = { t1: 0, t10: 0 };
     caught = [];
     // Shortcuts: moves with a fixed slot (save.pbind[dex] = [id of 1, id of 2, ...]),
@@ -445,6 +478,7 @@ export const Game = (() => {
     const coop = !!pl.uid; // only group runs give it a uid
     const wasHost = !!pl.coopHost;
     const team = coop ? Coop.members.slice() : [];
+    const damage = Recount.snapshot(time); // before Coop.end(): the teammates are still there
     if (Coop.active) Coop.end();
     if (coop) Social.setPlaying(false);
     state = 'over';
@@ -511,6 +545,8 @@ export const Game = (() => {
         t10: pl.t10,
         judge,
         moves: pl.moves,
+        player: pl,
+        damage,
         caught,
         breakdown:
           Object.entries(parts)
@@ -637,20 +673,33 @@ export const Game = (() => {
     if (laterItems.length) offerItem(laterItems.shift());
   }
 
-  /** You picked up an item: if you hold none you equip it; otherwise you choose. */
+  /** With no item held, does this one ask first? (setting `itemConfirm`) */
+  function confirmFirst(id) {
+    const rule = Settings.get('itemConfirm');
+    return rule === 'always' || (rule !== 'never' && !!Items.BY[id].drawback);
+  }
+
+  /**
+   * You picked up an item. Holding none: you equip it, unless it asks first (see
+   * confirmFirst; then you can also go on without it). Holding one: you choose.
+   */
   function offerItem(id) {
     if (!pl || !Items.BY[id]) return;
-    if (state === 'levelup' || UI.isOpen('scr-levelup')) {
+    // One choice at a time: a second item (e.g. two in the same co-op batch) waits its
+    // turn. Replacing the open one left its pause unreleased and the group stuck.
+    if (state === 'levelup' || UI.isOpen('scr-levelup') || openItem || UI.isOpen('scr-item')) {
       laterItems.push(id);
       return;
     }
     let mine = false; // this choice is the one that stopped the game
     const take = got => {
       openItem = null;
-      if (got !== pl.item) {
+      if (got && got !== pl.item) {
         pl.equip(got);
         Spawner.say(`You're holding ${Items.BY[got].name}!`, 2.6, true);
         Progress.event('item', { id: got });
+      } else if (!got && !pl.item) {
+        Spawner.say('Still no item', 2, true);
       }
       if (!mine) {
         afterLevelUp();
@@ -660,7 +709,7 @@ export const Game = (() => {
       if (Coop.active) Coop.holdEnd();
       afterLevelUp();
     };
-    if (!pl.item) {
+    if (!pl.item && !confirmFirst(id)) {
       take(id);
       return;
     }
@@ -739,7 +788,9 @@ export const Game = (() => {
       FX.ring(who.x, who.y, 20, R, '#ff7b3d', 0.5, 6);
       for (const e of EnemyMgr.all()) {
         if (mine ? !Camera.sees(e.x, e.y, 0) : U.dist2(e.x, e.y, who.x, who.y) > R * R) continue;
-        e.hurt(BD.bomb.base + pl.level * BD.bomb.perLevel, '#ff7b3d', e.x - who.x, e.y - who.y, BD.bomb.knock);
+        const d = BD.bomb.base + pl.level * BD.bomb.perLevel;
+        e.hurt(d, '#ff7b3d', e.x - who.x, e.y - who.y, BD.bomb.knock);
+        Recount.other(who, d);
       }
     }
   }
@@ -771,11 +822,14 @@ export const Game = (() => {
     }
     if (UI.isOpen('scr-item')) {
       for (let i = 0; i < 2; i++) {
-        if (Input.tap('digit' + (i + 1)) || Input.tap('numpad' + (i + 1))) document.querySelectorAll('#item-cards .card')[i].click();
+        if (Input.tap('digit' + (i + 1)) || Input.tap('numpad' + (i + 1))) RunUI.pickItem(i);
       }
+      if (Input.tap('escape')) RunUI.pickItem(0); // the safe choice: keep yours / go on without
       return;
     }
     if (state === 'ui') {
+      // Gacha pull on screen: Space/Enter skip the slot machine or continue, Esc continues.
+      if (['space', 'enter', 'escape'].some(k => Input.tap(k) && GachaUI.key(k))) return;
       // Esc on a menu sub-screen goes back to the menu.
       if (
         Input.tap('escape') &&
@@ -796,6 +850,7 @@ export const Game = (() => {
     }
     if (Input.tap('keyq')) pl.cycle(-1);
     if (Input.tap('keye') || Input.tap('tab')) pl.cycle(1);
+    if (Input.tap('keyr')) Settings.set('recount', !Settings.get('recount')); // damage meter
   }
 
   // ---------------- loop ----------------
@@ -806,7 +861,9 @@ export const Game = (() => {
     speedK = 1;
   let fpsShown = 60,
     fpsAcc = 0,
-    fpsN = 0;
+    fpsN = 0,
+    workMs = 0, // average time to compute + draw a frame (FPS counter)
+    workShown = 0;
   // The next frame is requested BEFORE anything else: if something fails midway, the
   // game keeps going (before, it froze forever and you had to reload;
   // a huge run was lost that way when a rift opened).
@@ -815,10 +872,30 @@ export const Game = (() => {
   // records and leaderboard. Better that than a black screen and losing everything.
   let loopErrs = 0,
     errRun = 0;
+  /*
+   * Frame cap (setting `fpsCap`, 0 = whatever the screen gives). Menus and the solo
+   * pause run at most at 30: nothing there needs more, and the laptop cools down.
+   * The next frame is due at nextAt; frames that come early are skipped. Counting
+   * from the due time (not from the last frame) keeps 60 on 75/144 Hz screens.
+   */
+  let nextAt = 0;
+  function targetFps() {
+    const cap = Settings.get('fpsCap') | 0;
+    const idle = state === 'ui' || (state === 'paused' && !Coop.active);
+    return idle ? Math.min(cap || 30, 30) : cap;
+  }
+
   function loop(ts) {
     requestAnimationFrame(loop);
+    const fps = targetFps();
+    if (fps) {
+      if (ts < nextAt - 1) return;
+      nextAt = Math.max(nextAt + 1000 / fps, ts);
+    }
     try {
-      frame(ts);
+      const t0 = performance.now();
+      frame(ts, fps);
+      workMs += (performance.now() - t0 - workMs) * 0.1;
       errRun = 0;
     } catch (e) {
       if (loopErrs++ < 5) console.error('[Game] frame error:', e);
@@ -835,15 +912,18 @@ export const Game = (() => {
     }
   }
 
-  function frame(ts) {
+  function frame(ts, fps) {
     const real = (ts - last) / 1000 || 0;
-    const dt = Math.min(1 / 30, real) * speedK;
+    // With a 30 cap a frame can be a bit longer than 1/30 s: a lower limit there
+    // would turn the game into slow motion.
+    const dt = Math.min(fps && fps <= 30 ? 1 / 20 : 1 / 30, real) * speedK;
     last = ts;
-    if (state === 'playing') Settings.sample(real);
+    if (state === 'playing') Settings.sample(real, fps);
     fpsAcc += real;
     fpsN++;
     if (fpsAcc >= 0.5) {
       fpsShown = Math.round(fpsN / fpsAcc);
+      workShown = workMs;
       fpsAcc = 0;
       fpsN = 0;
     }
@@ -860,7 +940,8 @@ export const Game = (() => {
     if (Coop.active && pl && state !== 'ui' && state !== 'over') Coop.tick(dt);
 
     if (pl && state !== 'ui') render();
-    else Backdrop.render(ctx, w, h, dpr, dt);
+    // (Not under the gacha's pull screen: it is opaque and covers everything.)
+    else if (!pullFx || pullFx.classList.contains('hidden')) Backdrop.render(ctx, w, h, dpr, dt);
     UI.tick(dt);
 
     Input.endFrame();
@@ -977,21 +1058,51 @@ export const Game = (() => {
     Pickups.draw(ctx);
 
     // Everything with "feet" is sorted by Y: props, enemies, player.
-    const items = [];
+    // (The list and its entries are reused every frame: no garbage per frame.)
+    sceneN = 0;
+    sceneItems.length = 0;
     // Flat ones (springs, traps) always below everything else.
-    for (const p of World.visibleProps(cam)) items.push({ y: p.flat ? p.y - 4000 : p.y, prop: p });
-    for (const e of EnemyMgr.drawables(cam)) items.push({ y: e.y, ent: e });
-    for (const e of extra) items.push({ y: e.y, ent: e });
+    for (const p of World.visibleProps(cam)) sceneAdd(p.flat ? p.y - 4000 : p.y, p, null);
+    for (const e of EnemyMgr.drawables(cam)) sceneAdd(e.y, null, e);
+    for (const e of extra) sceneAdd(e.y, null, e);
     const rift = Rift.drawable();
-    if (rift) items.push({ y: rift.y, ent: rift });
+    if (rift) sceneAdd(rift.y, null, rift);
     const arceus = pl && state !== 'ui' ? Judgment.drawable() : null;
-    if (arceus) items.push({ y: arceus.y, ent: arceus });
-    if (pl && state !== 'ui') for (const d of Events.drawables()) items.push({ y: d.y, ent: d });
-    items.sort((a, b) => a.y - b.y);
-    for (const it of items) {
+    if (arceus) sceneAdd(arceus.y, null, arceus);
+    if (pl && state !== 'ui') for (const d of Events.drawables()) sceneAdd(d.y, null, d);
+    sceneItems.sort(byY);
+    for (const it of sceneItems) {
       if (it.prop) World.drawProp(ctx, it.prop, t);
       else it.ent.draw(ctx);
     }
+  }
+  const scenePool = [],
+    sceneItems = [];
+  let sceneN = 0;
+  const byY = (a, b) => a.y - b.y;
+  function sceneAdd(y, prop, ent) {
+    let it = scenePool[sceneN];
+    if (!it) scenePool[sceneN] = it = { y: 0, prop: null, ent: null };
+    sceneN++;
+    it.y = y;
+    it.prop = prop;
+    it.ent = ent;
+    sceneItems.push(it);
+  }
+
+  // Fog gradient, rebuilt only when the screen size or the fog (in steps) changes.
+  const fogCache = { key: '', g: null };
+  function fogGradient(fog) {
+    const k = Math.round(fog * 40);
+    const key = w + '|' + h + '|' + k;
+    if (fogCache.key !== key) {
+      const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.32, w / 2, h / 2, Math.max(w, h) * 0.62);
+      g.addColorStop(0, 'rgba(200,205,220,0)');
+      g.addColorStop(1, `rgba(200,205,220,${(0.45 * k) / 40})`);
+      fogCache.key = key;
+      fogCache.g = g;
+    }
+    return fogCache.g;
   }
 
   function render() {
@@ -1014,13 +1125,11 @@ export const Game = (() => {
     // Fog: the vignette closes in a bit (without covering the center).
     const fog = Weather.vignette;
     if (fog > 0) {
-      const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.32, w / 2, h / 2, Math.max(w, h) * 0.62);
-      g.addColorStop(0, 'rgba(200,205,220,0)');
-      g.addColorStop(1, `rgba(200,205,220,${0.45 * fog})`);
-      ctx.fillStyle = g;
+      ctx.fillStyle = fogGradient(fog);
       ctx.fillRect(0, 0, w, h);
     }
     if (!Judgment.cinematic) HUD.draw(ctx, w, h, pl, st);
+    else MoveTip.hide();
     Judgment.drawOverlay(ctx, w, h);
     Touch.draw(ctx);
     if (Settings.get('fps')) {
@@ -1028,7 +1137,8 @@ export const Game = (() => {
       ctx.font = '700 11px Pixelify, monospace';
       ctx.textAlign = 'right';
       ctx.fillStyle = fpsShown >= 50 ? '#5fe08a' : fpsShown >= 30 ? '#ffd23f' : '#ff5f6d';
-      ctx.fillText(fpsShown + ' FPS', w - 10, h - 8);
+      // And how long a frame takes to compute and draw (what decides heat and battery).
+      ctx.fillText(fpsShown + ' FPS · ' + workShown.toFixed(1) + ' ms', w - 10, h - 8);
       ctx.restore();
     }
     if (flashT > 0) {
@@ -1235,6 +1345,14 @@ export const Game = (() => {
     get state() {
       return state;
     },
+    /** Internal resolution multiplier in use (settings show it). */
+    get dpr() {
+      return dpr;
+    },
+    /** Seconds into the current run. */
+    get time() {
+      return time;
+    },
     get player() {
       return pl;
     },
@@ -1250,6 +1368,7 @@ export const Flow = {
     TestUI.init();
     MenuUI.init();
     GachaUI.init();
+    MoveTip.init();
     SocialUI.init();
     RankingUI.init();
     ModUI.init();

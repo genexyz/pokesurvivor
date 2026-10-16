@@ -18,6 +18,8 @@ import { Projectiles } from './projectile.js';
 import { EnemyMgr } from './enemy.js';
 import { Weather } from '../systems/weather.js';
 
+const BUFF_COLOR = { atk: '#ff6b4d', spd: '#7fe0ff', def: '#b0b8c8', regen: '#5fe08a' };
+
 export class Player {
   /**
    * @param mon   DEX entry
@@ -52,12 +54,9 @@ export class Player {
     this.active = 0; // active slot
     this.bonds = 0; // unused bonds (legendary reward)
 
-    this.buffs = {
-      atk: { n: 0, t: 0, amount: 0 },
-      spd: { n: 0, t: 0, amount: 0 },
-      def: { n: 0, t: 0, amount: 0 },
-      regen: { n: 0, t: 0, amount: 0 }
-    };
+    // n stacks, t seconds left of dur, max stacks; src = id of the move that gave it (HUD icon).
+    const buff = () => ({ n: 0, t: 0, dur: 0, max: 1, amount: 0, src: null });
+    this.buffs = { atk: buff(), spd: buff(), def: buff(), regen: buff() };
 
     this.level = 1;
     this.xp = 0;
@@ -97,6 +96,11 @@ export class Player {
   }
 
   /** Experience needed to go from `level` to the next one (curve in Balance.player). */
+  /** Colour of each buff (arcs under the feet and HUD circles). */
+  static get BUFF_COLOR() {
+    return BUFF_COLOR;
+  }
+
   static xpFor(level) {
     return Balance.player.xpFor(level);
   }
@@ -238,6 +242,19 @@ export class Player {
 
   activeMove() {
     return this.activeGroup()[0];
+  }
+
+  /**
+   * How far a small chest can be and still be worth aiming at: the longest reach among
+   * the active attacks that can hit it (0 = none can). Chain and meteor only pick enemies.
+   */
+  chestReach() {
+    let r = 0;
+    for (const m of this.activeGroup()) {
+      if (!Moves.needsTarget(m) || m.kind === 'chain' || m.kind === 'meteor') continue;
+      r = Math.max(r, Moves.reach(m));
+    }
+    return r;
   }
 
   /**
@@ -389,12 +406,14 @@ export class Player {
     this.power = { def, t: dur, dur };
   }
 
-  addBuff(stat, amount, dur, maxStacks) {
+  addBuff(stat, amount, dur, maxStacks, src = null) {
     const b = this.buffs[stat];
     if (!b) return;
     b.amount = amount;
+    b.max = Math.max(1, maxStacks);
     b.n = Math.min(maxStacks, b.n + 1);
-    b.t = dur;
+    b.t = b.dur = dur;
+    if (src) b.src = src;
   }
 
   // ---------------- loop ----------------
@@ -462,6 +481,10 @@ export class Player {
     //   melee and the rest:           whatever touches you > the boss > the nearest
     // With a horde on you something almost always touches you; if that always won,
     // ranged attacks would never hit the boss.
+    // A small chest right next to you wins over everything (it breaks in a hit or two);
+    // a little further away it still wins over the boss and the nearest enemy, but not
+    // over whatever touches you. Only within the active attack's reach (or it would stall
+    // waiting for a chest it can't hit) and only for attacks that can hit props.
     // Without enemies, aim at the nearest rock or chest.
     const all = EnemyMgr.all();
     const m = this.activeMove();
@@ -469,8 +492,19 @@ export class Player {
     const A = B.aim;
     const threat = Projectiles.nearest(all, this.x, this.y, this.r + A.threatPad);
     const boss = all.find(e => e.boss && !e.dead && U.dist(this.x, this.y, e.x, e.y) < A.bossRange);
+    const foe = ranged ? boss || threat : threat || boss;
+    let chest = null,
+      chestNear = false;
+    const chestReach = this.chestReach();
+    if (chestReach > 0) {
+      chest = World.nearestBreakable(this.x, this.y, Math.min(A.chestFar, chestReach), 'chest');
+      const d = chest ? U.dist(this.x, this.y, chest.x, chest.y) : Infinity;
+      // nearestBreakable counts the chest's own radius; combat checks reach from its centre.
+      if (d > chestReach) chest = null;
+      chestNear = !!chest && d <= A.chestNear;
+    }
     const tg =
-      (ranged ? boss || threat : threat || boss) ||
+      (chestNear ? chest : threat ? foe : chest || foe) ||
       Projectiles.nearest(all, this.x, this.y, A.range) ||
       World.nearestBreakable(this.x, this.y, A.breakableRange);
     this.target = tg;
@@ -571,7 +605,7 @@ export class Player {
     this.anim.draw(ctx, this.x, this.y, { flash: this.flash > 0, softFlash: true, alpha, color: '#ffcb3d' });
 
     // Buff arcs around the feet.
-    const COL = { atk: '#ff6b4d', spd: '#7fe0ff', def: '#b0b8c8', regen: '#5fe08a' };
+    const COL = Player.BUFF_COLOR;
     let i = 0;
     for (const k in this.buffs) {
       const b = this.buffs[k];
@@ -581,7 +615,7 @@ export class Player {
       ctx.strokeStyle = COL[k];
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.ellipse(this.x, this.y, this.r * 1.8 + i * 5, (this.r * 1.8 + i * 5) * 0.42, 0, 0, 6.2832 * (b.n / 5));
+      ctx.ellipse(this.x, this.y, this.r * 1.8 + i * 5, (this.r * 1.8 + i * 5) * 0.42, 0, 0, 6.2832 * (b.n / b.max));
       ctx.stroke();
       ctx.restore();
       i++;

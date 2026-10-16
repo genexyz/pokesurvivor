@@ -33,6 +33,7 @@ import { Path } from '../systems/pathing.js';
 import { Progress } from '../systems/progress.js';
 import { Hazards } from '../systems/hazards.js';
 import { Coop } from '../net/coop.js';
+import { Recount } from '../systems/recount.js';
 import { Icons } from '../ui/icons.js';
 import { Game } from '../game.js';
 
@@ -91,6 +92,7 @@ class Enemy {
     this.poison = 0;
     this.poisonT = 0;
     this.poisonTick = 0;
+    this.burnBy = this.burnMid = this.poisonBy = this.poisonMid = null; // damage meter
     this.lavaTick = 0;
     this.kx = 0;
     this.ky = 0;
@@ -210,21 +212,34 @@ class Enemy {
     this.slow = Math.max(this.slow, factor);
     this.slowT = Math.max(this.slowT, dur);
   }
-  applyBurn(stacks = 1) {
+  /*
+   * Burn and poison remember who applied them last (move `mid` of player `by`, null =
+   * this device's) so the damage meter can credit the ticks. Without a move (a trap)
+   * the previous owner is kept.
+   */
+  applyBurn(stacks = 1, mid = null, by = null) {
     if (this.remote) {
-      Coop.status(this, 'b', stacks);
+      Coop.status(this, 'b', stacks, mid);
       return;
     }
     this.burn = Math.min(B.status.burn.cap, this.burn + stacks);
     this.burnT = B.status.burn.dur;
+    if (mid) {
+      this.burnMid = mid;
+      this.burnBy = by;
+    }
   }
-  applyPoison(stacks = 1) {
+  applyPoison(stacks = 1, mid = null, by = null) {
     if (this.remote) {
-      Coop.status(this, 'p', stacks);
+      Coop.status(this, 'p', stacks, mid);
       return;
     }
     this.poison = Math.min(B.status.poison.cap, this.poison + stacks);
     this.poisonT = B.status.poison.dur;
+    if (mid) {
+      this.poisonMid = mid;
+      this.poisonBy = by;
+    }
   }
 
   die() {
@@ -358,7 +373,9 @@ class Enemy {
       this.burnTick -= dt;
       if (this.burnTick <= 0) {
         this.burnTick = ST.burn.tick;
-        this.hurt(ST.burn.dmg * this.burn * (1 + pl.level * ST.burn.perLevel), '#ff9a4d');
+        const d = ST.burn.dmg * this.burn * (1 + pl.level * ST.burn.perLevel);
+        this.hurt(d, '#ff9a4d');
+        Recount.dot(this.burnBy, this.burnMid, d);
       }
       if (this.burnT <= 0) this.burn = 0;
     }
@@ -367,7 +384,9 @@ class Enemy {
       this.poisonTick -= dt;
       if (this.poisonTick <= 0) {
         this.poisonTick = ST.poison.tick;
-        this.hurt(this.maxHp * ST.poison.maxHpPct * this.poison + ST.poison.flat, '#d47cf0');
+        const d = this.maxHp * ST.poison.maxHpPct * this.poison + ST.poison.flat;
+        this.hurt(d, '#d47cf0');
+        Recount.dot(this.poisonBy, this.poisonMid, d);
       }
       if (this.poisonT <= 0) this.poison = 0;
     }
@@ -1172,8 +1191,11 @@ export const EnemyMgr = (() => {
     return (cx * 73856093) ^ (cy * 19349663);
   }
 
+  // The cell lists are emptied and reused (not thrown away) every frame; with
+  // too many cells (the horde spread out) it starts over so it doesn't grow forever.
   function rebuildGrid() {
-    grid.clear();
+    if (grid.size > 250) grid.clear();
+    else for (const b of grid.values()) b.length = 0;
     for (const e of list) {
       if (e.dead) continue;
       const k = key(Math.floor(e.x / CELL), Math.floor(e.y / CELL));
@@ -1335,8 +1357,11 @@ export const EnemyMgr = (() => {
   }
 
   /** What to draw, Y-sorted along with the rest of the scene. */
+  /** Enemies and corpses on screen. The same array every call (read it right away). */
+  const drawOut = [];
   function drawables(cam) {
-    const out = [];
+    const out = drawOut;
+    out.length = 0;
     for (const e of corpses) if (cam.sees(e.x, e.y, 80)) out.push(e);
     for (const e of list) if (cam.sees(e.x, e.y, 80)) out.push(e);
     return out;

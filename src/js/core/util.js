@@ -68,6 +68,20 @@ export const U = {
     return U.num(Math.round(v * 10000) / 100);
   },
 
+  /**
+   * Text folded for searching: no accents, case, spaces or symbols ("Flabébé" ->
+   * "flabebe", "Mr. Mime" -> "mrmime", "Nidoran♀" -> "nidoranf"). NFD splits each
+   * accent from its letter, and the last step drops it with the rest of the symbols.
+   */
+  fold(s) {
+    return String(s)
+      .normalize('NFD')
+      .replace(/♀/g, 'f')
+      .replace(/♂/g, 'm')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
+  },
+
   /** "3:07" from seconds. */
   mmss(s) {
     const m = Math.floor(s / 60);

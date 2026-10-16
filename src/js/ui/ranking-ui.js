@@ -13,6 +13,7 @@ import { UI } from './ui.js';
 import { SocialUI } from './social-ui.js';
 import { ModUI } from './mod-ui.js';
 import { ProfileUI } from './goals-ui.js';
+import { SearchSelect } from './search-select.js';
 
 export const RankingUI = (() => {
   const $ = UI.$;
@@ -24,31 +25,22 @@ export const RankingUI = (() => {
   let token = 0;
 
   function init() {
-    const dl = $('rk-dl');
-    dl.innerHTML = DEX.map(p => `<option value="${esc(p.name)}">`).join('');
-    $('rk-poke').onchange = () => {
-      const v = $('rk-poke').value.trim().toLowerCase();
-      const p = DEX.find(x => x.name.toLowerCase() === v);
-      if (!v) {
-        setDex(null);
-        return;
-      }
-      if (!p) {
-        UI.toast("There's no Pokémon with that name");
-        return;
-      }
-      setDex(p.dex);
-    };
-    $('rk-clear').onclick = () => {
-      $('rk-poke').value = '';
-      setDex(null);
-    };
+    // Pokémon filter: a searchable list of every Pokémon (ui/search-select.js).
+    const sel = $('rk-poke');
+    sel.innerHTML =
+      '<option value="">Filter by Pokémon (all-time)</option>' +
+      DEX.map(p => `<option value="${p.dex}" translate="no">${esc(p.name)}</option>`).join('');
+    SearchSelect.enhance(sel, { placeholder: 'Search Pokémon' });
+    sel.onchange = () => setDex(+sel.value || null);
+    $('rk-clear').onclick = () => setDex(null);
     $('rk-mod').onclick = () => ModUI.open();
   }
 
   /** The Pokémon filter only exists in all-time: picking one switches to that tab. */
   function setDex(d) {
     dex = d;
+    $('rk-poke').value = d ? String(d) : '';
+    SearchSelect.enhance($('rk-poke'));
     if (d && period !== 'a') period = 'a';
     $('rk-clear').classList.toggle('hidden', !d);
     tabs();
@@ -100,6 +92,7 @@ export const RankingUI = (() => {
         if (k !== 'a' && dex) {
           dex = null;
           $('rk-poke').value = '';
+          SearchSelect.enhance($('rk-poke'));
           $('rk-clear').classList.add('hidden');
         }
       },

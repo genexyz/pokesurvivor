@@ -369,8 +369,6 @@ export const ES = {
   'Buttons placed': 'Botones colocados',
   'Code license: PolyForm Noncommercial 1.0.0 (you may use, study and modify it, but not to make money). Versions up to 14-10-2026 remain under MIT.':
     'Licencia del código: PolyForm Noncommercial 1.0.0 (se puede usar, estudiar y modificar, pero no para ganar dinero). Las versiones hasta el 14-10-2026 siguen bajo MIT.',
-  "Official website: survivor.preciostcg.com · if anyone asks you to pay, it isn't us":
-    'Web oficial: survivor.preciostcg.com · si alguien te pide pagar, no somos nosotros',
   'Bond!': '¡Vínculo!',
   Bond: 'Vínculo',
   Back: 'Volver',
@@ -1213,7 +1211,7 @@ export const ES = {
   'Thanks: we will review it': 'Gracias: la revisaremos',
 
   // ---------------- English-source pass (2026-10-16) ----------------
-  'PokéSurvivor – Free online Pokémon game in the style of Survivor.io': 'PokéSurvivor – Juego Pokémon gratis online estilo Survivor.io',
+  PokéSurvivor: 'PokéSurvivor',
   Moderation: 'Moderación',
   Reports: 'Reportes',
   Banned: 'Baneados',
@@ -1293,7 +1291,72 @@ export const ES = {
   'Not found': 'No existe',
   unknown: 'desconocido',
   'no Google link': 'sin enlace de Google',
-  "Couldn't save the nickname.": 'No se pudo guardar el apodo.'
+  "Couldn't save the nickname.": 'No se pudo guardar el apodo.',
+
+  // ---------------- first item of a run ----------------
+  'You can only hold one': 'Sólo puedes llevar uno',
+  'It has a downside: equip it?': 'Tiene un inconveniente: ¿lo equipas?',
+  'Equip it now?': '¿Lo equipas ya?',
+  'Stay without item': 'Seguir sin objeto',
+  'Keep going without holding anything.': 'Sigue la partida sin llevar ningún objeto.',
+  'Equip {x}': 'Equipar {x}',
+  'Still no item': 'Sigues sin objeto',
+  'During a run': 'Durante la partida',
+  'Ask before equipping': 'Preguntar antes de equipar',
+  'When you find your first item of a run, choose whether to equip it or keep going without one.':
+    'Al encontrar el primer objeto de la partida, elige si equiparlo o seguir sin ninguno.',
+  'Items with a downside': 'Objetos con inconveniente',
+
+  // ---------------- gacha without animation ----------------
+  'Open without animation': 'Abrir sin animación',
+  'Shows the results right away, without the slot machine': 'Enseña el resultado al momento, sin la tragaperras',
+  'The gacha shows the results right away, without the slot machine.': 'El gacha enseña el resultado al momento, sin la tragaperras.',
+  '{x} new': '{x} nuevos',
+
+  // ---------------- damage meter ----------------
+  'damage ·': 'daño ·',
+  'damage meter': 'medidor de daño',
+  'reroll the cards': 'cambiar las cartas',
+  'Damage meter': 'Medidor de daño',
+  'During a run, how much damage each move (and each teammate in co-op) deals. Key R.':
+    'En la partida, cuánto daño hace cada movimiento (y cada compañero en grupo). Tecla R.',
+
+  // ---------------- your stats (pause and end of the run) ----------------
+  'Damage reduction': 'Reducción de daño',
+  'Pickup radius': 'Radio de recogida',
+  'Critical hit': 'Golpe crítico',
+  'Damage per tick': 'Daño por pulso',
+  'Damage dealt': 'Daño hecho',
+  'Active effects': 'Efectos activos',
+  'Your moves': 'Tus movimientos',
+  'Next: {x}': 'Siguiente: {x}',
+  'Evolves into {x}': 'Evoluciona en {x}',
+  'Needs {x}': 'Necesita {x}',
+  'Ready to evolve!': '¡Lista para evolucionar!',
+  'No damage yet.': 'Aún no has hecho daño.',
+  'per second': 'por segundo',
+
+  // ---------------- search ----------------
+  'All regions': 'Todas las regiones',
+  'Search by name, number or type': 'Busca por nombre, número o tipo',
+  'Search Pokémon': 'Buscar Pokémon',
+  'Search moves': 'Buscar movimientos',
+  'Search titles': 'Buscar títulos',
+  'Search…': 'Buscar…',
+  'No results.': 'Sin resultados.',
+  'Keep typing to narrow it down ({x} more)': 'Sigue escribiendo para acotar ({x} más)',
+
+  // ---------------- resolution and frame limit ----------------
+  Resolution: 'Resolución',
+  // (the settings paragraph is translated piece by piece, around the bold words)
+  'How many pixels the game draws.': 'Cuántos píxeles dibuja el juego.',
+  'is much lighter on big screens (less heat and battery); the text looks a bit blockier.':
+    'es mucho más ligera en pantallas grandes (menos calor y batería); el texto se ve algo más pixelado.',
+  'goes low when the quality does (now: ×{x}).': 'la baja cuando baja la calidad (ahora: ×{x}).',
+  'Frame limit': 'Límite de fotogramas',
+  'Fewer frames per second: less heat and battery. Menus always run at 30.':
+    'Menos fotogramas por segundo: menos calor y batería. Los menús siempre van a 30.',
+  'No limit': 'Sin límite'
 };
 I18n.add(ES);
 
@@ -1314,6 +1377,20 @@ export const ES_EXACT = {
   Determined: 'Tenaz',
   Proud: 'Orgulloso',
   Careful: 'Prudente',
-  solo: 'en solitario'
+  solo: 'en solitario',
+  Always: 'Siempre',
+  Never: 'Nunca',
+  DAMAGE: 'DAÑO',
+  Other: 'Otros',
+  Skip: 'Saltar',
+  Run: 'Partida',
+  Stats: 'Estadísticas',
+  Damage: 'Daño',
+  Cooldown: 'Recarga',
+  Regeneration: 'Regeneración',
+  Experience: 'Experiencia',
+  Effect: 'Efecto',
+  Lasts: 'Dura',
+  PokéCoins: 'Pokémonedas'
 };
 I18n.add(ES_EXACT, true);

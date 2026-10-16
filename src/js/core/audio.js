@@ -56,11 +56,12 @@ export const Audio = (() => {
     musicBus.connect(master);
     sfxBus.connect(master);
 
-    // Reverb: generated impulse response (noise that fades out over 1.8 s).
+    // Reverb: generated impulse response (noise that fades out over 1 s; longer
+    // tails cost more to convolve and the chiptune doesn't need them).
     // It is filled in a moment later, in chunks: doing it all at once blocked
     // page loading (~75 ms). Until then the music plays without echo.
     reverb = ctx.createConvolver();
-    const len = Math.floor(ctx.sampleRate * 1.8);
+    const len = Math.floor(ctx.sampleRate * 1.0);
     const ir = ctx.createBuffer(2, len, ctx.sampleRate);
     let ch = 0;
     const fill = () => {
@@ -157,10 +158,18 @@ export const Audio = (() => {
     return b;
   }
 
+  // One send to the reverb per amount, shared by every note (it used to be a new
+  // node per note: thousands per minute for the garbage collector).
+  const sends = new Map();
   function send(node, amount) {
-    const s = ctx.createGain();
-    s.gain.value = amount;
-    node.connect(s).connect(reverb);
+    let s = sends.get(amount);
+    if (!s) {
+      s = ctx.createGain();
+      s.gain.value = amount;
+      s.connect(reverb);
+      sends.set(amount, s);
+    }
+    node.connect(s);
   }
 
   // ---------------- instruments ----------------
@@ -699,6 +708,13 @@ export const Audio = (() => {
     setVolume,
     toggleMute,
     unlock,
+    /** Tab hidden: stop the sound engine (no music scheduling in the background); shown: back. */
+    background(hidden) {
+      if (!ctx) return;
+      if (hidden) {
+        if (ctx.state === 'running') ctx.suspend().catch(() => {});
+      } else unlock();
+    },
     debugMeter,
     debugStream,
     /** Can it play sound yet? (the browser only allows it after an interaction, with exceptions) */

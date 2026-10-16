@@ -18,7 +18,8 @@
  *   guest -> host     { k:'f', p:[state], ev:[events] }
  *   host -> guest     { k:'f', t, lv, xp, xn, ki, bo, co, p:{uid:[state]},
  *                       e:[[id,x,y,hp,anim,dir,flags]], ev:[events],
- *                       x:{ key: state } (Sync fields, e.g. ja = Arceus) }
+ *                       x:{ key: state } (Sync fields, e.g. ja = Arceus),
+ *                       dd:{ moveId: damage } (this guest's burns/poisons, damage meter) }
  *   host -> everyone  { k:'start', seed, host, members:[{uid,name,dex,shiny}] }
  *
  * What each event code does is registered with Sync (net/sync.js): the
@@ -41,6 +42,7 @@ import { EnemyMgr } from '../entities/enemy.js';
 import { Pickups } from '../entities/pickup.js';
 import { Player } from '../entities/player.js';
 import { Combat } from '../systems/combat.js';
+import { Recount } from '../systems/recount.js';
 import { Spawner } from '../systems/spawner.js';
 import { Social } from './social.js';
 import { Net } from './net.js';
@@ -158,6 +160,8 @@ export const Coop = (() => {
   }
 
   function end() {
+    // The damage table keeps the group as it was (the teammates are about to go).
+    if (active) Recount.freeze();
     active = false;
     host = false;
     local = null;
@@ -234,7 +238,8 @@ export const Coop = (() => {
       r2(local.xpMul),
       r2(local.reviveT || 0),
       api.choosing && api.choosing() ? 1 : 0,
-      doneSeq
+      doneSeq,
+      r1(Recount.myTotal()) // damage dealt this run (damage meter)
     ];
   }
 
@@ -254,7 +259,8 @@ export const Coop = (() => {
       xpMul: a[11],
       rev: a[12],
       ch: a[13],
-      ld: a[14]
+      ld: a[14],
+      dm: a[15] || 0 // older versions don't send it
     };
   }
 
@@ -328,6 +334,9 @@ export const Coop = (() => {
     // Always: who is choosing and, if there are level cards, which ones (see above).
     f.ho = holdNames();
     if (waiting.size) f.lu = [levelSeq, levelNow];
+    // Damage of this guest's burns and poisons (they tick here), for their damage meter.
+    const dd = Recount.takePending(m.uid);
+    if (dd) f.dd = dd;
     return f;
   }
 
@@ -426,11 +435,11 @@ export const Coop = (() => {
     e.hurt(ev[2], ev[3], ev[4], ev[5], ev[6]);
     hitFrom = null;
   });
-  Sync.onGuest('s', ev => {
+  Sync.onGuest('s', (ev, from) => {
     const e = EnemyMgr.get(ev[1]);
     if (!e || e.dead) return;
-    if (ev[2] === 'b') e.applyBurn(ev[3]);
-    else if (ev[2] === 'p') e.applyPoison(ev[3]);
+    if (ev[2] === 'b') e.applyBurn(ev[3], ev[4] || null, from);
+    else if (ev[2] === 'p') e.applyPoison(ev[3], ev[4] || null, from);
     else if (ev[2] === 's') e.applySlow(ev[3]);
   });
   Sync.onGuest('c', (ev, from, m) => {
@@ -483,6 +492,8 @@ export const Coop = (() => {
       stalled = false;
       updateAway();
     }
+    // Before the events: the game-over one takes the final picture of the damage meter.
+    if (msg.dd) Recount.applyPending(msg.dd);
     for (const ev of msg.ev || []) applyHostEvent(ev);
     for (const [key, d] of Sync.fields) if (msg.x && msg.x[key] != null) d.apply(msg.x[key]);
     // Who is choosing and the level cards, even if a notice was lost.
@@ -641,8 +652,8 @@ export const Coop = (() => {
   function hit(e, d, color, dx, dy, knock) {
     outEv.push(['h', e.id, d, color, r1(dx), r1(dy), knock || 0]);
   }
-  function status(e, kind, val) {
-    outEv.push(['s', e.id, kind, val]);
+  function status(e, kind, val, mid) {
+    outEv.push(mid ? ['s', e.id, kind, val, mid] : ['s', e.id, kind, val]);
   }
 
   // host

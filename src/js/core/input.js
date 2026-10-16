@@ -20,8 +20,14 @@ export const Input = (() => {
     return (e.code || e.key).toLowerCase();
   }
 
+  /** Typing in a text field is not a game key (Esc still goes through, to close the screen). */
+  function editable(t) {
+    return !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+  }
+
   addEventListener('keydown', e => {
     const c = code(e);
+    if (c !== 'escape' && editable(e.target)) return;
     if (!down.has(c)) pressed.add(c);
     down.add(c);
     // Keep the browser from scrolling with arrows/space during the game.

@@ -5,6 +5,8 @@
  *
  *   on(pl)   equip it (what it does while held)
  *   off(pl)  unequip it (undoes on)
+ *   drawback the item has a downside: by default, the first one you find asks before equipping
+ *            (setting `itemConfirm`)
  * Items that react to something (lethal hit, damage dealt...) are checked
  * by the player with pl.hasItem(id).
  */
@@ -54,7 +56,10 @@ export const Items = (() => {
         p.regenFlat -= p._itemRegen || 0;
       }
     },
-    mult('choiceband', 'Choice Band', 'atkMul', 0.4, x => `+${x}% damage, but you can't switch moves.`),
+    Object.assign(
+      mult('choiceband', 'Choice Band', 'atkMul', 0.4, x => `+${x}% damage, but you can't switch moves.`),
+      { drawback: true }
+    ),
     mult('quickclaw', 'Quick Claw', 'cdMul', 0.2, x => `-${x}% cooldown on all your moves.`, true),
     {
       id: 'focussash',
@@ -68,7 +73,10 @@ export const Items = (() => {
     { id: 'shellbell', name: 'Shell Bell', desc: 'You heal from the damage you deal.', on: () => {}, off: () => {} },
     mult('amuletcoin', 'Amulet Coin', 'coinMul', 0.5, x => `+${x}% PokéCoins at the end of the run.`),
     mult('luckyegg', 'Lucky Egg', 'xpMul', 0.3, x => `+${x}% experience.`),
-    mult('lifeorb', 'Life Orb', 'atkMul', 0.3, x => `+${x}% damage, but each attack costs a little HP.`),
+    Object.assign(
+      mult('lifeorb', 'Life Orb', 'atkMul', 0.3, x => `+${x}% damage, but each attack costs a little HP.`),
+      { drawback: true }
+    ),
     mult('choicescarf', 'Choice Scarf', 'spdMul', 0.35, x => `+${x}% speed.`),
     { id: 'rockyhelmet', name: 'Rocky Helmet', desc: 'Foes that hit you in melee take damage.', on: () => {}, off: () => {} },
     {

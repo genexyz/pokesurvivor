@@ -37,7 +37,14 @@ export const UI = (() => {
     'scr-mod'
   ];
 
+  // The move tooltip (ui/move-tip.js) never stays over a screen change.
+  const hideTip = () => {
+    const t = document.getElementById('move-tip');
+    if (t) t.classList.add('hidden');
+  };
+
   function show(id, keepMenu = false) {
+    hideTip();
     for (const s of SCREENS) if (s !== id && !(keepMenu && s === 'scr-menu')) $(s).classList.add('hidden');
     $(id).classList.remove('hidden');
   }
@@ -45,6 +52,7 @@ export const UI = (() => {
     $(id).classList.add('hidden');
   }
   function hideAll() {
+    hideTip();
     for (const s of SCREENS) $(s).classList.add('hidden');
   }
   function isOpen(id) {

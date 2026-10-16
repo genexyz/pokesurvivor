@@ -15,6 +15,7 @@ import { UI } from './ui.js';
 import { GachaUI } from './gacha-ui.js';
 import { FriendsUI, InvitePop, LobbyUI, NickUI } from './social-ui.js';
 import { RankingUI } from './ranking-ui.js';
+import { SearchSelect } from './search-select.js';
 import { GoalsUI } from './goals-ui.js';
 import { SettingsUI } from './settings-ui.js';
 import { Flow } from '../game.js';
@@ -23,10 +24,13 @@ export const MenuUI = (() => {
   const $ = UI.$;
   const GEN_NAMES = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Unova', 'Kalos', 'Alola', 'Galar', 'Paldea'];
   let dexFilter = 'all',
-    dexGen = 1,
-    dexSel = null;
+    dexGen = 1, // 0 = all regions
+    dexSel = null,
+    dexQuery = '', // the collection search box (name, number or type)
+    dexGenBefore = 0; // region shown before a search jumped to "All regions"
 
   function init() {
+    $('dex-search').oninput = onDexSearch;
     const ICON = {
       play: 'ball',
       dex: 'book',
@@ -150,22 +154,7 @@ export const MenuUI = (() => {
     const owned = Object.keys(s.owned).filter(d => DEX_BY[d]).length;
     $('dex-total').textContent = `${owned} / ${DEX.length}`;
 
-    // Generation tabs, with how many you own from each.
-    const tabs = $('dex-gens');
-    tabs.innerHTML = '';
-    GEN_NAMES.forEach((name, i) => {
-      const g = i + 1;
-      const total = DEX.filter(p => p.gen === g).length;
-      const have = DEX.filter(p => p.gen === g && s.owned[p.dex]).length;
-      const b = document.createElement('button');
-      b.className = 'gen-tab' + (g === dexGen ? ' on' : '');
-      b.innerHTML = `<b>${name}</b><small>${have}/${total}</small>`;
-      b.onclick = () => {
-        dexGen = g;
-        openDex();
-      };
-      tabs.appendChild(b);
-    });
+    renderGens();
 
     const F = [
       ['all', 'All'],
@@ -199,14 +188,72 @@ export const MenuUI = (() => {
     showDetail(dexSel);
   }
 
+  /** Generation tabs ("All regions" first), with how many you own from each. */
+  function renderGens() {
+    const s = DB.save;
+    const tabs = $('dex-gens');
+    tabs.innerHTML = '';
+    ['All regions', ...GEN_NAMES].forEach((name, g) => {
+      const total = DEX.filter(p => !g || p.gen === g).length;
+      const have = DEX.filter(p => (!g || p.gen === g) && s.owned[p.dex]).length;
+      const b = document.createElement('button');
+      b.className = 'gen-tab' + (g === dexGen ? ' on' : '');
+      b.innerHTML = `<b>${name}</b><small>${have}/${total}</small>`;
+      b.onclick = () => {
+        dexGen = g;
+        dexGenBefore = 0;
+        renderGens();
+        renderGrid();
+      };
+      tabs.appendChild(b);
+    });
+  }
+
+  /*
+   * Collection search: by name, by number (25, #025) or by type (fire, fuego). Names
+   * and types only find Pokémon you own: the rest are still a surprise. Typing jumps
+   * to "All regions"; clearing it goes back to the region you were on.
+   */
+  let searchT = 0;
+  function onDexSearch() {
+    clearTimeout(searchT);
+    searchT = setTimeout(() => {
+      const q = $('dex-search').value.trim();
+      if (!dexQuery && q && dexGen) {
+        dexGenBefore = dexGen;
+        dexGen = 0;
+        renderGens();
+      } else if (dexQuery && !q && dexGenBefore) {
+        dexGen = dexGenBefore;
+        dexGenBefore = 0;
+        renderGens();
+      }
+      dexQuery = q;
+      renderGrid();
+    }, 100);
+  }
+  let TYPES = null; // [type, English, Spanish], folded (built on first use: the dictionary loads later)
+  function dexMatch(p, own) {
+    if (!dexQuery) return true;
+    const n = dexQuery.replace(/^#/, '');
+    if (/^\d+$/.test(n)) return p.dex === +n;
+    if (!own) return false;
+    const f = U.fold(dexQuery);
+    if (!f) return true;
+    if (U.fold(p.name).includes(f)) return true;
+    TYPES = TYPES || Object.keys(U.TYPE_NAME).map(t => [t, U.fold(U.TYPE_NAME[t]), U.fold(I18n.t(U.TYPE_NAME[t]))]);
+    return f.length >= 3 && TYPES.some(([t, en, es]) => (en.startsWith(f) || es.startsWith(f)) && p.types.includes(t));
+  }
+
   function renderGrid() {
     const s = DB.save;
     const grid = $('dex-grid');
     grid.innerHTML = '';
     for (const p of DEX) {
-      if (p.gen !== dexGen) continue;
+      if (dexGen && p.gen !== dexGen) continue;
       const own = !!s.owned[p.dex],
         sh = !!(s.shiny && s.shiny[p.dex]);
+      if (!dexMatch(p, own)) continue;
       if (dexFilter === 'own' && !own) continue;
       if (dexFilter === 'miss' && own) continue;
       if (dexFilter === 'shiny' && !sh) continue;
@@ -331,6 +378,7 @@ export const MenuUI = (() => {
       )
       .join('');
     sel.value = upgDex;
+    SearchSelect.enhance(sel, { placeholder: 'Search Pokémon' });
     sel.onchange = () => {
       upgDex = +sel.value;
       Audio.sfx('select');
@@ -407,7 +455,8 @@ export const MenuUI = (() => {
     const ids = Moves.poolFor(mon)
       .concat([startMoveOf(upgDex)])
       .filter((v, i, a) => a.indexOf(v) === i)
-      .sort((a, b) => Moves.BY_ID[a].name.localeCompare(Moves.BY_ID[b].name, I18n.locale));
+      // In the player's language order (the names are translated on screen).
+      .sort((a, b) => I18n.t(Moves.BY_ID[a].name).localeCompare(I18n.t(Moves.BY_ID[b].name), I18n.locale));
     const el = document.createElement('div');
     el.className = 'panel bind-panel';
     el.innerHTML = `<b>Move shortcuts</b>
@@ -421,6 +470,7 @@ export const MenuUI = (() => {
         )
         .join('')}</div>`;
     el.querySelectorAll('select[data-slot]').forEach(sel => {
+      SearchSelect.enhance(sel, { placeholder: 'Search moves' });
       sel.onchange = () => {
         const l = (s.pbind[upgDex] || [null, null, null, null]).slice(0, 4);
         while (l.length < 4) l.push(null);
@@ -451,7 +501,8 @@ export const MenuUI = (() => {
     const start = startMoveOf(upgDex);
     const ids = Moves.poolFor(mon)
       .filter(id => id !== start)
-      .sort((a, b) => Moves.BY_ID[a].name.localeCompare(Moves.BY_ID[b].name, I18n.locale));
+      // In the player's language order (the names are translated on screen).
+      .sort((a, b) => I18n.t(Moves.BY_ID[a].name).localeCompare(I18n.t(Moves.BY_ID[b].name), I18n.locale));
     const list = banList();
     const el = document.createElement('div');
     el.className = 'panel ban-picker';

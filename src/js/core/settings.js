@@ -8,6 +8,12 @@
  *   fps         true/false                        FPS counter
  *   stick       0.8 | 1 | 1.25                    touch joystick size
  *   stickMode   'float' | 'fixed'                 joystick where you put your finger, or always in place
+ *   itemConfirm 'always' | 'drawback' | 'never'  ask before equipping the first item of a run
+ *                                                 (drawback: only Choice Band, Life Orb...)
+ *   gachaSkip   true/false                        open the gacha without the slot machine
+ *   recount     true/false                        damage meter in the run (key R)
+ *   res         'auto' | 'high' | 'low'            internal resolution (game.js computeDpr)
+ *   fpsCap      0 | 30 | 60 | 120                 frame cap (0 = the screen's rate)
  *   pad         { bar, pause, stick } | null      where the buttons go on mobile (centre, relative
  *                                                 to the screen); set by layout-ui.js
  *
@@ -16,7 +22,20 @@
  */
 export const Settings = (() => {
   const KEY = 'ps.settings';
-  const DEF = { quality: 'auto', dmgNumbers: true, calm: false, fps: false, stick: 1, stickMode: 'float', pad: null };
+  const DEF = {
+    quality: 'auto',
+    dmgNumbers: true,
+    calm: false,
+    fps: false,
+    stick: 1,
+    stickMode: 'float',
+    itemConfirm: 'drawback',
+    gachaSkip: false,
+    recount: false,
+    res: 'auto',
+    fpsCap: 0,
+    pad: null
+  };
   let s = Object.assign({}, DEF);
   try {
     Object.assign(s, JSON.parse(localStorage.getItem(KEY) || '{}'));
@@ -55,8 +74,11 @@ export const Settings = (() => {
     });
   }
 
-  /** Called by the game loop every frame (only during a run). */
-  function sample(dt) {
+  /**
+   * Called by the game loop every frame (only during a run). `cap`: the frame cap in
+   * use (0 = none); with a 30 cap, 30 FPS is not stuttering.
+   */
+  function sample(dt, cap = 0) {
     if (s.quality !== 'auto' || dt <= 0) return;
     acc += dt;
     frames++;
@@ -64,16 +86,19 @@ export const Settings = (() => {
     const fps = frames / acc;
     acc = 0;
     frames = 0;
-    // 3 s in a row below 45 FPS: drop a level; 8 s above 57: raise it.
-    if (fps < 45) {
+    // 3 s in a row below 45 FPS: drop a level; 8 s above 57: raise it (less with a cap).
+    const lo = cap ? Math.min(45, cap * 0.75) : 45,
+      hi = cap ? Math.min(57, cap * 0.95) : 57;
+    if (fps < lo) {
       slowT++;
       fastT = 0;
-    } else if (fps > 57) {
+    } else if (fps > hi) {
       fastT++;
       slowT = 0;
     } else {
       slowT = fastT = 0;
     }
+    const was = autoLevel;
     if (slowT >= 3 && autoLevel > 0) {
       autoLevel--;
       slowT = 0;
@@ -82,6 +107,14 @@ export const Settings = (() => {
       autoLevel++;
       fastT = 0;
     }
+    if (autoLevel !== was)
+      fns.forEach(fn => {
+        try {
+          fn('autoLevel', autoLevel);
+        } catch (e) {
+          /* nothing */
+        }
+      });
   }
 
   return {

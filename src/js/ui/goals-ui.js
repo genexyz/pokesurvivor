@@ -16,6 +16,7 @@ import { Progress } from '../systems/progress.js';
 import { Social } from '../net/social.js';
 import { Icons } from './icons.js';
 import { UI } from './ui.js';
+import { SearchSelect } from './search-select.js';
 
 const $ = UI.$;
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -222,6 +223,7 @@ export const GoalsUI = (() => {
     const sel = document.createElement('select');
     sel.className = 'field';
     sel.style.maxWidth = '320px';
+    sel.setAttribute('aria-label', 'Title');
     sel.innerHTML =
       `<option value="">(no title)</option>` +
       titles.map(t => `<option value="${esc(t.id)}" ${t.id === P.title ? 'selected' : ''}>${esc(t.title)}</option>`).join('');
@@ -230,6 +232,7 @@ export const GoalsUI = (() => {
       save();
     };
     box.appendChild(sel);
+    SearchSelect.enhance(sel, { placeholder: 'Search titles' });
     if (!titles.length) box.insertAdjacentHTML('beforeend', '<p class="note">Unlock achievements to earn titles.</p>');
 
     const prev = document.createElement('button');
@@ -256,7 +259,7 @@ export const GoalsUI = (() => {
       g.innerHTML = '';
       const mons = Object.keys(s.owned)
         .map(Number)
-        .filter(d => DEX_BY[d] && (!q || DEX_BY[d].name.toLowerCase().includes(q)));
+        .filter(d => DEX_BY[d] && (!q || U.fold(DEX_BY[d].name).includes(q)));
       for (const d of mons.slice(0, 120)) {
         for (const shiny of DB.ownsShiny(d) ? [false, true] : [false]) {
           const c = document.createElement('div');
@@ -275,7 +278,7 @@ export const GoalsUI = (() => {
         }
       }
     };
-    $('fav-q').oninput = () => fill($('fav-q').value.trim().toLowerCase());
+    $('fav-q').oninput = () => fill(U.fold($('fav-q').value));
     fill('');
   }
 

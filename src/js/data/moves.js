@@ -1075,7 +1075,8 @@ function poolFor(mon) {
  */
 function instance(id, lvl = 1) {
   const def = BY_ID[id];
-  const s = Object.assign({}, def, { id, def, lvl, t: 0 });
+  // dealt: damage done this run (damage meter, systems/recount.js).
+  const s = Object.assign({}, def, { id, def, lvl, t: 0, dealt: 0 });
   delete s.ups;
   for (let i = 0; i < lvl - 1; i++) applyMods(s, def.ups[i].m);
   return s;
@@ -1249,4 +1250,38 @@ function evolve(m) {
   return true;
 }
 
-export const Moves = { ALL: RAW, BY_ID, POOL, poolFor, instance, levelUp, nextUpText, startFor, EVO, NEED_NAME, evoInfo, evolve };
+// ---------------- targeting ----------------
+// Attacks that need a target in reach before they fire (the rest fire on their own).
+const TARGETED = ['melee', 'beam', 'projectile', 'boomerang', 'chain', 'meteor', 'dash', 'cone'];
+function needsTarget(m) {
+  return TARGETED.includes(m.kind);
+}
+/** How close the target must be for a targeted move to fire, px. */
+function reach(m) {
+  const r = Balance.combat.reach;
+  if (m.kind === 'melee') return m.radius + r.meleePad;
+  if (m.kind === 'beam') return m.radius + r.beamPad;
+  if (m.kind === 'boomerang') return m.radius + r.boomerangPad;
+  if (m.kind === 'chain') return r.chain;
+  if (m.kind === 'meteor') return r.meteor;
+  if (m.kind === 'dash') return m.radius + r.dashPad;
+  if (m.kind === 'cone') return m.speed * m.life + r.conePad;
+  return Balance.player.aim.range;
+}
+
+export const Moves = {
+  ALL: RAW,
+  BY_ID,
+  POOL,
+  poolFor,
+  instance,
+  levelUp,
+  nextUpText,
+  startFor,
+  EVO,
+  NEED_NAME,
+  evoInfo,
+  evolve,
+  needsTarget,
+  reach
+};

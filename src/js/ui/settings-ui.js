@@ -130,10 +130,30 @@ export const SettingsUI = (() => {
           ['mid', 'Medium'],
           ['low', 'Low']
         ]) +
+        section(
+          'Resolution',
+          'How many pixels the game draws. <b>Low</b> is much lighter on big screens (less heat and battery); the text looks a bit blockier. <b>Auto</b> goes low when the quality does (now: ×' +
+            Game.dpr +
+            ').'
+        ) +
+        choice('res', [
+          ['auto', 'Auto'],
+          ['high', 'High'],
+          ['low', 'Low']
+        ]) +
+        section('Frame limit', 'Fewer frames per second: less heat and battery. Menus always run at 30.') +
+        choice('fpsCap', [
+          [0, 'No limit'],
+          [120, '120'],
+          [60, '60'],
+          [30, '30']
+        ]) +
         section('Display') +
         toggle('dmgNumbers', 'Damage numbers', 'The numbers that pop up when you hit or get hit.') +
         toggle('calm', 'Less shaking and flashing', 'The camera shakes less and flashes are softer.') +
         toggle('fps', 'Show FPS', 'Frames per second, in the bottom corner.') +
+        toggle('recount', 'Damage meter', 'During a run, how much damage each move (and each teammate in co-op) deals. Key R.') +
+        toggle('gachaSkip', 'Open without animation', 'The gacha shows the results right away, without the slot machine.') +
         (canFull()
           ? `<div class="set-row"><div class="grow"><b>Fullscreen</b><small>Without browser bars.</small></div>
              <button class="btn small" id="set-full">${isFull() ? 'Exit' : 'Turn on'}</button></div>`
@@ -142,6 +162,13 @@ export const SettingsUI = (() => {
             : '');
     } else if (tab === 'ctl') {
       box.innerHTML =
+        section('During a run') +
+        `<div class="set-row"><div class="grow"><b>Ask before equipping</b><small>When you find your first item of a run, choose whether to equip it or keep going without one.</small></div></div>` +
+        choice('itemConfirm', [
+          ['drawback', 'Items with a downside'],
+          ['always', 'Always'],
+          ['never', 'Never']
+        ]) +
         section('On mobile or tablet') +
         `<p class="sub">Put your finger anywhere and drag to move: the joystick appears where you touch. Tap a move at the bottom to switch to it and the top-right button to pause. Play in landscape.</p>` +
         `<div class="set-row"><div class="grow"><b>Joystick size</b><small>How far you need to drag your finger.</small></div></div>` +
@@ -158,7 +185,9 @@ export const SettingsUI = (() => {
              <div><kbd>1</kbd>–<kbd>4</kbd> or click its icon</div><span>choose move</span>
              <div><kbd>Q</kbd> / <kbd>E</kbd></div><span>previous / next move</span>
              <div><kbd>Esc</kbd> or <kbd>P</kbd></div><span>pause</span>
+             <div><kbd>R</kbd></div><span>damage meter</span>
              <div><kbd>1</kbd>–<kbd>3</kbd></div><span>choose a card when leveling up</span>
+             <div><kbd>R</kbd></div><span>reroll the cards</span>
            </div>`;
     } else if (tab === 'acc') {
       renderAccount(box);

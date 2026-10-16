@@ -4,6 +4,7 @@
 import { DEX, DEX_BY } from '../data/pokedex.js';
 import { DB } from '../core/db.js';
 import { Audio } from '../core/audio.js';
+import { Settings } from '../core/settings.js';
 import { Gacha } from '../systems/gacha.js';
 import { Progress } from '../systems/progress.js';
 import { Icons } from './icons.js';
@@ -13,6 +14,7 @@ import { Slots } from './slots.js';
 export const GachaUI = (() => {
   const $ = UI.$;
   let busy = false;
+  let skipped = false; // this pull shows the cards without (the rest of) the slot machine
   let gen = 1;
 
   function init() {
@@ -20,6 +22,11 @@ export const GachaUI = (() => {
     $('pull-10').onclick = () => pull(10, 't1');
     $('pull-10b').onclick = () => pull(10, 't10');
     $('pull-close').onclick = close;
+    $('pull-skip').onclick = skip;
+    $('gacha-skip').onclick = () => {
+      Settings.set('gachaSkip', !Settings.get('gachaSkip'));
+      syncSkip();
+    };
 
     const tabs = $('gacha-gens');
     Gacha.BANNERS.forEach(b => {
@@ -91,6 +98,7 @@ export const GachaUI = (() => {
     $('pull-1').disabled = !Gacha.costOf(s, 1);
     $('pull-10').disabled = !Gacha.costOf(s, 10, 't1');
     $('pull-10b').disabled = !Gacha.costOf(s, 10, 't10');
+    syncSkip();
     UI.refreshCoins();
   }
 
@@ -107,20 +115,35 @@ export const GachaUI = (() => {
     Progress.checkAch();
     DB.commit(true);
     busy = true;
+    // Enter must not press the focused pull button again (it is the key to continue).
+    if (document.activeElement) document.activeElement.blur();
 
     const best = Math.max(...res.map(r => r.rarity));
     const fx = $('pull-fx'),
       slot = $('slot'),
       out = $('pull-results');
     out.innerHTML = '';
+    $('pull-summary').innerHTML = '';
     $('pull-close').classList.add('hidden');
-    slot.style.display = '';
+    // The slot machine (ui/slots.js), then the cards. With "Open without animation"
+    // (or Skip / Space / Enter halfway) the cards come out at once.
+    skipped = !!Settings.get('gachaSkip');
+    slot.style.display = skipped ? 'none' : '';
     fx.classList.remove('hidden');
-
-    // The slot machine (ui/slots.js), then the cards.
-    await Slots.play(slot, res);
+    if (!skipped) {
+      $('pull-skip').classList.remove('hidden');
+      await Slots.play(slot, res);
+      $('pull-skip').classList.add('hidden');
+    }
     Audio.sfx('burst', { rarity: best });
+    if (skipped) {
+      // The slot machine's big moments, so a skipped pull still sounds like one.
+      if (res.some(r => r.shiny)) Audio.sfx('shiny');
+      else if (best >= 5) Audio.sfx('legend');
+      Audio.sfx('reveal', { rarity: best });
+    }
     slot.style.display = 'none';
+    $('pull-summary').innerHTML = summary(res);
 
     for (const r of res) {
       const mon = DEX_BY[r.dex];
@@ -134,21 +157,65 @@ export const GachaUI = (() => {
         : `Duplicate · <span class="coin"></span> +${r.refund}`;
       c.insertAdjacentHTML('beforeend', `<b>${r.shiny ? Icons.html('shiny', 12) + ' ' : ''}${mon.name}</b><div class="tag">${tag}</div>`);
       out.appendChild(c);
-      Audio.sfx('reveal', { rarity: r.rarity });
-      await wait(n === 10 ? 150 : 0);
+      if (!skipped) {
+        Audio.sfx('reveal', { rarity: r.rarity });
+        await wait(n === 10 ? 150 : 0);
+      }
     }
     $('pull-close').classList.remove('hidden');
     busy = false;
   }
 
+  /** One line for a ×10: what's new, the best rarities, shinies and coins from duplicates. */
+  function summary(res) {
+    if (res.length < 2) return '';
+    const parts = [];
+    const fresh = res.filter(r => r.isNew).length;
+    if (fresh) parts.push(`<span>${fresh} new</span>`);
+    for (const k of [5, 4]) {
+      const c = res.filter(r => r.rarity === k).length;
+      if (c) parts.push(`<span style="color:${Gacha.RARITY_COLOR[k]}">${c} ${Gacha.RARITY_NAME[k]}</span>`);
+    }
+    const sh = res.filter(r => r.shiny).length;
+    if (sh) parts.push(`${Icons.html('shiny', 12)} <span>${sh} shiny</span>`);
+    const coins = res.reduce((a, r) => a + (r.isNew ? 0 : r.refund || 0), 0);
+    if (coins) parts.push(`<span class="coin"></span> +${coins}`);
+    return parts.join(' · ');
+  }
+
+  /** Skip the rest of the slot machine (button, Space or Enter). */
+  function skip() {
+    if (!busy || skipped) return;
+    skipped = true;
+    Slots.stop();
+  }
+
   function close() {
+    if (busy) return;
     $('pull-fx').classList.add('hidden');
     refresh();
+  }
+
+  /** Keys while the pull is on screen: Space/Enter skip the animation or continue; Esc continues. */
+  function key(k) {
+    if ($('pull-fx').classList.contains('hidden')) return false;
+    if (busy) {
+      if (k === 'space' || k === 'enter') skip();
+    } else if (k === 'space' || k === 'enter' || k === 'escape') close();
+    return true;
+  }
+
+  function syncSkip() {
+    const b = $('gacha-skip'),
+      on = !!Settings.get('gachaSkip');
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on);
   }
 
   return {
     init,
     open,
+    key,
     get open_() {
       return !$('pull-fx').classList.contains('hidden');
     }

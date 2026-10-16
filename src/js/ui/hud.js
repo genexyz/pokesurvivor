@@ -13,8 +13,11 @@ import { Spawner } from '../systems/spawner.js';
 import { Rift } from '../systems/rift.js';
 import { Events } from '../systems/events.js';
 import { Weather } from '../systems/weather.js';
+import { Recount } from '../systems/recount.js';
+import { Settings } from '../core/settings.js';
 import { Coop } from '../net/coop.js';
 import { Icons } from './icons.js';
+import { MoveTip } from './move-tip.js';
 import { Game } from '../game.js';
 
 export const HUD = (() => {
@@ -112,6 +115,136 @@ export const HUD = (() => {
     return true;
   }
 
+  /**
+   * Circle of an active effect: dark disc, `col` ring for the fraction `frac` left (blinks
+   * in the last 2 s), the icon (or the seconds left without one) and a label below.
+   */
+  function effect(ctx, cx, cy, r, frac, left, col, label, icon) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, 6.2832);
+    ctx.fillStyle = 'rgba(0,0,0,.6)';
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(255,255,255,.12)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r - 1.5, 0, 6.2832);
+    ctx.stroke();
+    if (left < 2 && Math.floor(left * 6) % 2) ctx.globalAlpha = 0.35;
+    ctx.strokeStyle = col;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r - 1.5, -Math.PI / 2, -Math.PI / 2 + 6.2832 * U.clamp(frac, 0, 1));
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    const is = Math.round(r * 1.3);
+    if (icon) Icons.draw(ctx, icon, Math.round(cx - is / 2), Math.round(cy - is / 2), is);
+    else {
+      ctx.font = F(800, 11);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = col;
+      ctx.fillText(String(Math.ceil(left)), cx, cy + 4);
+    }
+    ctx.font = F(800, 9);
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,.8)';
+    ctx.strokeText(label, cx, cy + r + 10);
+    ctx.fillStyle = col;
+    ctx.fillText(label, cx, cy + r + 10);
+    ctx.restore();
+  }
+
+  const xpGrad = { w: 0, g: null }; // the experience bar's gradient, rebuilt only on resize
+
+  // ---------- damage meter (systems/recount.js) ----------
+  // Top right, under the weather. Drawn on its own canvas every half second (one
+  // second on low quality); each frame only copies it. On narrow screens and on
+  // touch it starts folded to one line, and a tap opens or folds it.
+  const RW = 196,
+    RHEAD = 22,
+    RROW = 17,
+    RMAX = 5;
+  const rc = document.createElement('canvas');
+  let rAt = 0,
+    rH = 0,
+    rKey = '',
+    rOpen = null; // null = the default for the screen
+  function drawRecount(ctx, w, st, touch) {
+    const narrow = w < 1000 || touch;
+    const open = rOpen == null ? !narrow : rOpen;
+    const x = w - RW - 16 - (touch && !Touch.spot('pause') ? 56 : 0);
+    // Under the weather pill; on narrow screens, also under the boss bar.
+    const y = narrow ? 92 : Weather.current ? 46 : 14;
+    const now = performance.now(),
+      dpr = Camera.dpr || 1;
+    const key = (open ? 1 : 0) + ':' + dpr;
+    if (now - rAt > (Settings.fx === 0 ? 1000 : 500) || key !== rKey) {
+      rAt = now;
+      rKey = key;
+      paintRecount(open, Recount.rate(st.time), dpr);
+    }
+    ctx.drawImage(rc, x, y, RW, rH);
+    Touch.addButton(x, y, RW, open ? RHEAD : rH, () => (rOpen = !open), 4);
+  }
+  function paintRecount(open, rate, dpr) {
+    const team = Coop.active ? Recount.team() : null;
+    const rows = !open ? [] : team || Recount.rows();
+    const n = Math.min(RMAX, rows.length);
+    rH = RHEAD + (n ? n * RROW + 6 : 0);
+    rc.width = Math.ceil(RW * dpr);
+    rc.height = Math.ceil(rH * dpr);
+    const c = rc.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.clearRect(0, 0, RW, rH);
+    roundRect(c, 0, 0, RW, rH, 9);
+    c.fillStyle = 'rgba(0,0,0,.55)';
+    c.fill();
+    c.textBaseline = 'alphabetic';
+    c.font = F(800, 10);
+    c.textAlign = 'left';
+    c.fillStyle = '#ffd23f';
+    c.fillText('DAMAGE', 9, 15);
+    c.textAlign = 'right';
+    c.fillStyle = '#eaf2ff';
+    c.fillText(Recount.fmt(Recount.myTotal()) + ' · ' + Recount.fmt(rate) + '/s', RW - 9 - (open ? 0 : 12), 15);
+    if (!open) {
+      c.fillStyle = '#8fa3c4';
+      c.fillText('▾', RW - 8, 15);
+      return;
+    }
+    for (let i = 0; i < n; i++) {
+      const r = rows[i],
+        y = RHEAD + i * RROW;
+      const col = team ? r.color : (r.type && U.TYPE_COLOR[r.type]) || '#b0b8c8';
+      const bx = 26,
+        bw = RW - bx - 8;
+      roundRect(c, bx, y + 2, bw, RROW - 4, 4);
+      c.fillStyle = 'rgba(255,255,255,.07)';
+      c.fill();
+      roundRect(c, bx, y + 2, Math.max(4, bw * r.pct), RROW - 4, 4);
+      c.globalAlpha = 0.55;
+      c.fillStyle = col;
+      c.fill();
+      c.globalAlpha = 1;
+      if (team) {
+        c.beginPath();
+        c.arc(16, y + RROW / 2, 5, 0, 6.2832);
+        c.fillStyle = col;
+        c.fill();
+      } else if (r.id) Icons.draw(c, 'move:' + r.id, 8, y + 1, 15);
+      c.font = F(700, 10);
+      c.textAlign = 'left';
+      c.fillStyle = r.gone ? '#8fa3c4' : '#ffffff';
+      let name = r.name;
+      while (name.length > 3 && c.measureText(name).width > bw - 70) name = name.slice(0, -2);
+      if (name !== r.name) name += '…';
+      c.fillText(name, bx + 5, y + 12);
+      c.textAlign = 'right';
+      c.fillText(Recount.fmt(r.dmg) + ' · ' + Math.round(r.pct * 100) + '%', RW - 12, y + 12);
+    }
+  }
+
   function draw(ctx, w, h, pl, st) {
     ctx.save();
     ctx.textBaseline = 'alphabetic';
@@ -119,14 +252,27 @@ export const HUD = (() => {
     const touch = Touch.active;
 
     // ---------- experience bar (top edge) ----------
-    const xpF = pl.xp / pl.xpNext;
+    // With the numbers on it (numbers only: no words, nothing for the translator to do).
+    const xpF = U.clamp(pl.xp / pl.xpNext, 0, 1),
+      XH = 11;
     ctx.fillStyle = 'rgba(0,0,0,.5)';
-    ctx.fillRect(0, 0, w, 7);
-    const g = ctx.createLinearGradient(0, 0, w, 0);
-    g.addColorStop(0, '#4fd1ff');
-    g.addColorStop(1, '#a98bff');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w * U.clamp(xpF, 0, 1), 7);
+    ctx.fillRect(0, 0, w, XH);
+    if (xpGrad.w !== w) {
+      xpGrad.g = ctx.createLinearGradient(0, 0, w, 0);
+      xpGrad.g.addColorStop(0, '#4fd1ff');
+      xpGrad.g.addColorStop(1, '#a98bff');
+      xpGrad.w = w;
+    }
+    ctx.fillStyle = xpGrad.g;
+    ctx.fillRect(0, 0, w * xpF, XH);
+    ctx.font = F(800, 9);
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,.7)';
+    const xpTxt = Math.floor(pl.xp) + ' / ' + pl.xpNext + ' · ' + Math.floor(xpF * 100) + '%';
+    ctx.strokeText(xpTxt, w / 2, 9);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(xpTxt, w / 2, 9);
 
     // ---------- health + level ----------
     const px = 16,
@@ -146,24 +292,25 @@ export const HUD = (() => {
     ctx.textAlign = 'center';
     ctx.fillText(Math.ceil(pl.hp) + ' / ' + Math.round(pl.maxHp), px + 48 + 84, py + 26);
 
-    // active buffs
-    const COL = { atk: '#ff6b4d', spd: '#7fe0ff', def: '#b0b8c8', regen: '#5fe08a' };
-    const LBL = { atk: 'ATK', spd: 'SPD', def: 'DEF', regen: 'REG' };
-    let bx = px;
-    ctx.textAlign = 'left';
+    // ---------- active effects: buffs and altar power ----------
+    // A circle each, with the move's (or power's) icon and a ring that empties as it runs
+    // out (it blinks in the last seconds); below, the stacks or the seconds left.
+    const ER = w < 700 ? 14 : 17,
+      ey = py + 36 + ER;
+    let ex = px + ER;
+    const COL = Player.BUFF_COLOR;
     for (const k in pl.buffs) {
       const b = pl.buffs[k];
       if (b.n <= 0) continue;
-      ctx.font = F(800, 9);
-      const txt = LBL[k] + ' ×' + b.n;
-      const tw = ctx.measureText(txt).width + 12;
-      roundRect(ctx, bx, py + 34, tw, 15, 7);
-      ctx.fillStyle = 'rgba(0,0,0,.5)';
-      ctx.fill();
-      ctx.fillStyle = COL[k];
-      ctx.fillText(txt, bx + 6, py + 45);
-      bx += tw + 5;
+      effect(ctx, ex, ey, ER, b.t / (b.dur || 1), b.t, COL[k], '×' + b.n, b.src ? 'move:' + b.src : null);
+      ex += ER * 2 + 12;
     }
+    if (pl.power) {
+      const pw = pl.power;
+      effect(ctx, ex, ey, ER, pw.t / pw.dur, pw.t, pw.def.color, Math.ceil(pw.t) + 's', pw.def.icon);
+      ex += ER * 2 + 12;
+    }
+    const effects = ex > px + ER;
 
     // ---------- clock / biome / kills ----------
     ctx.textAlign = 'center';
@@ -227,22 +374,9 @@ export const HUD = (() => {
       ctx.restore();
     }
 
-    // Active altar power.
-    if (pl.power) {
-      const pw = pl.power,
-        txt = pw.def.name.toUpperCase() + ' ' + Math.ceil(pw.t) + 's';
-      ctx.font = F(800, 9);
-      ctx.textAlign = 'left';
-      const tw = ctx.measureText(txt).width + 12;
-      roundRect(ctx, bx, py + 34, tw, 15, 7);
-      ctx.fillStyle = 'rgba(0,0,0,.6)';
-      ctx.fill();
-      ctx.fillStyle = pw.def.color;
-      ctx.fillText(txt, bx + 6, py + 45);
-      bx += tw + 5;
-    }
+    if (Coop.active) drawCoop(ctx, w, h, pl, px, py + (effects ? 36 + ER * 2 + 20 : 40));
 
-    if (Coop.active) drawCoop(ctx, w, h, pl, px, py + (bx > px ? 56 : 40));
+    if (Settings.get('recount')) drawRecount(ctx, w, st, touch);
 
     // Rift: big pulsing arrow on the edge when off-screen; when visible, a
     // bouncing arrow above it; inside the arena, a countdown.
@@ -368,6 +502,7 @@ export const HUD = (() => {
       sy = U.clamp(pb[1] * h - S / 2, 24, h - S - 6);
     }
     const BOND = '#ff8ad8';
+    const tips = []; // where each slot is, for the move tooltip (ui/move-tip.js)
     const cdOf = m => (m.kind === 'orbit' ? 0 : U.clamp(m.t / (m.cd * pl.cdMul), 0, 1));
 
     for (let i = 0; i < n; i++) {
@@ -377,6 +512,7 @@ export const HUD = (() => {
       const on = i === pl.active;
       const x = sx + i * (S + GAP);
       const y = on ? sy - 6 : sy;
+      if (m) tips.push({ x, y, w: S, h: S, group: g, key: i + 1 });
       // Tapping (or clicking) an icon activates that move.
       if (m)
         Touch.addButton(
@@ -495,6 +631,7 @@ export const HUD = (() => {
       ctx.strokeStyle = pl.item ? '#ffd23f' : 'rgba(140,170,210,.18)';
       ctx.stroke();
       if (pl.item) {
+        tips.push({ x: ix, y: iy, w: S, h: S, item: pl.item });
         Icons.draw(ctx, pl.item, ix + (S - 36) / 2, iy + (S - 36) / 2, 36);
         ctx.font = F(700, 9);
         ctx.textAlign = 'center';
@@ -502,6 +639,8 @@ export const HUD = (() => {
         ctx.fillText(Items.BY[pl.item].name, ix + S / 2, iy - 6);
       }
     }
+
+    MoveTip.frame(tips, pl);
 
     // ---------- pause button (touch) ----------
     if (touch) {

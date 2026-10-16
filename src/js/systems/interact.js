@@ -31,11 +31,13 @@ export const Interact = (() => {
   const num = U.num,
     pct = U.pct;
   /** An altar power multiplies a stat by PW[id] for a while (text built from the value). */
-  function power(id, name, color, stat, text) {
+  function power(id, name, color, icon, stat, text) {
     return {
       id,
       name,
       color,
+      icon, // HUD circle (ui/icons.js)
+      stat, // the player stat it multiplies (ui/stats-ui.js shows stats without it)
       get desc() {
         return text(PW[id]);
       },
@@ -50,10 +52,10 @@ export const Interact = (() => {
     };
   }
   const POWERS = [
-    power('dmg', 'Fury', '#ff5f6d', 'atkMul', k => `damage ×${num(k)}`),
-    power('spd', 'Thunderbolt', '#5fd4ff', 'spdMul', k => `+${pct(k - 1)}% speed`),
-    power('mag', 'Magnet', '#ff8ad8', 'magnet', () => 'you pull everything from afar'),
-    power('cd', 'Haste', '#ffd23f', 'cdMul', k => `-${pct(1 - k)}% cooldown`)
+    power('dmg', 'Fury', '#ff5f6d', 'fist', 'atkMul', k => `damage ×${num(k)}`),
+    power('spd', 'Thunderbolt', '#5fd4ff', 'boot', 'spdMul', k => `+${pct(k - 1)}% speed`),
+    power('mag', 'Magnet', '#ff8ad8', 'magnet', 'magnet', () => 'you pull everything from afar'),
+    power('cd', 'Haste', '#ffd23f', 'clock', 'cdMul', k => `-${pct(1 - k)}% cooldown`)
   ];
   const authority = () => !Coop.active || Coop.isHost;
   let healShown = 0,

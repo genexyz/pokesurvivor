@@ -350,12 +350,12 @@ export const World = (() => {
     return out;
   }
 
-  /** Nearest rock or chest (to aim at when there are no enemies). */
-  function nearestBreakable(x, y, r) {
+  /** Nearest rock or chest (to aim at when there are no enemies); `type` limits it to one kind. */
+  function nearestBreakable(x, y, r, type) {
     let best = null,
       bd = r * r;
     for (const p of propsInCircle(x, y, r)) {
-      if (!p.solid) continue;
+      if (!p.solid || (type && p.type !== type)) continue;
       const d = U.dist2(x, y, p.x, p.y);
       if (d < bd) {
         bd = d;
@@ -607,8 +607,11 @@ export const World = (() => {
   }
 
   /** Visible props, to merge into the Y order with the entities. */
+  /** Props on screen. The same array every call (read it right away, don't keep it). */
+  const visOut = [];
   function visibleProps(cam) {
-    const out = [];
+    const out = visOut;
+    out.length = 0;
     for (const [cx, cy] of visibleChunks(cam, 60)) {
       for (const p of chunkData(cx, cy).props) if (cam.sees(p.x, p.y, 70)) out.push(p);
     }
@@ -737,11 +740,17 @@ export const World = (() => {
   }
 
   /** Vignette in screen coordinates. */
+  // The gradient only depends on the screen size: built again only when it changes.
+  const vig = { w: 0, h: 0, g: null };
   function drawVignette(ctx, w, h) {
-    const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.34, w / 2, h / 2, Math.max(w, h) * 0.78);
-    g.addColorStop(0, 'rgba(0,0,0,0)');
-    g.addColorStop(1, 'rgba(0,0,0,.5)');
-    ctx.fillStyle = g;
+    if (vig.w !== w || vig.h !== h) {
+      vig.g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.34, w / 2, h / 2, Math.max(w, h) * 0.78);
+      vig.g.addColorStop(0, 'rgba(0,0,0,0)');
+      vig.g.addColorStop(1, 'rgba(0,0,0,.5)');
+      vig.w = w;
+      vig.h = h;
+    }
+    ctx.fillStyle = vig.g;
     ctx.fillRect(0, 0, w, h);
   }
 

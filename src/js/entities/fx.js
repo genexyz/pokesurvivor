@@ -351,21 +351,29 @@ export const FX = (() => {
       });
     }
 
-    // Damage numbers.
+    // Damage numbers. One save/restore for all of them and the font only set when it
+    // changes (with a horde there are hundreds and this was a good share of the frame).
+    if (!texts.length) return;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,.75)';
+    let big = null;
     for (const t of texts) {
       const k = 1 - t.t / t.life;
-      ctx.save();
+      if (t.big !== big) {
+        big = t.big;
+        ctx.font = big ? FONT_BIG : FONT_SMALL;
+      }
       ctx.globalAlpha = Math.min(1, k * 2.2);
-      ctx.font = (t.big ? '700 20px' : '700 13px') + ' Pixelify,"Segoe UI",sans-serif';
-      ctx.textAlign = 'center';
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(0,0,0,.75)';
       ctx.strokeText(t.s, t.x, t.y);
       ctx.fillStyle = t.color;
       ctx.fillText(t.s, t.x, t.y);
-      ctx.restore();
     }
+    ctx.restore();
   }
+  const FONT_BIG = '700 20px Pixelify,"Segoe UI",sans-serif',
+    FONT_SMALL = '700 13px Pixelify,"Segoe UI",sans-serif';
 
   return {
     clear,

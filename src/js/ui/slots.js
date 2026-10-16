@@ -8,7 +8,7 @@
  *   last reel keeps you waiting and the lights go wild.
  *   The ×10 is 10 quick pulls; each prize drops into the tray as a ball.
  *
- * A click speeds up the animation.
+ * A click speeds up the animation; stop() ends it at once (play() then resolves early).
  */
 import { Audio } from '../core/audio.js';
 import { Gacha } from '../systems/gacha.js';
@@ -100,6 +100,7 @@ export const Slots = (() => {
         1,
         ten ? 0.12 : 0.22
       );
+      if (!st) return; // stopped (skip)
       for (const rl of st.reels) {
         rl.spin = true;
         rl.speed = 520;
@@ -112,8 +113,10 @@ export const Slots = (() => {
         0,
         ten ? 0.1 : 0.2
       );
+      if (!st) return;
       st.win = null;
       await wait(ten ? 0.18 : 0.6);
+      if (!st) return;
       const big = r.rarity >= 4 || r.shiny;
       for (let k = 0; k < 3; k++) {
         if (k === 2 && big) {
@@ -129,10 +132,12 @@ export const Slots = (() => {
             120,
             ten ? 0.5 : 1.1
           );
+          if (!st) return;
         }
         stopReel(st.reels[k], symOf(r));
         Audio.sfx('shake');
         await wait(ten ? 0.08 : 0.32);
+        if (!st) return;
       }
       st.frenzy = 0;
       // Prize.
@@ -145,6 +150,7 @@ export const Slots = (() => {
       if (big) burst(colOf(r), r.rarity === 5 || r.shiny ? 60 : 30);
       st.tray.push({ sym: symOf(r), y: 104, vy: 0, done: false });
       await wait(ten ? (big ? 0.7 : 0.28) : 1.0);
+      if (!st) return;
     }
     await wait(0.4);
     stopAll();
@@ -383,5 +389,11 @@ export const Slots = (() => {
     R(x + REEL_W, REEL_Y, 1, REEL_H, C.dark);
   }
 
-  return { play, stop: stopAll };
+  return {
+    play,
+    stop: stopAll,
+    get playing() {
+      return !!st;
+    }
+  };
 })();

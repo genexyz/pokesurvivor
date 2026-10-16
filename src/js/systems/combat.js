@@ -26,6 +26,7 @@ import { FX } from '../entities/fx.js';
 import { Projectiles } from '../entities/projectile.js';
 import { EnemyMgr } from '../entities/enemy.js';
 import { Coop } from '../net/coop.js';
+import { Recount } from './recount.js';
 
 export const Combat = (() => {
   const B = Balance.combat;
@@ -116,24 +117,12 @@ export const Combat = (() => {
     }
   }
 
-  const TARGETED = ['melee', 'beam', 'projectile', 'boomerang', 'chain', 'meteor', 'dash', 'cone'];
-  function needsTarget(m) {
-    return TARGETED.includes(m.kind);
-  }
-  function reach(m) {
-    const r = B.reach;
-    if (m.kind === 'melee') return m.radius + r.meleePad;
-    if (m.kind === 'beam') return m.radius + r.beamPad;
-    if (m.kind === 'boomerang') return m.radius + r.boomerangPad;
-    if (m.kind === 'chain') return r.chain;
-    if (m.kind === 'meteor') return r.meteor;
-    if (m.kind === 'dash') return m.radius + r.dashPad;
-    if (m.kind === 'cone') return m.speed * m.life + r.conePad;
-    return Balance.player.aim.range;
-  }
+  const needsTarget = Moves.needsTarget;
+  const reach = Moves.reach;
 
+  // src: the move that fired it (damage meter, see systems/recount.js).
   function payload(m) {
-    return { burn: m.burn || 0, poison: m.poison || 0, slow: m.slow || 0, knock: m.knock || 0, mtype: m.type };
+    return { burn: m.burn || 0, poison: m.poison || 0, slow: m.slow || 0, knock: m.knock || 0, mtype: m.type, src: m };
   }
 
   function fireProjectiles(pl, m) {
@@ -287,7 +276,7 @@ export const Combat = (() => {
   }
 
   function buff(pl, m) {
-    pl.addBuff(m.stat, m.amount, m.dur, m.stacks | 0);
+    pl.addBuff(m.stat, m.amount, m.dur, m.stacks | 0, m.id);
     const col = U.TYPE_COLOR[m.type];
     FX.ring(pl.x, pl.y, pl.r * 2.4, pl.r * 1.1, col, 0.35, 2.5);
     const vis = VFX.forMove(m);
@@ -809,9 +798,16 @@ export const Combat = (() => {
     dmg *= (type ? Weather.attackMult(type, e.types) : 1) * (crit ? B.crit.mul : 1);
     e.hurt(dmg, col, dx, dy, knock, crit ? 'crit' : type ? Types.label(Types.mult(type, e.types)) : null);
     pl.dmgDealt += dmg;
-    if (!ghost) pl.onDealt(dmg);
-    if (st.burn) e.applyBurn(st.burn);
-    if (st.poison) e.applyPoison(st.poison);
+    // The move it came from (a projectile carries it in src): damage meter and who gets
+    // the burn/poison ticks. Counted before shields and overkill, like any damage meter.
+    const mv = st.src || st,
+      mid = mv.dealt !== undefined ? mv.id : null;
+    if (!ghost) {
+      pl.onDealt(dmg);
+      if (mid) mv.dealt += dmg;
+    }
+    if (st.burn) e.applyBurn(st.burn, mid);
+    if (st.poison) e.applyPoison(st.poison, mid);
     if (st.slow) e.applySlow(st.slow);
   }
 
@@ -951,7 +947,11 @@ export const Combat = (() => {
       e.strike(pl);
       pl.hurt(e.dmg, e.atkType);
       const helmet = Balance.items.rockyHelmet;
-      if (pl.hasItem('rockyhelmet')) e.hurt(helmet.dmg + pl.level * helmet.perLevel, '#9aa6b5', e.x - pl.x, e.y - pl.y, helmet.knock);
+      if (pl.hasItem('rockyhelmet')) {
+        const d = helmet.dmg + pl.level * helmet.perLevel;
+        e.hurt(d, '#9aa6b5', e.x - pl.x, e.y - pl.y, helmet.knock);
+        Recount.other(pl, d);
+      }
       const [nx, ny] = U.norm(e.x - pl.x, e.y - pl.y);
       e.kx += nx * B.contact.push;
       e.ky += ny * B.contact.push;

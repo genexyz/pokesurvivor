@@ -10,6 +10,8 @@ import { LevelUp } from '../systems/levelup.js';
 import { Social } from '../net/social.js';
 import { Icons } from './icons.js';
 import { UI } from './ui.js';
+import { StatsUI } from './stats-ui.js';
+import { Recount } from '../systems/recount.js';
 import { Game } from '../game.js';
 
 export const RunUI = (() => {
@@ -66,8 +68,10 @@ export const RunUI = (() => {
             ? `<span class="tag-chip" style="background:${c.color}">${c.tag}</span>`
             : `<span class="tag-chip" style="background:${c.color === '#ffd23f' ? '#ffd23f' : '#9fb1c9'}">${c.tag}</span>`;
       if (c.type === 'evo') el.classList.add('evo');
+      // A stat card says what it does to your number: "+23% → +31% · 3/8".
+      const pv = c.type === 'stat' && Game.player ? StatsUI.preview(Game.player, c.key.slice(5)) : null;
       el.innerHTML = `<div class="ico" style="background:${c.color}33">${Icons.html(c.icon, 32)}</div>
-         <div class="txt"><div class="nm">${c.title} ${tag}</div><div class="ds">${c.desc}</div></div>
+         <div class="txt"><div class="nm">${c.title} ${tag}</div><div class="ds">${c.desc}</div>${pv ? `<div class="st-pv">${pv}</div>` : ''}</div>
          <div class="key">${i + 1}</div>`;
       el.dataset.sfx = 'none'; // the game plays its own sound on pick
       el.onclick = () => pick(i);
@@ -140,7 +144,9 @@ export const RunUI = (() => {
           : ''
       }
       ${r.record ? '<div style="grid-column:1/-1;text-align:center" class="gold">New time record!</div>' : ''}
-      <div style="grid-column:1/-1"><span>Seed</span><b translate="no">${RNG.code()}</b></div>`;
+      <div style="grid-column:1/-1"><span>Seed</span><b translate="no">${RNG.code()}</b></div>
+      ${r.damage && r.damage.total ? `<details class="over-more" style="grid-column:1/-1"><summary>Damage</summary>${StatsUI.damageHtml(r.damage)}</details>` : ''}
+      ${r.player ? `<details class="over-more" style="grid-column:1/-1"><summary>Stats</summary>${StatsUI.statsHtml(r.player)}</details>` : ''}`;
     $('btn-again').onclick = onBack;
     if (r.caught && r.caught.length) {
       const row = $('over-caught');
@@ -154,27 +160,48 @@ export const RunUI = (() => {
     UI.show('scr-over');
   }
 
-  /** You found an item while already holding one: which one do you keep? */
+  /*
+   * You found an item: keep the one you hold or switch; or, holding none, equip it or
+   * go on without it. The first card is always the safe one (it is what Esc picks), and
+   * for a moment after it opens nothing can be picked: the 1-4 keys also switch moves and
+   * a key or tap that was already on its way would choose a card without reading it.
+   */
+  const ITEM_GRACE = 300; // ms
+  let itemOpenAt = 0;
   function showItemChoice(cur, next, cb) {
     const box = $('item-cards');
     box.innerHTML = '';
-    [
-      [cur, 'Keep'],
-      [next, 'Switch to']
-    ].forEach(([id, verb], i) => {
-      const it = Items.BY[id];
+    const nx = Items.BY[next];
+    const cards = cur
+      ? [
+          { id: cur, nm: `Keep ${Items.BY[cur].name}`, ds: Items.BY[cur].desc, ico: Icons.html(cur, 36) },
+          { id: next, nm: `Switch to ${nx.name}`, ds: nx.desc, ico: Icons.html(next, 36), gold: true }
+        ]
+      : [
+          { id: null, nm: 'Stay without item', ds: 'Keep going without holding anything.', ico: Icons.html('ban', 36) },
+          { id: next, nm: `Equip ${nx.name}`, ds: nx.desc, ico: Icons.html(next, 36), gold: true }
+        ];
+    cards.forEach((c, i) => {
       const el = document.createElement('div');
-      el.className = 'card' + (i === 1 ? ' evo' : '');
-      el.innerHTML = `<div class="ico">${Icons.html(id, 36)}</div>
-        <div class="txt"><div class="nm">${verb} ${it.name}</div><div class="ds">${it.desc}</div></div>
+      el.className = 'card' + (c.gold ? ' evo' : '');
+      el.innerHTML = `<div class="ico">${c.ico}</div>
+        <div class="txt"><div class="nm">${c.nm}</div><div class="ds">${c.ds}</div></div>
         <div class="key">${i + 1}</div>`;
       el.onclick = () => {
+        if (performance.now() - itemOpenAt < ITEM_GRACE) return;
         UI.hide('scr-item');
-        cb(id);
+        cb(c.id);
       };
       box.appendChild(el);
     });
+    $('item-sub').textContent = cur ? 'You can only hold one' : nx.drawback ? 'It has a downside: equip it?' : 'Equip it now?';
+    itemOpenAt = performance.now();
     UI.show('scr-item');
+  }
+  /** Keys 1/2 (i = 0/1) or Esc (the safe card). */
+  function pickItem(i) {
+    const el = document.querySelectorAll('#item-cards .card')[i];
+    if (el) el.click();
   }
 
   // ---------------- bond: which moves get merged ----------------
@@ -247,7 +274,19 @@ export const RunUI = (() => {
     renderBond();
   }
 
+  // Pause tabs: Run (the buttons) · Stats · Damage. The last one chosen stays for next time.
+  let pauseTab = 'run';
+  function pauseShowTab(t) {
+    pauseTab = t;
+    document.querySelectorAll('#pause-tabs .gen-tab').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+    for (const k of ['run', 'stats', 'dmg']) $('pause-' + k).classList.toggle('hidden', k !== t);
+    const p = Game.player;
+    if (p && t === 'stats') $('pause-stats').innerHTML = StatsUI.statsHtml(p);
+    if (p && t === 'dmg') $('pause-dmg').innerHTML = StatsUI.damageHtml(Recount.snapshot(Game.time));
+  }
+
   function showPause(coop = false) {
+    pauseShowTab(pauseTab);
     UI.soundControls($('pause-sound'));
     $('pause-coop').classList.toggle('hidden', !coop);
     $('btn-quit').textContent = coop ? 'Leave the game' : 'Quit run';
@@ -260,12 +299,14 @@ export const RunUI = (() => {
   function wirePause(onResume, onQuit) {
     $('btn-resume').onclick = onResume;
     $('btn-quit').onclick = onQuit;
+    document.querySelectorAll('#pause-tabs .gen-tab').forEach(b => (b.onclick = () => pauseShowTab(b.dataset.t)));
   }
 
   return {
     showLevelUp,
     reroll,
     showItemChoice,
+    pickItem,
     showBond,
     pickBond,
     bondBack,

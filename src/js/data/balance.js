@@ -327,7 +327,9 @@ Balance.player = {
     threatPad: 24, // "touching you" = within body radius + this, px
     bossRange: 330, // a boss closer than this gets priority, px
     range: 520, // farthest enemy auto-aim picks, px (also the default attack reach)
-    breakableRange: 200 // with no enemy, aim at a rock/chest this close, px
+    breakableRange: 200, // with no enemy, aim at a rock/chest this close, px
+    chestNear: 60, // a small chest this close beats even the enemy touching you, px
+    chestFar: 100 // a small chest this close beats the boss and the nearest enemy, px
   }
 };
 
