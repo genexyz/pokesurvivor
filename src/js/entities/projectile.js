@@ -5,11 +5,17 @@
  * `rehit` seconds).
  *
  * They live on the GROUND plane (like entities' feet) and are drawn
- * raised G.LIFT units with their shadow below. Walls and solid
+ * raised LIFT units with their shadow below. Walls and solid
  * objects stop them (see combat.js).
  */
-G.Projectiles = (() => {
-  const B = G.Balance.combat;
+import { LIFT, U } from '../core/util.js';
+import { Balance } from '../data/balance.js';
+import { Camera } from '../core/camera.js';
+import { VFX } from './vfx.js';
+import { FX } from './fx.js';
+
+export const Projectiles = (() => {
+  const B = Balance.combat;
   let list = [];
   let nextId = 1;
 
@@ -103,11 +109,11 @@ G.Projectiles = (() => {
           p.hits = new Set();
         }
         if (p.back) {
-          const [dx, dy] = G.U.norm(o.x - p.x, o.y - p.y);
+          const [dx, dy] = U.norm(o.x - p.x, o.y - p.y);
           const bm = B.boomerang;
-          p.vx = G.U.damp(p.vx, dx * p.bsp, bm.returnDamp, dt);
-          p.vy = G.U.damp(p.vy, dy * p.bsp, bm.returnDamp, dt);
-          if (G.U.dist2(p.x, p.y, o.x, o.y) < (o.r + bm.catchPad) ** 2) {
+          p.vx = U.damp(p.vx, dx * p.bsp, bm.returnDamp, dt);
+          p.vy = U.damp(p.vy, dy * p.bsp, bm.returnDamp, dt);
+          if (U.dist2(p.x, p.y, o.x, o.y) < (o.r + bm.catchPad) ** 2) {
             list.splice(i, 1);
             continue;
           }
@@ -118,27 +124,27 @@ G.Projectiles = (() => {
       if (p.homing > 0 && p.friendly) {
         const tg = nearest(enemies, p.x, p.y, B.projectile.homingRange);
         if (tg) {
-          const [dx, dy] = G.U.norm(tg.x - p.x, tg.cy() - p.y);
+          const [dx, dy] = U.norm(tg.x - p.x, tg.cy() - p.y);
           const sp = Math.hypot(p.vx, p.vy);
-          p.vx = G.U.damp(p.vx, dx * sp, p.homing, dt);
-          p.vy = G.U.damp(p.vy, dy * sp, p.homing, dt);
+          p.vx = U.damp(p.vx, dx * sp, p.homing, dt);
+          p.vy = U.damp(p.vy, dy * sp, p.homing, dt);
         }
       }
 
       p.px = p.x;
       p.py = p.y; // for swept collision (see combat.js)
-      if (p.vis && p.vis.trail && G.Camera.sees(p.x, p.y, 20)) {
+      if (p.vis && p.vis.trail && Camera.sees(p.x, p.y, 20)) {
         p.trailT = (p.trailT || 0) - dt;
         if (p.trailT <= 0) {
           p.trailT = 0.04;
-          G.FX.trail(p.vis.trail, p.vis.pal, p.x, p.y - G.LIFT, p.vx, p.vy);
+          FX.trail(p.vis.trail, p.vis.pal, p.x, p.y - LIFT, p.vx, p.vy);
         }
       }
       p.x += p.vx * dt;
       p.y += p.vy * dt;
 
       // Out of view with a generous margin -> discarded.
-      if (!G.Camera.sees(p.x, p.y, B.projectile.despawnMargin)) {
+      if (!Camera.sees(p.x, p.y, B.projectile.despawnMargin)) {
         list.splice(i, 1);
         continue;
       }
@@ -150,7 +156,7 @@ G.Projectiles = (() => {
       bd = maxDist * maxDist;
     for (const e of enemies) {
       if (e.dead) continue;
-      const d = G.U.dist2(x, y, e.x, e.cy());
+      const d = U.dist2(x, y, e.x, e.cy());
       if (d < bd) {
         bd = d;
         best = e;
@@ -165,7 +171,7 @@ G.Projectiles = (() => {
   }
 
   function draw(ctx) {
-    const L = G.LIFT;
+    const L = LIFT;
     // Shadows first, all together.
     ctx.fillStyle = 'rgba(0,0,0,.25)';
     for (const p of list) {
@@ -182,13 +188,13 @@ G.Projectiles = (() => {
       ctx.fill();
     }
     for (const p of list) {
-      const v = p.vis || G.VFX.forType('normal');
+      const v = p.vis || VFX.forType('normal');
       const shape = v.proj;
       const a = p.orb ? 1 : Math.min(1, (p.life - p.t) * 4);
       let angle = 0;
-      if (G.VFX.isDir(shape)) angle = p.orb ? p.oa + Math.PI / 2 : Math.atan2(p.vy, p.vx);
-      else if (G.VFX.spins(shape)) angle = p.t * 9;
-      G.VFX.draw(ctx, shape, v.pal, p.x, p.y - L, {
+      if (VFX.isDir(shape)) angle = p.orb ? p.oa + Math.PI / 2 : Math.atan2(p.vy, p.vx);
+      else if (VFX.spins(shape)) angle = p.t * 9;
+      VFX.draw(ctx, shape, v.pal, p.x, p.y - L, {
         angle,
         alpha: a,
         scale: p.r >= 8 ? 1.5 : 1,

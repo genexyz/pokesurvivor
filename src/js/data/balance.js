@@ -1,7 +1,7 @@
 /* ============ balance.js — every gameplay number in one place ============
- * Tuning lives here and only here: logic files read G.Balance.<section>.<key>
+ * Tuning lives here and only here: logic files read Balance.<section>.<key>
  * at the moment they use it (through a section alias like
- * `const B = G.Balance.spawn`), never a copy taken at load time, so changing a
+ * `const B = Balance.spawn`), never a copy taken at load time, so changing a
  * value here (or live, from the ?dev panel) changes it everywhere.
  *
  * Content tables stay in their own data files (moves.js, items.js,
@@ -15,12 +15,14 @@
  *   run, spawn, drops, interact, coop, gacha · enemies · player, combat,
  *   levelup, items · events, rift, judgment, hazards, weather
  */
-G.Balance = {};
+import { U } from '../core/util.js';
+
+export const Balance = {};
 
 // ================= Run flow, spawning, loot, interactables, co-op and gacha =================
 
 /** Enemy waves, swarms and wild shinies (systems/spawner.js). */
-G.Balance.spawn = {
+Balance.spawn = {
   // Cap on simultaneous enemies. Past eliteFrom × cap, new spawns are elite.
   cap: 64,
   eliteFrom: 0.85, // fraction of the cap
@@ -32,7 +34,7 @@ G.Balance.spawn = {
   /** Extra toughness over the run: ×3.3 at first, up to ×5 around minute 6. */
   hpK: t => 3.3 + Math.min(1.7, t / 210),
   /** Enemies per second at run time t (seconds). */
-  rate: t => (1.6 + t * 0.028 + Math.pow(t / 60, 1.6) * 0.5) * G.Balance.spawn.density,
+  rate: t => (1.6 + t * 0.028 + Math.pow(t / 60, 1.6) * 0.5) * Balance.spawn.density,
   bossFightRate: 0.25, // trickle multiplier while a boss is alive (and no swarms)
   shinyRate: 1 / 4096, // chance that a wild enemy or boss is shiny
   ring: { min: 10, max: 70 }, // spawn distance beyond the view's outer radius (px)
@@ -49,7 +51,7 @@ G.Balance.spawn = {
 };
 
 /** Pickups dropped by enemies and broken props, and what pickups do. */
-G.Balance.drops = {
+Balance.drops = {
   xpBigFrom: 20, // an XP orb worth at least this is a big orb
   ticketRate: 1 / 400, // a normal enemy drops a gacha ticket (was 1/260 until 2026-10-10)
   // One roll per normal kill, cumulative thresholds: < heal → berry, < magnet → magnet, < bomb → bomb.
@@ -73,7 +75,7 @@ G.Balance.drops = {
 };
 
 /** Altars, springs, locked chests and traps (systems/interact.js). */
-G.Balance.interact = {
+Balance.interact = {
   chestTime: 3.5, // seconds next to a locked chest to open it
   chestR: { min: 46, pad: 24 }, // reach: max(min, chest r + your r + pad)
   chestDecay: 1.5, // progress lost per second while away (× dt)
@@ -100,7 +102,7 @@ G.Balance.interact = {
 };
 
 /** Run flow and end-of-run rewards (game.js, systems/progress.js). */
-G.Balance.run = {
+Balance.run = {
   biomeLength: 240, // seconds per biome
   levelXpFallback: 20, // XP a locked chest gives when there is no player
   deathDelay: { solo: 1.3, group: 1.6 }, // seconds of faint animation before the summary
@@ -112,7 +114,7 @@ G.Balance.run = {
 };
 
 /** Co-op difficulty scaling (net/coop.js). n = number of players. */
-G.Balance.coop = {
+Balance.coop = {
   /** Spawn-rate multiplier. */
   scaleRate: n => 1 + 0.75 * Math.max(0, n - 1),
   /** Enemy HP multiplier. */
@@ -122,7 +124,7 @@ G.Balance.coop = {
 };
 
 /** Gacha banners (systems/gacha.js). Meta-progression: rolls stay on Math.random. */
-G.Balance.gacha = {
+Balance.gacha = {
   rates: [
     // [rarity, weight %]
     [1, 45],
@@ -140,7 +142,7 @@ G.Balance.gacha = {
 
 // ================= Wild Pokémon: definitions, scaling, statuses, behaviors, bosses, drops =================
 
-G.Balance.enemies = {
+Balance.enemies = {
   // ---------------- definitions (data/enemies.js) ----------------
   def: {
     // Per-Pokémon HP factor: base HP / div, clamped.
@@ -299,7 +301,7 @@ G.Balance.enemies = {
 
 // ================= Player, combat, level-up and items =================
 
-G.Balance.player = {
+Balance.player = {
   magnet: 78, // base pickup (magnet) radius, px; multiplied by the Magnet upgrade
   moveSlots: 4, // move slots (a bond joins moves into one slot)
   bondMax: 4, // most moves a single bond group can hold
@@ -329,7 +331,7 @@ G.Balance.player = {
   }
 };
 
-G.Balance.combat = {
+Balance.combat = {
   retry: 0.05, // a targeted move with no target in reach checks again after this, s
   minCd: 0.05, // shortest possible move cooldown, s
   crit: { mul: 1.5 }, // critical hit damage multiplier (chance comes from Upgrades)
@@ -413,7 +415,7 @@ G.Balance.combat = {
   }
 };
 
-G.Balance.levelup = {
+Balance.levelup = {
   offer: 3, // cards per level-up
   freeRerolls: 1, // rerolls per run before Upgrades (read in ui/run-ui.js)
   newSample: 6, // new-move candidates drawn from the pool
@@ -424,7 +426,7 @@ G.Balance.levelup = {
   armorCap: 0.7 // the Armor card never takes damage reduction above this
 };
 
-G.Balance.items = {
+Balance.items = {
   lifeOrb: { cost: 0.01, min: 1 }, // HP lost per attack: fraction of max HP, at least `min`
   focusSash: { cooldown: 60, invuln: 1.2 }, // s between saves; i-frames after a save, s
   shellBell: { frac: 0.04, cap: 4, rate: 4 }, // heal = damage × frac, pending heal capped at `cap`, paid at `rate` HP/s
@@ -434,7 +436,7 @@ G.Balance.items = {
 // ================= Mid-run events, rift, Judgment of Arceus, hazards and weather =================
 
 /** Mid-run events (systems/events.js). */
-G.Balance.events = {
+Balance.events = {
   every: [240, 300], // seconds between events (random in range)
   bossRetry: 10, // a boss is alive when an event is due: try again after (s)
   ids: ['horde', 'gold', 'lost'], // event pool (never the same one twice in a row)
@@ -483,7 +485,7 @@ G.Balance.events = {
 };
 
 /** Rifts and the legendary arena (systems/rift.js). The legendary stats are also used by the Judgment. */
-G.Balance.rift = {
+Balance.rift = {
   from: 75, // no rifts before this run time (s)
   stopBeforeJudgment: 120, // no rifts in the last seconds before the Judgment
   check: 30, // seconds between open attempts
@@ -506,7 +508,7 @@ G.Balance.rift = {
   revive: 0.3, // HP fraction you come back with if you were down
   legend: {
     hp: t => 3200 + t * 9, // base HP at run time t (s)
-    spd: mon => G.U.clamp(48 + (mon.spd - 78) * 0.6, 48, 105), // px/s from the species' Speed stat
+    spd: mon => U.clamp(48 + (mon.spd - 78) * 0.6, 48, 105), // px/s from the species' Speed stat
     dmg: t => 36 + t / 20, // touch damage
     xp: t => 500 + t * 1.2,
     shotDmg: t => 18 + t / 40, // ranged attack damage
@@ -517,7 +519,7 @@ G.Balance.rift = {
 };
 
 /** Arceus's Judgment (systems/judgment.js). */
-G.Balance.judgment = {
+Balance.judgment = {
   at: 30 * 60, // run time when it starts (s)
   arenaR: 24, // arena radius (tiles)
   queue: 40, // legendaries rolled for the queue (it loops)
@@ -573,13 +575,13 @@ G.Balance.judgment = {
 };
 
 /** Telegraphed attacks (systems/hazards.js). Their damage and timing come from whoever creates them. */
-G.Balance.hazards = {
+Balance.hazards = {
   linger: 0.3, // seconds a hazard stays after hitting (default `end`)
   bodyFrac: 0.6 // fraction of a Pokémon's radius that counts as inside a hazard
 };
 
 /** Weather (systems/weather.js). */
-G.Balance.weather = {
+Balance.weather = {
   from: 120, // no weather before this run time (s)
   check: 60, // seconds between attempts
   chance: 0.18, // chance per attempt

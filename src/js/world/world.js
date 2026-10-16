@@ -26,10 +26,25 @@
  * Chunks are split into DATA (cheap, always) and IMAGE (baked at
  * art resolution and only for visible ones).
  */
-G.World = (() => {
-  const T = G.Tiles.T; // art px per tile
+import { U } from '../core/util.js';
+import { RNG } from '../core/rng.js';
+import { Balance } from '../data/balance.js';
+import { Audio } from '../core/audio.js';
+import { Sprites } from '../core/sprites.js';
+import { Camera } from '../core/camera.js';
+import { Items } from '../data/items.js';
+import { Tiles } from './tiles.js';
+import { FX } from '../entities/fx.js';
+import { Pickups } from '../entities/pickup.js';
+import { Interact } from '../systems/interact.js';
+import { Progress } from '../systems/progress.js';
+import { Coop } from '../net/coop.js';
+import { Game } from '../game.js';
+
+export const World = (() => {
+  const T = Tiles.T; // art px per tile
   const N = 16; // tiles per chunk
-  const TS = T * G.Sprites.PX; // tile size in world units (32)
+  const TS = T * Sprites.PX; // tile size in world units (32)
   const CW = N * TS; // chunk size in world units (512)
   const FLOOR = 0,
     WALL = 1,
@@ -51,7 +66,7 @@ G.World = (() => {
 
   // ---------------- noise ----------------
 
-  const H = (x, y, s) => G.U.hash(x, y, s);
+  const H = (x, y, s) => U.hash(x, y, s);
 
   function vnoise(x, y, s) {
     const xi = Math.floor(x),
@@ -100,7 +115,7 @@ G.World = (() => {
     }
     const d = Math.hypot(tx, ty);
     if (d < 9) return FLOOR; // starting clearing
-    const ramp = G.U.clamp((d - 9) / 8, 0, 1); // smooth ramp-in
+    const ramp = U.clamp((d - 9) / 8, 0, 1); // smooth ramp-in
     if (fbm(tx / 13, ty / 13, seed + 101) < 0.04 + 0.23 * ramp) return LIQUID;
     if (fbm(tx / 8, ty / 8, seed + 202) > 1 - 0.27 * ramp) return WALL;
     return FLOOR;
@@ -247,7 +262,7 @@ G.World = (() => {
     return terrainAt(tileOf(x), tileOf(y)) === LIQUID;
   }
   function liquidKind() {
-    return G.Tiles.BIOMES[biome].liquid;
+    return Tiles.BIOMES[biome].liquid;
   }
 
   /**
@@ -296,7 +311,7 @@ G.World = (() => {
         const t = terrainAt(tx, ty);
         if (t === WALL || (!allowLiquid && t === LIQUID)) return false;
         const p = propAtTile(tx, ty);
-        if (p && G.U.dist2(x, y, p.x, p.y) < (r + p.r) ** 2) return false;
+        if (p && U.dist2(x, y, p.x, p.y) < (r + p.r) ** 2) return false;
       }
     return true;
   }
@@ -313,7 +328,7 @@ G.World = (() => {
         const c = chunkData(cx, cy);
         for (const p of c.props) {
           if (!p.destructible || p.hp <= 0) continue;
-          if (G.U.dist2(x, y, p.x, p.y) <= (r + p.r) ** 2) out.push(p);
+          if (U.dist2(x, y, p.x, p.y) <= (r + p.r) ** 2) out.push(p);
         }
       }
     return out;
@@ -329,7 +344,7 @@ G.World = (() => {
     for (let cy = c0y; cy <= c1y; cy++)
       for (let cx = c0x; cx <= c1x; cx++) {
         for (const p of chunkData(cx, cy).props) {
-          if (SPECIAL.has(p.type) && G.U.dist2(x, y, p.x, p.y) <= (r + p.r) ** 2) out.push(p);
+          if (SPECIAL.has(p.type) && U.dist2(x, y, p.x, p.y) <= (r + p.r) ** 2) out.push(p);
         }
       }
     return out;
@@ -341,7 +356,7 @@ G.World = (() => {
       bd = r * r;
     for (const p of propsInCircle(x, y, r)) {
       if (!p.solid) continue;
-      const d = G.U.dist2(x, y, p.x, p.y);
+      const d = U.dist2(x, y, p.x, p.y);
       if (d < bd) {
         bd = d;
         best = p;
@@ -370,8 +385,8 @@ G.World = (() => {
               by0 = ty * TS,
               bx1 = bx0 + TS,
               by1 = by0 + TS;
-            const qx = G.U.clamp(e.x, bx0, bx1),
-              qy = G.U.clamp(e.y, by0, by1);
+            const qx = U.clamp(e.x, bx0, bx1),
+              qy = U.clamp(e.y, by0, by1);
             let dx = e.x - qx,
               dy = e.y - qy;
             const d2 = dx * dx + dy * dy;
@@ -420,7 +435,7 @@ G.World = (() => {
     for (let b = -1; b <= 1; b++)
       for (let a = -1; a <= 1; a++) {
         const p = propAtTile(tx + a, ty + b);
-        if (p && p.solid && G.U.dist2(x, y, p.x, p.y) < (r + p.r) ** 2) return p;
+        if (p && p.solid && U.dist2(x, y, p.x, p.y) < (r + p.r) ** 2) return p;
       }
     return null;
   }
@@ -431,7 +446,7 @@ G.World = (() => {
     if (!p.destructible || p.hp <= 0) return false;
     p.hp -= amount;
     p.flash = 0.08;
-    if (p.type !== 'grass') G.FX.spark(p.x, p.y - 10, color, 0, -1, 3);
+    if (p.type !== 'grass') FX.spark(p.x, p.y - 10, color, 0, -1, 3);
     if (p.hp <= 0) {
       destroyProp(p);
       return true;
@@ -449,14 +464,14 @@ G.World = (() => {
     else broken.add(k);
   }
 
-  // Prop loot: amounts and chances in G.Balance.drops; what drops is rolled on
+  // Prop loot: amounts and chances in Balance.drops; what drops is rolled on
   // the seeded 'loot' stream, where the coins scatter is cosmetic.
-  const LOOT = G.Balance.drops;
-  const lootR = G.RNG.stream('loot');
+  const LOOT = Balance.drops;
+  const lootR = RNG.stream('loot');
 
   function destroyProp(p, fromNet = false) {
     broken.add(p.tx + ',' + p.ty);
-    if (G.Coop.active && !fromNet) G.Coop.propBroken(p);
+    if (Coop.active && !fromNet) Coop.propBroken(p);
     const cx = Math.floor(p.tx / N),
       cy = Math.floor(p.ty / N);
     const c = data.get(cx + ',' + cy);
@@ -464,54 +479,54 @@ G.World = (() => {
       c.props.splice(c.props.indexOf(p), 1);
       c.propAt.delete(p.tx + ',' + p.ty);
     }
-    const B = G.Tiles.BIOMES[biome];
-    G.Audio.sfx(p.type === 'grass' ? 'grass' : p.type === 'chest' ? 'chest' : 'break');
+    const B = Tiles.BIOMES[biome];
+    Audio.sfx(p.type === 'grass' ? 'grass' : p.type === 'chest' ? 'chest' : 'break');
     if (p.type === 'grass') {
-      G.FX.burst(p.x, p.y - 6, B.grass[1], 6, 70);
+      FX.burst(p.x, p.y - 6, B.grass[1], 6, 70);
       const r = lootR.next(),
         L = LOOT.grass;
-      if (r < L.heal) G.Pickups.drop('heal', p.x, p.y);
-      else if (r < L.coin) G.Pickups.drop('coin', p.x, p.y, L.coinValue);
+      if (r < L.heal) Pickups.drop('heal', p.x, p.y);
+      else if (r < L.coin) Pickups.drop('coin', p.x, p.y, L.coinValue);
       return;
     }
     if (p.type === 'rock') {
-      G.FX.burst(p.x, p.y - 10, B.rock[1], 14, 140);
-      G.FX.ring(p.x, p.y - 8, 4, 26, B.rock[2], 0.3, 3);
+      FX.burst(p.x, p.y - 10, B.rock[1], 14, 140);
+      FX.ring(p.x, p.y - 8, 4, 26, B.rock[2], 0.3, 3);
       const r = lootR.next(),
         L = LOOT.rock;
-      if (r < L.xpBelow) G.Pickups.dropXp(p.x, p.y, L.xp);
-      if (r > L.coinAbove) G.Pickups.drop('coin', p.x, p.y, L.coinValue);
-      if (r > L.healAbove) G.Pickups.drop('heal', p.x + 8, p.y);
+      if (r < L.xpBelow) Pickups.dropXp(p.x, p.y, L.xp);
+      if (r > L.coinAbove) Pickups.drop('coin', p.x, p.y, L.coinValue);
+      if (r > L.healAbove) Pickups.drop('heal', p.x + 8, p.y);
       return;
     }
     if (p.type === 'chest') {
-      G.FX.burst(p.x, p.y - 10, '#f2c443', 22, 180);
-      G.FX.ring(p.x, p.y - 8, 6, 46, '#f2c443', 0.45, 4);
-      G.Camera.kick(0.25);
+      FX.burst(p.x, p.y - 10, '#f2c443', 22, 180);
+      FX.ring(p.x, p.y - 8, 6, 46, '#f2c443', 0.45, 4);
+      Camera.kick(0.25);
       const L = LOOT.chest;
       const n = lootR.int(L.coins[0], L.coins[1]);
-      for (let i = 0; i < n; i++) G.Pickups.drop('coin', p.x + G.U.rand(-14, 14), p.y + G.U.rand(-10, 10), L.coinValue);
-      G.Pickups.drop(lootR.chance(L.healChance) ? 'heal' : 'magnet', p.x, p.y);
-      G.Pickups.dropXp(p.x, p.y, L.xp);
-      if (lootR.chance(L.item)) G.Pickups.drop('item', p.x, p.y - 12, G.Items.roll());
+      for (let i = 0; i < n; i++) Pickups.drop('coin', p.x + U.rand(-14, 14), p.y + U.rand(-10, 10), L.coinValue);
+      Pickups.drop(lootR.chance(L.healChance) ? 'heal' : 'magnet', p.x, p.y);
+      Pickups.dropXp(p.x, p.y, L.xp);
+      if (lootR.chance(L.item)) Pickups.drop('item', p.x, p.y - 12, Items.roll());
       return;
     }
     if (p.type === 'bigchest') {
       // Big loot: coins, tickets and enough experience for a level up.
-      G.FX.burst(p.x, p.y - 12, '#f2c443', 34, 220);
-      G.FX.ring(p.x, p.y - 8, 6, 80, '#f2c443', 0.6, 5);
-      G.Camera.kick(0.4);
+      FX.burst(p.x, p.y - 12, '#f2c443', 34, 220);
+      FX.ring(p.x, p.y - 8, 6, 80, '#f2c443', 0.6, 5);
+      Camera.kick(0.4);
       const L = LOOT.bigchest;
-      for (let i = 0; i < L.coins; i++) G.Pickups.drop('coin', p.x + G.U.rand(-22, 22), p.y + G.U.rand(-14, 14), L.coinValue);
+      for (let i = 0; i < L.coins; i++) Pickups.drop('coin', p.x + U.rand(-22, 22), p.y + U.rand(-14, 14), L.coinValue);
       const tk = lootR.int(L.tickets[0], L.tickets[1]);
-      for (let i = 0; i < tk; i++) G.Pickups.drop('ticket', p.x + G.U.rand(-16, 16), p.y + G.U.rand(-10, 10), 1);
-      if (lootR.chance(L.t10)) G.Pickups.drop('ticket10', p.x, p.y - 10, 1);
-      if (lootR.chance(L.item)) G.Pickups.drop('item', p.x + 14, p.y - 14, G.Items.roll());
-      G.Pickups.dropXp(p.x, p.y, G.Game.levelXp());
-      G.Progress.event('chest');
+      for (let i = 0; i < tk; i++) Pickups.drop('ticket', p.x + U.rand(-16, 16), p.y + U.rand(-10, 10), 1);
+      if (lootR.chance(L.t10)) Pickups.drop('ticket10', p.x, p.y - 10, 1);
+      if (lootR.chance(L.item)) Pickups.drop('item', p.x + 14, p.y - 14, Items.roll());
+      Pickups.dropXp(p.x, p.y, Game.levelXp());
+      Progress.event('chest');
       return;
     }
-    if (p.type === 'trap') G.Interact.trapEffect(p);
+    if (p.type === 'trap') Interact.trapEffect(p);
   }
 
   // ---------------- drawing ----------------
@@ -523,9 +538,9 @@ G.World = (() => {
     const at = (tx, ty) => KIND[terrainAt(tx, ty)];
     // Continuous "dirt" field; tiles.js samples it on a grid and
     // interpolates per pixel so the patches get organic edges.
-    const S = 6 * G.Tiles.T;
+    const S = 6 * Tiles.T;
     const dirtField = (gx, gy) => fbm(gx / S, gy / S, seed + 303);
-    img = G.Tiles.paintChunk(cx, cy, N, at, dirtField, bi, seed);
+    img = Tiles.paintChunk(cx, cy, N, at, dirtField, bi, seed);
     if (cache.size > MAX_IMAGES) cache.delete(cache.keys().next().value);
     cache.set(k, img);
     return img;
@@ -567,10 +582,10 @@ G.World = (() => {
 
   /** Animated glints on water / lava bubbles (and poison and electricity). */
   function drawLiquid(ctx, cam, t) {
-    const B = G.Tiles.BIOMES[biome];
+    const B = Tiles.BIOMES[biome];
     const lava = B.liquid === 'lava' || B.liquid === 'poison' || B.liquid === 'spark';
     ctx.fillStyle = B.foam;
-    const P = G.Sprites.PX;
+    const P = Sprites.PX;
     for (const [cx, cy] of visibleChunks(cam)) {
       const c = chunkData(cx, cy);
       for (let i = 0; i < c.liquids.length; i += 2) {
@@ -601,7 +616,7 @@ G.World = (() => {
   }
 
   function drawProp(ctx, p, t) {
-    const P = G.Sprites.PX;
+    const P = Sprites.PX;
     const variant =
       p.type === 'grass'
         ? Math.sin(t * 2.4 + p.wiggle) > 0.55
@@ -620,14 +635,14 @@ G.World = (() => {
               : p.type === 'trap'
                 ? p.kind
                 : 0;
-    const img = G.Tiles.propSprite(biome, p.type, variant);
+    const img = Tiles.propSprite(biome, p.type, variant);
     const w = img.width * P,
       h = img.height * P;
     if (p.flat) {
       // Flat ones (spring, trap): stuck to the ground, centred on their tile.
       ctx.drawImage(img, Math.round(p.x - w / 2), Math.round(p.y - 8 - h / 2), w, h);
       if (p.type === 'spring' && p.charge >= 0.15 && Math.sin(t * 3 + p.wiggle) > 0.92) {
-        G.FX.twinkle(p.x + G.U.rand(-20, 20), p.y - 8 + G.U.rand(-6, 6));
+        FX.twinkle(p.x + U.rand(-20, 20), p.y - 8 + U.rand(-6, 6));
       }
       return;
     }
@@ -647,7 +662,7 @@ G.World = (() => {
       ctx.strokeStyle = '#ffd23f';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(p.x, p.y - h / 2, 26, -Math.PI / 2, -Math.PI / 2 + 6.2832 * Math.min(1, p.open / G.Interact.CHEST_TIME));
+      ctx.arc(p.x, p.y - h / 2, 26, -Math.PI / 2, -Math.PI / 2 + 6.2832 * Math.min(1, p.open / Interact.CHEST_TIME));
       ctx.stroke();
       ctx.restore();
     }
@@ -663,7 +678,7 @@ G.World = (() => {
     const k = fadeK();
     if (k != null) {
       // The old object fades out while the new one appears.
-      const old = G.Tiles.propSprite(fade.from, p.type, variant);
+      const old = Tiles.propSprite(fade.from, p.type, variant);
       ctx.globalAlpha = 1 - k;
       ctx.drawImage(
         old,
@@ -677,7 +692,7 @@ G.World = (() => {
     ctx.drawImage(img, x, y, w, h);
     if (p.flash > 0) {
       ctx.globalAlpha = 0.6;
-      ctx.drawImage(G.Sprites.white(img), x, y, w, h);
+      ctx.drawImage(Sprites.white(img), x, y, w, h);
     }
     ctx.restore();
   }
@@ -701,14 +716,14 @@ G.World = (() => {
   }
 
   /**
-   * @param i        biome (G.Tiles.ARENA onwards are the rift arenas)
+   * @param i        biome (Tiles.ARENA onwards are the rift arenas)
    * @param instant  no fade (when starting a run)
    * A run changes biome every 4 min and goes through the whole list; when it ends,
    * it starts over. (Previously, past the last one, around minute 84, it asked for
    * a biome that doesn't exist: black screen, broken game and endless levels.)
    */
   function setBiome(i, instant = false) {
-    const n = G.Tiles.BIOMES.length;
+    const n = Tiles.BIOMES.length;
     const b = ((i % n) + n) % n;
     if (b === biome) return;
     // The terrain stays the same: only the palette changes, blending gradually.
@@ -718,7 +733,7 @@ G.World = (() => {
   }
 
   function biomeName() {
-    return G.Tiles.BIOMES[biome].name;
+    return Tiles.BIOMES[biome].name;
   }
 
   /** Vignette in screen coordinates. */
@@ -758,7 +773,7 @@ G.World = (() => {
     setArena(a) {
       arena = a;
       if (!a) return;
-      a.th = G.Tiles.ARENA_THEMES[a.type] || G.Tiles.ARENA_THEMES.normal;
+      a.th = Tiles.ARENA_THEMES[a.type] || Tiles.ARENA_THEMES.normal;
       // Forget chunks in that area (in case they were generated earlier).
       const R = a.r + 9;
       for (const k of [...data.keys(), ...images.keys()]) {

@@ -1,6 +1,19 @@
 /* ============ run-ui.js — level-up cards, pause and end of run ============ */
-G.RunUI = (() => {
-  const $ = G.UI.$;
+import { U } from '../core/util.js';
+import { RNG } from '../core/rng.js';
+import { Balance } from '../data/balance.js';
+import { I18n } from '../core/i18n.js';
+import { DEX_BY } from '../data/pokedex.js';
+import { Audio } from '../core/audio.js';
+import { Items } from '../data/items.js';
+import { LevelUp } from '../systems/levelup.js';
+import { Social } from '../net/social.js';
+import { Icons } from './icons.js';
+import { UI } from './ui.js';
+import { Game } from '../game.js';
+
+export const RunUI = (() => {
+  const $ = UI.$;
   let offers = null,
     offerCb = null,
     coopMode = false;
@@ -15,7 +28,7 @@ G.RunUI = (() => {
     $('cards').classList.remove('done');
     renderCards(list);
     $('lvl-reroll').onclick = reroll;
-    G.UI.show('scr-levelup');
+    UI.show('scr-levelup');
   }
 
   /**
@@ -23,17 +36,17 @@ G.RunUI = (() => {
    * (in a group the team's bosses count; each player has their own).
    */
   function rerollsLeft() {
-    const p = G.Game.player;
+    const p = Game.player;
     // The free ones + the ones bought in Upgrades (previously, 1 more per boss).
-    return p ? Math.max(0, G.Balance.levelup.freeRerolls + (p.rerollBonus || 0) - (p.rerolls || 0)) : 0;
+    return p ? Math.max(0, Balance.levelup.freeRerolls + (p.rerollBonus || 0) - (p.rerolls || 0)) : 0;
   }
 
   function reroll() {
     if (!offers || rerollsLeft() <= 0) return;
-    const p = G.Game.player;
+    const p = Game.player;
     p.rerolls = (p.rerolls || 0) + 1;
-    G.Audio.sfx('select');
-    renderCards(G.LevelUp.offer(p));
+    Audio.sfx('select');
+    renderCards(LevelUp.offer(p));
   }
 
   function renderCards(list) {
@@ -53,7 +66,7 @@ G.RunUI = (() => {
             ? `<span class="tag-chip" style="background:${c.color}">${c.tag}</span>`
             : `<span class="tag-chip" style="background:${c.color === '#ffd23f' ? '#ffd23f' : '#9fb1c9'}">${c.tag}</span>`;
       if (c.type === 'evo') el.classList.add('evo');
-      el.innerHTML = `<div class="ico" style="background:${c.color}33">${G.Icons.html(c.icon, 32)}</div>
+      el.innerHTML = `<div class="ico" style="background:${c.color}33">${Icons.html(c.icon, 32)}</div>
          <div class="txt"><div class="nm">${c.title} ${tag}</div><div class="ds">${c.desc}</div></div>
          <div class="key">${i + 1}</div>`;
       el.dataset.sfx = 'none'; // the game plays its own sound on pick
@@ -75,22 +88,22 @@ G.RunUI = (() => {
         .querySelectorAll('.card')
         .forEach((el, j) => el.classList.toggle('picked', j === i));
       $('cards').classList.add('done');
-    } else G.UI.hide('scr-levelup');
+    } else UI.hide('scr-levelup');
     cb(c);
   }
 
   /** Co-op: who still has to choose. */
   function setWaiting(names) {
-    const me = G.Social.me ? G.Social.me.name : '';
+    const me = Social.me ? Social.me.name : '';
     const others = names.filter(n => n !== me);
-    const and = G.I18n.lang === 'es' ? ' y ' : ' and ';
+    const and = I18n.lang === 'es' ? ' y ' : ' and ';
     const list = a => (a.length > 1 ? a.slice(0, -1).join(', ') + and + a[a.length - 1] : a[0]);
     $('lvl-wait').textContent = !names.length
       ? ''
       : !others.length
         ? 'Choose your card'
         : names.includes(me)
-          ? 'Still choosing: ' + list([...others, G.I18n.t('you')])
+          ? 'Still choosing: ' + list([...others, I18n.t('you')])
           : 'Waiting for ' + list(others) + '…';
   }
 
@@ -98,47 +111,47 @@ G.RunUI = (() => {
     offers = null;
     offerCb = null;
     $('cards').classList.remove('done');
-    G.UI.hide('scr-levelup');
+    UI.hide('scr-levelup');
   }
 
   function showOver(r, onBack) {
     $('over-title').textContent = r.dead ? 'You fell…' : 'Run over';
     $('over-stats').innerHTML = `
-      <div><span>Time</span><b>${G.U.mmss(r.time)}</b></div>
+      <div><span>Time</span><b>${U.mmss(r.time)}</b></div>
       <div><span>Level</span><b>${r.level}</b></div>
       <div><span>Defeated</span><b>${r.kills}</b></div>
       <div><span>Bosses</span><b>${r.bosses}</b></div>
-      ${r.judge ? `<div style="grid-column:1/-1"><span>Against Arceus</span><b class="gold">${G.U.mmss(r.judge.time)} · ${r.judge.bosses} ${r.judge.bosses === 1 ? 'legendary' : 'legendaries'}</b></div>` : ''}
+      ${r.judge ? `<div style="grid-column:1/-1"><span>Against Arceus</span><b class="gold">${U.mmss(r.judge.time)} · ${r.judge.bosses} ${r.judge.bosses === 1 ? 'legendary' : 'legendaries'}</b></div>` : ''}
       <div style="grid-column:1/-1"><span>PokéCoins earned</span>
         <b class="gold"><span class="coin"></span> +${r.coins}</b>
         <div style="font-size:12px;color:var(--muted)">${r.breakdown}</div></div>
       ${
         r.t1 || r.t10
           ? `<div style="grid-column:1/-1"><span>Gacha tickets</span><b>
-        ${r.t1 ? G.Icons.html('ticket', 22) + ' +' + r.t1 + ' ' : ''}${r.t10 ? G.Icons.html('ticket10', 22) + ' +' + r.t10 + ' ×10' : ''}</b></div>`
+        ${r.t1 ? Icons.html('ticket', 22) + ' +' + r.t1 + ' ' : ''}${r.t10 ? Icons.html('ticket10', 22) + ' +' + r.t10 + ' ×10' : ''}</b></div>`
           : ''
       }
       <div style="grid-column:1/-1"><span>Moves</span><b style="font-size:15px">
-        ${r.moves.map(m => `${G.Icons.html('move:' + m.id, 16)} ${m.name} Lv.${m.lvl}`).join(' · ') || '—'}</b></div>
+        ${r.moves.map(m => `${Icons.html('move:' + m.id, 16)} ${m.name} Lv.${m.lvl}`).join(' · ') || '—'}</b></div>
       ${
         r.caught && r.caught.length
-          ? `<div style="grid-column:1/-1" class="caught"><span>${G.Icons.html('shiny', 12)} Shinies caught</span>
+          ? `<div style="grid-column:1/-1" class="caught"><span>${Icons.html('shiny', 12)} Shinies caught</span>
         <div class="caught-row" id="over-caught"></div></div>`
           : ''
       }
       ${r.record ? '<div style="grid-column:1/-1;text-align:center" class="gold">New time record!</div>' : ''}
-      <div style="grid-column:1/-1"><span>Seed</span><b translate="no">${G.RNG.code()}</b></div>`;
+      <div style="grid-column:1/-1"><span>Seed</span><b translate="no">${RNG.code()}</b></div>`;
     $('btn-again').onclick = onBack;
     if (r.caught && r.caught.length) {
       const row = $('over-caught');
       for (const c of r.caught) {
         const w = document.createElement('div');
-        w.appendChild(G.UI.spriteCanvas(c.dex, 90, 72, { shiny: true, lively: true, scale: 2 }));
-        w.insertAdjacentHTML('beforeend', `<small>${G.DEX_BY[c.dex].name}${c.isNew ? ' · new!' : ''}</small>`);
+        w.appendChild(UI.spriteCanvas(c.dex, 90, 72, { shiny: true, lively: true, scale: 2 }));
+        w.insertAdjacentHTML('beforeend', `<small>${DEX_BY[c.dex].name}${c.isNew ? ' · new!' : ''}</small>`);
         row.appendChild(w);
       }
     }
-    G.UI.show('scr-over');
+    UI.show('scr-over');
   }
 
   /** You found an item while already holding one: which one do you keep? */
@@ -149,19 +162,19 @@ G.RunUI = (() => {
       [cur, 'Keep'],
       [next, 'Switch to']
     ].forEach(([id, verb], i) => {
-      const it = G.Items.BY[id];
+      const it = Items.BY[id];
       const el = document.createElement('div');
       el.className = 'card' + (i === 1 ? ' evo' : '');
-      el.innerHTML = `<div class="ico">${G.Icons.html(id, 36)}</div>
+      el.innerHTML = `<div class="ico">${Icons.html(id, 36)}</div>
         <div class="txt"><div class="nm">${verb} ${it.name}</div><div class="ds">${it.desc}</div></div>
         <div class="key">${i + 1}</div>`;
       el.onclick = () => {
-        G.UI.hide('scr-item');
+        UI.hide('scr-item');
         cb(id);
       };
       box.appendChild(el);
     });
-    G.UI.show('scr-item');
+    UI.show('scr-item');
   }
 
   // ---------------- bond: which moves get merged ----------------
@@ -176,7 +189,7 @@ G.RunUI = (() => {
     bond = { opt, cb, first: null, list: [] };
     $('bond-back').onclick = bondBack;
     renderBond();
-    G.UI.show('scr-bond');
+    UI.show('scr-bond');
   }
 
   function renderBond() {
@@ -194,7 +207,7 @@ G.RunUI = (() => {
     const box = $('bond-cards');
     box.innerHTML = '';
     bond.list.forEach((m, i) => {
-      const col = G.U.TYPE_COLOR[m.type];
+      const col = U.TYPE_COLOR[m.type];
       const desc =
         opt.mode === 'add'
           ? 'It will fire at the same time as ' + names(opt.group) + '.'
@@ -203,7 +216,7 @@ G.RunUI = (() => {
             : m.desc || '';
       const el = document.createElement('div');
       el.className = 'card' + (opt.mode === 'add' || step2 ? ' bond' : '');
-      el.innerHTML = `<div class="ico" style="background:${col}33">${G.Icons.html('move:' + m.id, 32)}</div>
+      el.innerHTML = `<div class="ico" style="background:${col}33">${Icons.html('move:' + m.id, 32)}</div>
          <div class="txt"><div class="nm">${m.name} <span class="tag-chip" style="background:${col}">Lv.${m.lvl}</span></div><div class="ds">${desc}</div></div>
          <div class="key">${i + 1}</div>`;
       el.dataset.sfx = 'none';
@@ -217,14 +230,14 @@ G.RunUI = (() => {
     const m = bond.list[i];
     if (bond.opt.mode === 'pair' && !bond.first) {
       bond.first = m;
-      G.Audio.sfx('select');
+      Audio.sfx('select');
       renderBond();
       return;
     }
     const picked = bond.opt.mode === 'add' ? [m] : [bond.first, m];
     const cb = bond.cb;
     bond = null;
-    G.UI.hide('scr-bond');
+    UI.hide('scr-bond');
     cb(picked);
   }
 
@@ -235,13 +248,13 @@ G.RunUI = (() => {
   }
 
   function showPause(coop = false) {
-    G.UI.soundControls($('pause-sound'));
+    UI.soundControls($('pause-sound'));
     $('pause-coop').classList.toggle('hidden', !coop);
     $('btn-quit').textContent = coop ? 'Leave the game' : 'Quit run';
-    $('pause-seed').textContent = G.RNG.custom
-      ? `Chosen seed ${G.RNG.code()}: this run doesn't count for the leaderboard`
-      : `Seed ${G.RNG.code()}`;
-    G.UI.show('scr-pause');
+    $('pause-seed').textContent = RNG.custom
+      ? `Chosen seed ${RNG.code()}: this run doesn't count for the leaderboard`
+      : `Seed ${RNG.code()}`;
+    UI.show('scr-pause');
   }
 
   function wirePause(onResume, onQuit) {

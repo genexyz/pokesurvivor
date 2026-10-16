@@ -1,6 +1,6 @@
 /* ============ db.js — database: our server (cloud) or local ============
  * ALL access to persistent data goes through here. The rest of the game only
- * uses G.DB.*.
+ * uses DB.*.
  *
  * Two modes (decided in ready()):
  *
@@ -19,7 +19,14 @@
  *
  * Guest mode plays with an in-memory save that isn't stored.
  */
-G.DB = (() => {
+import { DEX_BY } from '../data/pokedex.js';
+import { SaveMerge } from './save-merge.js';
+import { Moves } from '../data/moves.js';
+import { Upgrades } from '../data/upgrades.js';
+import { UI } from '../ui/ui.js';
+import { Game } from '../game.js';
+
+export const DB = (() => {
   const K_SES = 'ps.session',
     K_SAVE = 'ps.save.',
     LOCAL = 'local';
@@ -158,9 +165,9 @@ G.DB = (() => {
         }
       }
     } else delete s.led;
-    if (G.DEX_BY)
+    if (DEX_BY)
       for (const coll of ['owned', 'shiny']) {
-        for (const d of Object.keys(s[coll] || {})) if (!G.DEX_BY[d]) delete s[coll][d];
+        for (const d of Object.keys(s[coll] || {})) if (!DEX_BY[d]) delete s[coll][d];
       }
     // Shortcuts: 4 slots with an existing move (or null), no repeats.
     if (s.pbind && typeof s.pbind === 'object') {
@@ -169,7 +176,7 @@ G.DB = (() => {
         const seen = new Set();
         s.pbind[d] = [0, 1, 2, 3].map(i => {
           const id = l[i];
-          if (typeof id !== 'string' || (G.Moves && !G.Moves.BY_ID[id]) || seen.has(id)) return null;
+          if (typeof id !== 'string' || (Moves && !Moves.BY_ID[id]) || seen.has(id)) return null;
           seen.add(id);
           return id;
         });
@@ -179,10 +186,10 @@ G.DB = (() => {
     if (s.pban && typeof s.pban === 'object') {
       for (const d of Object.keys(s.pban)) {
         const l = Array.isArray(s.pban[d]) ? s.pban[d] : [];
-        s.pban[d] = [...new Set(l.filter(id => typeof id === 'string' && (!G.Moves || G.Moves.BY_ID[id])))].slice(0, 3);
+        s.pban[d] = [...new Set(l.filter(id => typeof id === 'string' && (!Moves || Moves.BY_ID[id])))].slice(0, 3);
       }
     } else s.pban = {};
-    if (G.Upgrades)
+    if (Upgrades)
       for (const d of Object.keys(s.pupg || {})) {
         const u = s.pupg[d];
         if (!u || typeof u !== 'object') {
@@ -190,14 +197,14 @@ G.DB = (() => {
           continue;
         }
         for (const id of Object.keys(u)) {
-          if (!G.Upgrades.BY[id]) delete u[id];
-          else u[id] = Math.min(G.Upgrades.BY[id].max, n(u[id]));
+          if (!Upgrades.BY[id]) delete u[id];
+          else u[id] = Math.min(Upgrades.BY[id].max, n(u[id]));
         }
       }
   }
 
   // Merging saves and the coin and ticket ledger: js/core/save-merge.js.
-  const { CUR, isObj, ledOf, merge } = G.SaveMerge;
+  const { CUR, isObj, ledOf, merge } = SaveMerge;
   // This device (browser): a random name that stays stored.
   const DEV = (() => {
     let d = read('ps.dev');
@@ -380,7 +387,7 @@ G.DB = (() => {
   function pullSoon() {
     clearTimeout(pullT);
     if (mode !== 'cloud' || guest || !save || !uid || Date.now() - lastPull < PULL_GAP) return;
-    if (pushing || (G.Game && G.Game.state && G.Game.state !== 'ui')) {
+    if (pushing || (Game && Game.state && Game.state !== 'ui')) {
       pullT = setTimeout(pullSoon, 20000);
       return;
     }
@@ -391,7 +398,7 @@ G.DB = (() => {
         if (!r || !r.save || !save || uid !== u) return;
         applyInPlace(merge(plain(fold(save)), migrate(r.save)));
         write(K_CLOUD + uid, save);
-        if (G.UI && G.UI.refreshCoins) G.UI.refreshCoins();
+        if (UI && UI.refreshCoins) UI.refreshCoins();
       })
       .catch(e => console.warn('[DB] could not download the save:', e.code || e.message));
   }
@@ -486,7 +493,7 @@ G.DB = (() => {
           write(K_CLOUD + uid, save);
         }
         setSync(pending ? 'pending' : 'ok');
-        if (G.UI && G.UI.refreshCoins) G.UI.refreshCoins();
+        if (UI && UI.refreshCoins) UI.refreshCoins();
       })
       .catch(e => {
         console.warn('[DB] could not sync:', e.code || e.message);

@@ -1,14 +1,24 @@
 /* ============ dev-ui.js — developer panel (npm run dev only) ============
- * scripts/build.js leaves every <script data-dev> out of the published game,
- * so this panel only exists when the source is served (npm run dev).
+ * main.js imports it only under import.meta.env.DEV, so it never reaches the
+ * published game: this panel only exists with npm run dev.
  * Toggle it with the ` key or the DEV button (bottom left).
  *
  * Run tools (time, levels, god mode, spawns, events) and a live editor for
- * G.Balance: edit a value and it applies at once. "Copy changes" puts the
+ * Balance: edit a value and it applies at once. "Copy changes" puts the
  * edited values on the clipboard to paste into src/js/data/balance.js.
  * Using any run tool marks the run as tampered (it won't reach the leaderboard).
  */
-G.DevUI = (() => {
+import { RNG } from '../core/rng.js';
+import { Balance } from '../data/balance.js';
+import { Spawner } from '../systems/spawner.js';
+import { Rift } from '../systems/rift.js';
+import { Judgment } from '../systems/judgment.js';
+import { Events } from '../systems/events.js';
+import { Weather } from '../systems/weather.js';
+import { UI } from './ui.js';
+import { Game } from '../game.js';
+
+export const DevUI = (() => {
   let root = null,
     open = false;
   const original = new Map(); // "spawn.cap" -> value at load time
@@ -49,11 +59,11 @@ G.DevUI = (() => {
 
   // ---------------- run tools ----------------
 
-  const D = () => G.Game.debug;
-  const inRun = () => G.Game.player && G.Game.state !== 'ui' && G.Game.state !== 'over';
+  const D = () => Game.debug;
+  const inRun = () => Game.player && Game.state !== 'ui' && Game.state !== 'over';
   /** Only while a run is going (otherwise there's nothing to act on). */
   const run = fn => () => {
-    if (!inRun()) return G.UI.toast('Start a run first');
+    if (!inRun()) return UI.toast('Start a run first');
     fn();
     refresh();
   };
@@ -66,8 +76,8 @@ G.DevUI = (() => {
       row(
         input,
         btn('Set', () => {
-          const s = G.RNG.parse(input.value);
-          if (s == null) return G.UI.toast('A seed is 1-7 letters/digits');
+          const s = RNG.parse(input.value);
+          if (s == null) return UI.toast('A seed is 1-7 letters/digits');
           D().nextSeed = s;
           refresh();
         }),
@@ -77,7 +87,7 @@ G.DevUI = (() => {
           refresh();
         }),
         btn('Replay this', () => {
-          D().nextSeed = G.RNG.seed;
+          D().nextSeed = RNG.seed;
           refresh();
         })
       )
@@ -93,11 +103,11 @@ G.DevUI = (() => {
       row(
         btn(
           '+1 min',
-          run(() => D().time(G.Game.st.time + 60))
+          run(() => D().time(Game.st.time + 60))
         ),
         btn(
           '+5 min',
-          run(() => D().time(G.Game.st.time + 300))
+          run(() => D().time(Game.st.time + 300))
         ),
         btn(
           '→ 29:50',
@@ -138,15 +148,15 @@ G.DevUI = (() => {
         ),
         btn(
           'Swarm',
-          run(() => G.Spawner.burst(20))
+          run(() => Spawner.burst(20))
         ),
         btn(
           'Thief',
-          run(() => G.Events.debugThief())
+          run(() => Events.debugThief())
         ),
         btn(
           'Next shiny',
-          run(() => G.Spawner.debugForceShiny(1))
+          run(() => Spawner.debugForceShiny(1))
         ),
         btn(
           'Kill all',
@@ -158,23 +168,23 @@ G.DevUI = (() => {
         ...['horde', 'gold', 'lost'].map(id =>
           btn(
             id,
-            run(() => G.Events.debugStart(id))
+            run(() => Events.debugStart(id))
           )
         ),
         btn(
           'Rift',
-          run(() => G.Rift.debugOpen())
+          run(() => Rift.debugOpen())
         ),
         btn(
           'Judgment',
-          run(() => G.Judgment.debugStart())
+          run(() => Judgment.debugStart())
         )
       ),
       row(
         ...wx.map(k =>
           btn(
             k,
-            run(() => G.Weather.debugStart(k, 60))
+            run(() => Weather.debugStart(k, 60))
           )
         )
       )
@@ -195,7 +205,7 @@ G.DevUI = (() => {
 
   function setAt(path, v) {
     const keys = path.split('.');
-    let o = G.Balance;
+    let o = Balance;
     for (let i = 0; i < keys.length - 1; i++) o = o[keys[i]];
     o[keys[keys.length - 1]] = v;
     if (v === original.get(path)) changed.delete(path);
@@ -244,10 +254,10 @@ G.DevUI = (() => {
       el('div', { class: 'note', text: 'Edits apply at once and last until you reload.' }),
       row(
         btn('Copy changes', () => {
-          const out = [...changed].map(([p, v]) => `G.Balance.${p} = ${v}; // was ${original.get(p)}`).join('\n');
-          if (!out) return G.UI.toast('Nothing changed');
+          const out = [...changed].map(([p, v]) => `Balance.${p} = ${v}; // was ${original.get(p)}`).join('\n');
+          if (!out) return UI.toast('Nothing changed');
           navigator.clipboard.writeText(out).then(
-            () => G.UI.toast(changed.size + ' change(s) copied'),
+            () => UI.toast(changed.size + ' change(s) copied'),
             () => console.log(out)
           );
         }),
@@ -256,7 +266,7 @@ G.DevUI = (() => {
           build();
         })
       ),
-      tree(G.Balance, '')
+      tree(Balance, '')
     ]);
   }
 
@@ -266,8 +276,7 @@ G.DevUI = (() => {
     const s = root && root.querySelector('#dev-seed');
     if (!s) return;
     const next = D().nextSeed;
-    s.textContent =
-      'This run: ' + G.RNG.code() + (G.RNG.custom ? ' (chosen)' : '') + ' · next: ' + (next == null ? 'random' : G.RNG.code(next));
+    s.textContent = 'This run: ' + RNG.code() + (RNG.custom ? ' (chosen)' : '') + ' · next: ' + (next == null ? 'random' : RNG.code(next));
   }
 
   function build() {
@@ -286,8 +295,8 @@ G.DevUI = (() => {
   }
 
   function init() {
-    if (!G.Balance || !G.Game || !G.Game.debug) return;
-    snapshot(G.Balance, '');
+    if (!Balance || !Game || !Game.debug) return;
+    snapshot(Balance, '');
     document.head.appendChild(el('style', { text: CSS }));
     document.body.appendChild(el('button', { id: 'dev-btn', type: 'button', translate: 'no', text: 'DEV', on: { click: toggle } }));
     addEventListener('keydown', e => {

@@ -110,19 +110,19 @@ game is and will remain free: if someone asks you to pay, it is not us.
 
 ## Development
 
-| Command                               | What it does                                                                                                            |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `npm run dev`                         | Local server at http://localhost:3000 with `src/` + `public/`; reloads on save. With `.env` (DATABASE_URL), with cloud. |
-| `npm run db:up`                       | Local Postgres in Docker (`docker-compose.dev.yml`).                                                                    |
-| `npm run build`                       | Generates `dist/`: the bundled game (`js/app.min.js`), `version.json` and the web pages. Needs Python 3.                |
-| `npm run build:force`                 | Same, but as a mandatory update for players.                                                                            |
-| `npm run build:debug`                 | Same, without obfuscation (`G` reachable from the console).                                                             |
-| `npm start`                           | Serves `dist/` as in production (run `npm run build` first).                                                            |
-| `npm run clean`                       | Deletes `dist/` and `.cache/`.                                                                                          |
-| `npm run lint` / `lint:fix`           | Checks the code with ESLint (and fixes what it can automatically).                                                      |
-| `npm run format` / `format:check`     | Formats with Prettier / checks that everything is formatted.                                                            |
-| `npm run docker:build` / `docker:run` | Production image (Node server) at http://localhost:8080.                                                                |
-| `npm run data:*`                      | Regenerates data: `pokedex`, `sprites`, `credits`, `hover`, `icons`, `font` (Python).                                   |
+| Command                               | What it does                                                                                                                                   |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                         | Local server at http://localhost:3000 with `src/` + `public/` through Vite: CSS hot-swaps, JS reloads. With `.env` (DATABASE_URL), with cloud. |
+| `npm run db:up`                       | Local Postgres in Docker (`docker-compose.dev.yml`).                                                                                           |
+| `npm run build`                       | Generates `dist/` with Vite: the bundled game (`js/app-<hash>.js`), `version.json` and the web pages. Needs Python 3.                          |
+| `npm run build:force`                 | Same, but as a mandatory update for players.                                                                                                   |
+| `npm run build:debug`                 | Same, without minifying or obfuscating, with sourcemaps (`window.G` reachable from the console).                                               |
+| `npm start`                           | Serves `dist/` as in production (run `npm run build` first).                                                                                   |
+| `npm run clean`                       | Deletes `dist/` and `.cache/`.                                                                                                                 |
+| `npm run lint` / `lint:fix`           | Checks the code with ESLint (and fixes what it can automatically).                                                                             |
+| `npm run format` / `format:check`     | Formats with Prettier / checks that everything is formatted.                                                                                   |
+| `npm run docker:build` / `docker:run` | Production image (Node server) at http://localhost:8080.                                                                                       |
+| `npm run data:*`                      | Regenerates data: `pokedex`, `sprites`, `credits`, `hover`, `icons`, `font` (Python).                                                          |
 
 Port: `PORT=4000 npm run dev`. Python: if it is not on the PATH, `PYTHON=/path/to/python`.
 
@@ -135,7 +135,7 @@ shows a tunable number is built from that number, with a `{x}` entry in Spanish
 
 - **`src/js/data/balance.js`** holds every gameplay number (spawn rates, enemy
   scaling, statuses, boss AI, drops, XP curve, events, rift, Judgment, weather,
-  co-op scaling, gacha). Logic reads `G.Balance.<section>.<key>` when it uses it,
+  co-op scaling, gacha). Logic reads `Balance.<section>.<key>` when it uses it,
   so one edit changes it everywhere. Content tables stay in their files
   (moves, items, upgrades, enemy tiers, level-up cards).
 - **Seeded runs** (`src/js/core/rng.js`): each system rolls from its own seeded
@@ -145,22 +145,23 @@ shows a tunable number is built from that number, with a `{x}` entry in Spanish
   Visual randomness stays on `Math.random`.
 - **Dev panel** (`npm run dev` only; press `` ` `` or the DEV button): skip time,
   levels, god mode, spawn bosses/swarms/thieves/shinies, start any event, the
-  rift, the Judgment or a weather, set the next seed, and edit `G.Balance` live
-  ("Copy changes" gives the lines to paste into `balance.js`). The build leaves
-  out every `<script data-dev>`, so it never ships. Using it marks the run as
-  tampered. The same tools are on `G.Game.debug` in the console.
+  rift, the Judgment or a weather, set the next seed, and edit `Balance` live
+  ("Copy changes" gives the lines to paste into `balance.js`). `main.js` only
+  imports it under `import.meta.env.DEV`, so it never ships. Using it marks the run as
+  tampered. In dev, `window.G` holds every module's exports for the console
+  (`src/js/debug.js`): the same tools are on `G.Game.debug`.
 - **Co-op messages** (`src/js/net/sync.js`): each module registers its own events
-  (`G.Sync.on`, `G.Sync.onGuest`), per-frame state (`G.Sync.field`) and enemy
-  flags (`G.Sync.flag`); `G.Coop.fx(...)` plays a visual effect on everyone.
+  (`Sync.on`, `Sync.onGuest`), per-frame state (`Sync.field`) and enemy
+  flags (`Sync.flag`); `Coop.fx(...)` plays a visual effect on everyone.
   A new mechanic never needs a case in `net/coop.js`.
 
 ## Structure
 
 ```
 src/
-  index.html            the page: screens + script load order (edit it here)
-  css/                  style.css (game, Mystery Dungeon style) and pages.css (web pages)
-  js/
+  index.html            the page: the screens, and one <script type="module"> for js/main.js (edit it here)
+  css/                  style.css (game, Mystery Dungeon style)
+  js/                   ES modules: each file exports its parts and imports what it uses
     core/     util, rng (seeded runs), db (saving), audio (synthesizer + effects),
               input, i18n, sprites (PMD animator), camera, updater (automatic updates)
     data/     balance (every gameplay number), pokedex*, sprites-meta*, moves,
@@ -174,12 +175,15 @@ src/
     ui/       icons (pixel art), ui, hud, login, test, menu, gacha-ui, run-ui...,
               dev-ui (developer panel, npm run dev only)
     game.js   flow and main loop
-    main.js   startup
+    main.js   startup (the entry module)
+    debug.js  window.G for the console (dev and build:debug only)
 public/                 copied as-is to dist/
   assets/pokemon/{dex}/ PMD sprite sheets* (Idle, Walk, Attack, Shoot, Charge, Hurt, Faint); s/ = shiny
   assets/icons/         app icons*
   assets/fonts/         Pixelify Sans (OFL) and its version with redrawn digits*
+  css/pages.css         style of the generated web pages
   favicon.ico  manifest.webmanifest  sw.js
+vite.config.mjs         Vite (dev server + build) and the ps-release plugin (obfuscation, version.json)
 scripts/                build and the scripts that regenerate the files marked with *
 server/                 server (website, Google accounts, saves, leaderboard, co-op lobbies and signaling)
 docs/                   publishing, SEO, GDD

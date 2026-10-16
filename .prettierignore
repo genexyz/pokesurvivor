@@ -10,9 +10,8 @@ src/js/data/pokedex.js
 src/js/data/sprites-meta.js
 CREDITS.md
 
-# HTML: scripts/make_seo_pages.py and scripts/build.js search for exact strings in it
+# HTML: vite.config.mjs (ps-release) and server/index.mjs (dev) search for exact strings in it
 src/index.html
-public/contact/
 
 # Legal texts, kept verbatim
 LICENSE

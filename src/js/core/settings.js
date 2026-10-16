@@ -11,10 +11,10 @@
  *   pad         { bar, pause, stick } | null      where the buttons go on mobile (centre, relative
  *                                                 to the screen); set by layout-ui.js
  *
- *   G.Settings.get('quality')  ·  G.Settings.set('fps', true)  ·  G.Settings.on(fn)
- *   G.Settings.fx   effective level 0 (low) .. 2 (high), with 'auto' already resolved
+ *   Settings.get('quality')  ·  Settings.set('fps', true)  ·  Settings.on(fn)
+ *   Settings.fx   effective level 0 (low) .. 2 (high), with 'auto' already resolved
  */
-G.Settings = (() => {
+export const Settings = (() => {
   const KEY = 'ps.settings';
   const DEF = { quality: 'auto', dmgNumbers: true, calm: false, fps: false, stick: 1, stickMode: 'float', pad: null };
   let s = Object.assign({}, DEF);

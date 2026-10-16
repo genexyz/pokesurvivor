@@ -4,12 +4,15 @@
  * So the same bubble comes out water-blue or poison-purple, and everything shares
  * pixel size and dark outline with the Mystery Dungeon sprites.
  *
- *   G.VFX.draw(ctx, shape, pal, x, y, { angle, scale, frame, alpha })
- *   G.VFX.forMove(m)  -> how that move looks (projectile, beam, hit...)
- *   G.VFX.forType(t)  -> default shape of a type (enemy shots)
+ *   VFX.draw(ctx, shape, pal, x, y, { angle, scale, frame, alpha })
+ *   VFX.forMove(m)  -> how that move looks (projectile, beam, hit...)
+ *   VFX.forType(t)  -> default shape of a type (enemy shots)
  */
-G.VFX = (() => {
-  const PX = G.Sprites.PX;
+import { U } from '../core/util.js';
+import { Sprites } from '../core/sprites.js';
+
+export const VFX = (() => {
+  const PX = Sprites.PX;
 
   // Palettes per type: outline, dark, mid, light, highlight.
   const PAL = {
@@ -34,7 +37,7 @@ G.VFX = (() => {
     aura: ['#0c2460', '#1c4cb0', '#3a7cff', '#90d2ff', '#ffffff']
   };
   const IDX = { o: 0, d: 1, m: 2, l: 3, w: 4 };
-  const H = (a, b, c) => G.U.hash(a, b, c);
+  const H = (a, b, c) => U.hash(a, b, c);
 
   // ---------------- pixel canvas ----------------
   // Shapes write letters (o d m l w, or L = semi-transparent light);

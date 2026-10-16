@@ -2,13 +2,17 @@
  * Everything is drawn from character maps, just like the tiles, so the
  * interface shares its style with the Mystery Dungeon sprites.
  *
- *   G.Icons.html('coin', 18)     <img> for the DOM
- *   G.Icons.draw(ctx, 'coin', x, y, 18)   on the canvas
- *   G.Icons.url('star')          data URL (for CSS)
+ *   Icons.html('coin', 18)     <img> for the DOM
+ *   Icons.draw(ctx, 'coin', x, y, 18)   on the canvas
+ *   Icons.url('star')          data URL (for CSS)
  *   'move:<id>'                  type emblem + family badge
  *   'type:<type>'                emblem only
  */
-G.Icons = (() => {
+import { U } from '../core/util.js';
+import { Moves } from '../data/moves.js';
+import { Gacha } from '../systems/gacha.js';
+
+export const Icons = (() => {
   const K = '#1b1528'; // outline
 
   // ---------------- interface icons (12×12) ----------------
@@ -1002,7 +1006,7 @@ G.Icons = (() => {
     const cv = document.createElement('canvas');
     cv.width = cv.height = S;
     const c = cv.getContext('2d', { willReadFrequently: true }); // read in svgOf()
-    const col = G.U.TYPE_COLOR[type] || '#b0a99f';
+    const col = U.TYPE_COLOR[type] || '#b0a99f';
     const dark = shade(col, 0.55),
       lite = shade(col, 1.3);
     // Disc with outline, shadow bottom-right and highlight top-left.
@@ -1051,7 +1055,7 @@ G.Icons = (() => {
     let cv = cache.get(name);
     if (cv) return cv;
     if (name.startsWith('move:')) {
-      const m = G.Moves.BY_ID[name.slice(5)];
+      const m = Moves.BY_ID[name.slice(5)];
       cv = emblem(m ? m.type : 'normal', m ? m.kind : null);
     } else if (name.startsWith('type:')) {
       cv = emblem(name.slice(5));
@@ -1235,7 +1239,7 @@ G.Icons = (() => {
    */
   const RARITY_BALL = { 1: 'ball', 2: 'ball2', 3: 'ball3', 4: 'ballLux', 5: 'ball4' };
   function rarity(n, size = 12) {
-    return `<span class="rarity-ball" title="${(G.Gacha && G.Gacha.RARITY_NAME[n]) || ''}">${html(RARITY_BALL[n] || 'ball', size)}</span>`;
+    return `<span class="rarity-ball" title="${(Gacha && Gacha.RARITY_NAME[n]) || ''}">${html(RARITY_BALL[n] || 'ball', size)}</span>`;
   }
 
   /** Exposes to CSS the icons used by the stylesheets. */

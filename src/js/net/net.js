@@ -5,7 +5,7 @@
  * Two paths, at the same time:
  *   direct   WebRTC (data channel between browsers, without going through any
  *            server). The negotiation (signalling) goes through our server
- *            (G.Live, WebSocket; server/live.mjs).
+ *            (Live, WebSocket; server/live.mjs).
  *            Only with Google's free STUN: if the network doesn't allow a direct
  *            connection (some routers and mobile data), that pair can't play
  *            together. (Our own TURN, coturn, could be added to ICE.)
@@ -18,7 +18,10 @@
  *       broadcast(msg) · on(fn(from, msg)) · onPeer(fn(uid, state))
  *       peers() · mode(uid) -> 'connecting' | 'direct' | 'relay' | 'closed'
  */
-G.Net = (() => {
+import { DB } from '../core/db.js';
+import { Live } from './live.js';
+
+export const Net = (() => {
   const ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
   const DIRECT_TIMEOUT = 9000; // ms to get a direct channel before using the relay
   // Relay OFF: without a direct connection, that pair can't play together
@@ -52,7 +55,7 @@ G.Net = (() => {
   function open(id, host, hostId) {
     if (roomId === id) return;
     close();
-    uid = G.DB.uid;
+    uid = DB.uid;
     roomId = id;
     isHost = host;
     hostUid = hostId;
@@ -239,10 +242,10 @@ G.Net = (() => {
   // ---------------- send / receive ----------------
 
   function relayPush(to, env) {
-    if (roomId) G.Live.send('sig', { to, env });
+    if (roomId) Live.send('sig', { to, env });
   }
   // What arrives via the server: signalling (or the start notice).
-  G.Live.on('sig', msg => {
+  Live.on('sig', msg => {
     const m = msg.env;
     if (!roomId || msg.room !== roomId || !m || !msg.f) return;
     if (m.sig) onSignal(msg.f, m.sig);

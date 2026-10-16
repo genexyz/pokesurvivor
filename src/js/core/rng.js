@@ -1,10 +1,10 @@
 /* ============ rng.js — seeded random numbers for runs ============
- * Every run has a seed (G.RNG.seed). Gameplay randomness goes through named
+ * Every run has a seed (RNG.seed). Gameplay randomness goes through named
  * streams, each seeded from the run seed and its own name, so the same seed
  * gives the same map, enemy cast, bosses, events, loot and level-up offers.
  * One stream per system: an extra roll in one system never shifts another.
  *
- *   const R = G.RNG.stream('spawn');   // once, at module level
+ *   const R = RNG.stream('spawn');   // once, at module level
  *   R.next()  R.range(a, b)  R.int(a, b)  R.chance(p)  R.pick(arr)  R.pickN(arr, n)  R.angle()
  *
  * Streams in use: cast (enemy roster and bosses), spawn, enemy (AI choices),
@@ -12,7 +12,7 @@
  * weather, combat.
  *
  * Purely visual randomness (particles, sparkles, sounds) keeps using
- * Math.random / G.U.rand: it must not consume gameplay rolls.
+ * Math.random / U.rand: it must not consume gameplay rolls.
  *
  * The frame time is variable, so two runs with the same seed only stay
  * identical as far as the rolls go: what you do in them still changes the run.
@@ -20,7 +20,7 @@
  * Co-op: the host simulates the run, so only the host's streams matter; the
  * seed travels in the 'start' message (net/coop.js).
  */
-G.RNG = (() => {
+export const RNG = (() => {
   /** FNV-1a: stream name -> 32-bit number. */
   function hashName(s) {
     let h = 2166136261;

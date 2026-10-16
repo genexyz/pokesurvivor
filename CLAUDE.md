@@ -11,8 +11,10 @@ translation in `src/js/data/lang-es.js`: any new on-screen English text needs it
 
 1. Edit `src/` (the page is `src/index.html`; static files go in `public/`). `dist/` is generated and never committed.
 2. `npm run build` (or `npm run build:force` for a mandatory update); `npm start` to see it.
-   - `scripts/build.js` generates `dist/index.html`, `dist/js/app.min.js` and **`dist/version.json`** (this version's fingerprint);
+   - `scripts/build.js` runs Vite (`vite.config.mjs`): `dist/index.html`, `dist/js/app-<hash>.js` (obfuscated) and
+     **`dist/version.json`** (this version's fingerprint, also in `<meta name="ps-version">`);
      then `scripts/export_data.js` and `scripts/make_seo_pages.py` generate the web pages.
+   - The game is ES modules (`src/js/main.js` is the entry): export what other files use, import what you use. No globals.
 3. Commit (no "Co-Authored-By" or any AI signature) and `git push origin main` only when the owner asks.
    Coolify rebuilds the image (`Dockerfile`) and publishes on its own. See `docs/PUBLISHING.md`.
 
@@ -25,7 +27,7 @@ When a version is published, every player must move to the new version without l
   If the player is in the gacha, the upgrade shop, the settings or typing in a field, it waits until they finish.
 - **In a run**: left alone. When it ends, the run is saved as usual and the page reloads on returning to the menu.
 - Anything pending is uploaded to the cloud before reloading.
-  Do not remove `updater.js` or the writing of `version.json` in `scripts/build.js`.
+  Do not remove `updater.js` or the `ps-release` plugin in `vite.config.mjs` (it writes `version.json` and the meta).
 
 ## What's new (changelog)
 

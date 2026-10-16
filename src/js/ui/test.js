@@ -1,6 +1,15 @@
 /* ============ test.js — personality quiz and partner choice ============ */
-G.TestUI = (() => {
-  const $ = G.UI.$;
+import { U } from '../core/util.js';
+import { DEX_BY } from '../data/pokedex.js';
+import { DB } from '../core/db.js';
+import { Moves } from '../data/moves.js';
+import { PERSONALITY_TEST, STARTERS, TRAIT_NAME, TRAIT_TEXT, personalityResult } from '../data/starters.js';
+import { Icons } from './icons.js';
+import { UI } from './ui.js';
+import { Flow } from '../game.js';
+
+export const TestUI = (() => {
+  const $ = UI.$;
   let idx = 0,
     scores = {},
     result = null,
@@ -9,7 +18,7 @@ G.TestUI = (() => {
   function init() {
     $('res-ok').onclick = () => choose(result.dex);
     $('res-other').onclick = openStarters;
-    $('starter-back').onclick = () => G.UI.show('scr-result');
+    $('starter-back').onclick = () => UI.show('scr-result');
     $('starter-ok').onclick = () => {
       if (picked) choose(picked);
     };
@@ -19,13 +28,13 @@ G.TestUI = (() => {
     idx = 0;
     scores = {};
     result = null;
-    G.UI.chrome(false);
-    G.UI.show('scr-test');
+    UI.chrome(false);
+    UI.show('scr-test');
     render();
   }
 
   function render() {
-    const Q = G.PERSONALITY_TEST;
+    const Q = PERSONALITY_TEST;
     const q = Q[idx];
     $('test-bar').style.width = (idx / Q.length) * 100 + '%';
     $('test-count').textContent = `Question ${idx + 1} of ${Q.length}`;
@@ -45,19 +54,19 @@ G.TestUI = (() => {
   function answer(a) {
     for (const k in a.p) scores[k] = (scores[k] || 0) + a.p[k];
     idx++;
-    if (idx < G.PERSONALITY_TEST.length) render();
+    if (idx < PERSONALITY_TEST.length) render();
     else showResult();
   }
 
   function showResult() {
-    result = G.personalityResult(scores);
-    const mon = G.DEX_BY[result.dex];
-    $('res-trait').textContent = G.TRAIT_NAME[result.trait] || result.trait.charAt(0).toUpperCase() + result.trait.slice(1);
-    $('res-text').textContent = G.TRAIT_TEXT[result.trait] || '';
+    result = personalityResult(scores);
+    const mon = DEX_BY[result.dex];
+    $('res-trait').textContent = TRAIT_NAME[result.trait] || result.trait.charAt(0).toUpperCase() + result.trait.slice(1);
+    $('res-text').textContent = TRAIT_TEXT[result.trait] || '';
     $('res-name').textContent = mon.name;
-    G.UI.sprite($('res-stage'), mon.dex, { lively: true, scale: 4, hero: true });
-    $('res-stage').style.setProperty('--stage-c', G.U.TYPE_COLOR[mon.types[0]]);
-    G.UI.show('scr-result');
+    UI.sprite($('res-stage'), mon.dex, { lively: true, scale: 4, hero: true });
+    $('res-stage').style.setProperty('--stage-c', U.TYPE_COLOR[mon.types[0]]);
+    UI.show('scr-result');
   }
 
   /** Opens the starter grid. `fromMenu` = change the starting partner later. */
@@ -67,19 +76,19 @@ G.TestUI = (() => {
     $('starter-info').textContent = 'Pick a Pokémon';
     const grid = $('starter-grid');
     grid.innerHTML = '';
-    for (const s of G.STARTERS) {
-      const mon = G.DEX_BY[s.dex];
+    for (const s of STARTERS) {
+      const mon = DEX_BY[s.dex];
       const cell = document.createElement('div');
       cell.className = 'cell' + (result && s.dex === result.dex ? ' on' : '');
-      cell.appendChild(G.UI.spriteCanvas(s.dex, 92, 80, { scale: 2 }));
+      cell.appendChild(UI.spriteCanvas(s.dex, 92, 80, { scale: 2 }));
       cell.insertAdjacentHTML('beforeend', `<b>${mon.name}</b>`);
       cell.onclick = () => {
         grid.querySelectorAll('.cell').forEach(c => c.classList.remove('on'));
         cell.classList.add('on');
         picked = s.dex;
-        const mv = G.Moves.BY_ID[s.start];
+        const mv = Moves.BY_ID[s.start];
         $('starter-info').innerHTML =
-          `${G.UI.typeChips(mon.types)} ${G.Icons.html('move:' + s.start, 16)} ${mv.name} · ${s.traits.map(t => G.TRAIT_NAME[t] || t).join(', ')}`;
+          `${UI.typeChips(mon.types)} ${Icons.html('move:' + s.start, 16)} ${mv.name} · ${s.traits.map(t => TRAIT_NAME[t] || t).join(', ')}`;
         $('starter-ok').disabled = false;
       };
       if (result && s.dex === result.dex) {
@@ -88,18 +97,18 @@ G.TestUI = (() => {
       }
       grid.appendChild(cell);
     }
-    G.UI.show('scr-starters');
+    UI.show('scr-starters');
   }
 
   function choose(dex) {
-    const save = G.DB.save;
+    const save = DB.save;
     save.starter = dex;
     save.partner = dex;
     save.personality = result ? { trait: result.trait, scores } : null;
-    G.DB.grant(dex, 'starter');
-    G.DB.commit();
-    G.UI.toast(G.DEX_BY[dex].name + ' joins you!');
-    G.Flow.goMenu();
+    DB.grant(dex, 'starter');
+    DB.commit();
+    UI.toast(DEX_BY[dex].name + ' joins you!');
+    Flow.goMenu();
   }
 
   return { init, start };

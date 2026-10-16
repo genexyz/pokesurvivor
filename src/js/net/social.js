@@ -1,20 +1,24 @@
 /* ============ social.js — nickname, friends, online status, invites and rooms ============
- * Only works with a cloud account (G.DB.online). Uses our server:
+ * Only works with a cloud account (DB.online). Uses our server:
  *
  *   /api/nick, /api/profile     unique nickname and public profile (server/api.mjs)
- *   G.Live (WebSocket /ws)      friends, online status, invites and rooms (server/live.mjs):
+ *   Live (WebSocket /ws)      friends, online status, invites and rooms (server/live.mjs):
  *                               the server sends changes as soon as they happen
  *
  *   room = { id, host, isHost, open, members: [{ uid, name, dex, shiny }] }
  *
- * The rest of the game listens for changes with G.Social.on(fn).
+ * The rest of the game listens for changes with Social.on(fn).
  */
-G.Social = (() => {
+import { DB } from '../core/db.js';
+import { AchDefs } from '../data/achievements.js';
+import { Live } from './live.js';
+
+export const Social = (() => {
   const VALID = /^[A-Za-z0-9_ñÑáéíóúÁÉÍÓÚ]{3,16}$/;
   const MAX_PLAYERS = 4;
   const INVITE_TTL = 3 * 60 * 1000;
   // The real time: the server's (corrects the device clock if it's off).
-  const now = () => G.Live.now();
+  const now = () => Live.now();
 
   let uid = null;
   let me = null; // { uid, name }
@@ -24,7 +28,8 @@ G.Social = (() => {
   const invites = new Map(); // fromUid -> { from, name, room, at }
   const listeners = new Set();
   let started = false,
-    playing = false;
+    playing = false,
+    hooked = false;
 
   function emit(what) {
     listeners.forEach(fn => {
@@ -38,18 +43,18 @@ G.Social = (() => {
 
   // ---------------- what the server sends ----------------
 
-  G.Live.on('friends', msg => {
+  Live.on('friends', msg => {
     if (!started) return;
     friends = new Map((msg.list || []).map(f => [f.uid, f]));
     emit('friends');
   });
-  G.Live.on('presence', msg => {
+  Live.on('presence', msg => {
     const f = friends.get(msg.uid);
     if (!f) return;
     Object.assign(f, { online: !!msg.online, play: !!msg.play, room: msg.room || '' });
     emit('presence');
   });
-  G.Live.on('invites', msg => {
+  Live.on('invites', msg => {
     if (!started) return;
     invites.clear();
     for (const v of msg.list || []) {
@@ -59,7 +64,7 @@ G.Social = (() => {
     }
     emit('invites');
   });
-  G.Live.on('room', msg => {
+  Live.on('room', msg => {
     if (!started) return;
     if (!msg.room) {
       if (msg.closed) closedRoom();
@@ -69,12 +74,12 @@ G.Social = (() => {
     setRoom(msg.room);
   });
   // After reconnecting (mobile network, server restarted): does your room still exist?
-  G.Live.on('open', async () => {
+  Live.on('open', async () => {
     if (!started) return;
-    if (playing) G.Live.send('play', { on: true });
+    if (playing) Live.send('play', { on: true });
     if (!room) return;
     const id = room.id;
-    const r = await G.Live.call('room.resume', { id });
+    const r = await Live.call('room.resume', { id });
     if (room && room.id === id) {
       if (r.ok) setRoom(r.room);
       else closedRoom();
@@ -98,15 +103,20 @@ G.Social = (() => {
 
   /** After signing in. → 'ok' | 'need-nick' | 'off' (no cloud) */
   async function start() {
-    if (!G.DB.online) return 'off';
+    if (!DB.online) return 'off';
     if (started) return me ? 'ok' : 'need-nick';
-    uid = G.DB.uid;
+    uid = DB.uid;
     started = true;
-    G.Live.start();
-    const nick = G.DB.nick;
+    // On logout or account deletion. (Hooked here, not at load: db.js and this module import each other.)
+    if (!hooked) {
+      hooked = true;
+      DB.onLeave(why => stop(why));
+    }
+    Live.start();
+    const nick = DB.nick;
     if (!nick) return 'need-nick';
     me = { uid, name: nick };
-    if (G.DB.user !== nick) G.DB.setName(nick);
+    if (DB.user !== nick) DB.setName(nick);
     return 'ok';
   }
 
@@ -116,13 +126,13 @@ G.Social = (() => {
     if (!VALID.test(name)) return { ok: false, error: 'The nickname must be 3-16 letters, numbers or _.' };
     let r;
     try {
-      r = await G.DB.api('api/nick', { method: 'POST', body: { name } });
+      r = await DB.api('api/nick', { method: 'POST', body: { name } });
     } catch (e) {
       return { ok: false, error: (e && e.message) || "Couldn't save the nickname." };
     }
     if (!r.ok) return r;
     me = { uid, name: r.name };
-    G.DB.setName(r.name);
+    DB.setName(r.name);
     publishProfile(true);
     return { ok: true };
   }
@@ -130,7 +140,7 @@ G.Social = (() => {
   async function stop() {
     if (!started) return;
     await leaveRoom().catch(() => {});
-    G.Live.stop();
+    Live.stop();
     friends.clear();
     invites.clear();
     me = null;
@@ -143,7 +153,7 @@ G.Social = (() => {
   function setPlaying(p) {
     if (playing !== !!p) {
       playing = !!p;
-      G.Live.send('play', { on: playing });
+      Live.send('play', { on: playing });
     }
   }
 
@@ -160,27 +170,27 @@ G.Social = (() => {
     name = (name || '').trim();
     if (!me) return { ok: false, error: 'Choose your nickname first.' };
     if (!VALID.test(name)) return { ok: false, error: "Type your friend's exact nickname." };
-    return G.Live.call('friend.request', { name });
+    return Live.call('friend.request', { name });
   }
 
   function accept(other) {
-    return G.Live.call('friend.accept', { uid: other });
+    return Live.call('friend.accept', { uid: other });
   }
 
   function remove(other) {
-    return G.Live.call('friend.remove', { uid: other });
+    return Live.call('friend.remove', { uid: other });
   }
 
   // ---------------- rooms ----------------
 
   function memberInfo() {
-    const s = G.DB.save;
-    return { dex: s.partner, shiny: !!s.partnerShiny && G.DB.ownsShiny(s.partner) };
+    const s = DB.save;
+    return { dex: s.partner, shiny: !!s.partnerShiny && DB.ownsShiny(s.partner) };
   }
 
   async function createRoom() {
     if (room) return room;
-    const r = await G.Live.call('room.create', { me: memberInfo() });
+    const r = await Live.call('room.create', { me: memberInfo() });
     if (r.ok) setRoom(r.room);
     return room;
   }
@@ -188,7 +198,7 @@ G.Social = (() => {
   async function joinRoom(id) {
     if (room && room.id === id) return { ok: true };
     if (room) await leaveRoom();
-    const r = await G.Live.call('room.join', { id, me: memberInfo() });
+    const r = await Live.call('room.join', { id, me: memberInfo() });
     if (!r.ok) return { ok: false, error: r.error || "Couldn't join the room." };
     setRoom(r.room);
     return { ok: true };
@@ -206,17 +216,17 @@ G.Social = (() => {
     leftId = room.id;
     room = null;
     emit('room');
-    await G.Live.call('room.leave');
+    await Live.call('room.leave');
   }
 
   /** The host closes the room to new players when the run starts. */
   function setOpen(open) {
-    if (room && room.isHost) G.Live.call('room.open', { open: !!open });
+    if (room && room.isHost) Live.call('room.open', { open: !!open });
   }
 
   /** Updates your Pokémon in the room (if you change partner). */
   function refreshMember() {
-    if (room && me) G.Live.call('room.member', memberInfo());
+    if (room && me) Live.call('room.member', memberInfo());
   }
 
   // ---------------- invites ----------------
@@ -226,7 +236,7 @@ G.Social = (() => {
     if (!f || f.status !== 'ok') return { ok: false, error: 'You can only invite your friends.' };
     if (room && room.members.length >= MAX_PLAYERS) return { ok: false, error: 'The room is full.' };
     if (room && !room.isHost) return { ok: false, error: 'Only the room host can invite.' };
-    const r = await G.Live.call('invite', { to: other, me: memberInfo() });
+    const r = await Live.call('invite', { to: other, me: memberInfo() });
     if (r.room && (!room || room.id === r.room.id)) setRoom(r.room);
     return r.ok ? { ok: true, msg: r.msg } : { ok: false, error: r.error || "Couldn't send the invite." };
   }
@@ -236,11 +246,11 @@ G.Social = (() => {
     invites.delete(from);
     emit('invites');
     if (!inv || now() - inv.at > INVITE_TTL) {
-      G.Live.send('invite.decline', { from });
+      Live.send('invite.decline', { from });
       return { ok: false, error: 'The invite has expired.' };
     }
     if (room) await leaveRoom();
-    const r = await G.Live.call('invite.accept', { from, me: memberInfo() });
+    const r = await Live.call('invite.accept', { from, me: memberInfo() });
     if (!r.ok) return { ok: false, error: r.error || "Couldn't join the room." };
     setRoom(r.room);
     return { ok: true };
@@ -248,7 +258,7 @@ G.Social = (() => {
 
   function declineInvite(from) {
     invites.delete(from);
-    G.Live.send('invite.decline', { from });
+    Live.send('invite.decline', { from });
     emit('invites');
   }
 
@@ -256,17 +266,17 @@ G.Social = (() => {
 
   /** What others see of you (also for your own preview, without uploading it). */
   function profileData() {
-    const s = G.DB.save,
+    const s = DB.save,
       st = s.stats,
       prof = s.profile || {};
-    const unlocked = G.AchDefs.LIST.filter(a => s.ach && s.ach[a.id]);
+    const unlocked = AchDefs.LIST.filter(a => s.ach && s.ach[a.id]);
     const medals = unlocked
       .slice()
       .sort((a, b) => b.tier - a.tier || s.ach[b.id] - s.ach[a.id])
       .slice(0, 8)
       .map(a => a.id);
     return {
-      name: me ? me.name : G.DB.user,
+      name: me ? me.name : DB.user,
       favs: (prof.favs || []).slice(0, 3).map(f => ({ dex: f.dex | 0, shiny: !!f.shiny })),
       title: prof.title || '',
       best: {
@@ -317,7 +327,7 @@ G.Social = (() => {
       } catch (e) {
         /* nothing */
       }
-      G.DB.api('api/profile', { method: 'PUT', body: d }).catch(e => {
+      DB.api('api/profile', { method: 'PUT', body: d }).catch(e => {
         pubLast = '';
         console.warn('[Social] profile:', e.code || e.message);
       });
@@ -332,14 +342,11 @@ G.Social = (() => {
     if (other === uid && me) return Object.assign(profileData(), { name: me.name });
     const c = profCache.get(other);
     if (c && Date.now() - c.at < 10 * 60 * 1000) return c.v; // fetched data is valid for 10 min
-    const r = await G.DB.api('api/profile/' + encodeURIComponent(other)).catch(() => null);
+    const r = await DB.api('api/profile/' + encodeURIComponent(other)).catch(() => null);
     const v = r ? r.profile : null;
     profCache.set(other, { at: Date.now(), v });
     return v;
   }
-
-  // On logout or account deletion.
-  G.DB.onLeave(why => stop(why));
 
   return {
     start,

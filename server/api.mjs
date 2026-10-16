@@ -1,14 +1,13 @@
 /* /api/...: save, nickname and profile, leaderboard (with anti-cheat) and moderation.
  * The live part (friends, online status, invites, rooms) is in live.mjs.
  */
-import { createRequire } from 'node:module';
 import { q, tx } from './db.mjs';
 import { userOf } from './auth.mjs';
 import * as live from './live.mjs';
-
-const require = createRequire(import.meta.url);
 // The same save merge the browser uses.
-const { merge } = require('../src/js/core/save-merge.js');
+import { SaveMerge } from '../src/js/core/save-merge.js';
+
+const { merge } = SaveMerge;
 
 export const NICK = /^[A-Za-z0-9_ñÑáéíóúÁÉÍÓÚ]{3,16}$/;
 const BOARD = /^[sg]_(d\d{8}|w\d{4}-\d{2}j|m\d{6}j|all2)(_p\d{1,4})?$/;

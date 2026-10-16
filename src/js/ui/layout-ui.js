@@ -2,11 +2,16 @@
  * Settings > Controls > Place the buttons: shows the attacks (with the
  * item), the pause button and, if fixed, the joystick, and lets you drag them
  * anywhere. The center of each one is saved relative to the screen
- * (G.Settings 'pad'); whatever isn't moved stays in its usual place.
+ * (Settings 'pad'); whatever isn't moved stays in its usual place.
  * The HUD (hud.js) and the joystick (touch.js) read those positions.
  * The sizes copy the HUD's: if they change there, change them here.
  */
-G.LayoutUI = (() => {
+import { U } from '../core/util.js';
+import { Settings } from '../core/settings.js';
+import { Touch } from '../core/touch.js';
+import { UI } from './ui.js';
+
+export const LayoutUI = (() => {
   const S = 54,
     GAP = 9,
     ITEM_GAP = 18,
@@ -19,12 +24,12 @@ G.LayoutUI = (() => {
 
   /** Where each thing is right now (center in px), from the saved layout or the default. */
   function current(k, w, h) {
-    const p = G.Touch.spot(k);
+    const p = Touch.spot(k);
     if (k === 'stick') {
-      const b = G.Touch.stickBase(w, h);
+      const b = Touch.stickBase(w, h);
       return [b.x, b.y];
     }
-    const sa = G.Touch.safeArea();
+    const sa = Touch.safeArea();
     if (k === 'bar') {
       if (p) return [p[0] * w, p[1] * h];
       const totalW = N * S + (N - 1) * GAP;
@@ -37,11 +42,10 @@ G.LayoutUI = (() => {
 
   /** Same as the HUD does to keep it on screen. */
   function fit(k, x, y, w, h) {
-    if (k === 'bar')
-      return [G.U.clamp(x, 6 + BAR_W / 2, Math.max(6 + BAR_W / 2, w - BAR_W / 2 - 6)), G.U.clamp(y, 24 + S / 2, h - S / 2 - 6)];
-    if (k === 'pause') return [G.U.clamp(x, 24, w - 24), G.U.clamp(y, 30, h - 24)];
-    const r = G.Touch.R();
-    return [G.U.clamp(x, r + 4, w - r - 4), G.U.clamp(y, r + 4, h - r - 4)];
+    if (k === 'bar') return [U.clamp(x, 6 + BAR_W / 2, Math.max(6 + BAR_W / 2, w - BAR_W / 2 - 6)), U.clamp(y, 24 + S / 2, h - S / 2 - 6)];
+    if (k === 'pause') return [U.clamp(x, 24, w - 24), U.clamp(y, 30, h - 24)];
+    const r = Touch.R();
+    return [U.clamp(x, r + 4, w - r - 4), U.clamp(y, r + 4, h - r - 4)];
   }
 
   function build() {
@@ -80,12 +84,12 @@ G.LayoutUI = (() => {
       mode = 'float';
       const w = innerWidth,
         h = innerHeight,
-        sa = G.Touch.safeArea();
+        sa = Touch.safeArea();
       const totalW = N * S + (N - 1) * GAP;
       pos = {
         bar: [(w - totalW) / 2 - S - ITEM_GAP + BAR_W / 2, h - S - 18 - Math.min(28, sa.bottom) + S / 2],
         pause: [w - 52 - Math.min(44, sa.right) + 20, 12 + Math.min(20, sa.top) + 20],
-        stick: [G.Touch.STICK_DEF[0] * w, G.Touch.STICK_DEF[1] * h]
+        stick: [Touch.STICK_DEF[0] * w, Touch.STICK_DEF[1] * h]
       };
       for (const k in pos) pos[k] = fit(k, pos[k][0], pos[k][1], w, h);
       paint();
@@ -134,12 +138,12 @@ G.LayoutUI = (() => {
     for (const k of ['bar', 'pause', 'stick']) {
       const c = current(k, w, h);
       pos[k] = fit(k, c[0], c[1], w, h);
-      moved[k] = !!G.Touch.spot(k);
+      moved[k] = !!Touch.spot(k);
     }
   }
 
   function paint() {
-    const r = G.Touch.R();
+    const r = Touch.R();
     const place = (k, ww, hh) => {
       const n = el.querySelector(`[data-k="${k}"]`);
       n.style.left = pos[k][0] - ww / 2 + 'px';
@@ -160,15 +164,15 @@ G.LayoutUI = (() => {
       h = innerHeight,
       pad = {};
     for (const k in pos) if (moved[k]) pad[k] = [+(pos[k][0] / w).toFixed(4), +(pos[k][1] / h).toFixed(4)];
-    G.Settings.set('pad', Object.keys(pad).length ? pad : null);
-    G.Settings.set('stickMode', mode);
-    G.UI.toast('Buttons placed');
+    Settings.set('pad', Object.keys(pad).length ? pad : null);
+    Settings.set('stickMode', mode);
+    UI.toast('Buttons placed');
     close();
   }
 
   function open() {
     if (!el) build();
-    mode = G.Settings.get('stickMode') === 'fixed' ? 'fixed' : 'float';
+    mode = Settings.get('stickMode') === 'fixed' ? 'fixed' : 'float';
     load();
     el.classList.remove('hidden');
     paint();

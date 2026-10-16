@@ -5,13 +5,13 @@
 /* Pixelify Sans with redrawn digits so they are not confused (scripts/make_font.py). */
 @font-face {
   font-family: 'Pixelify';
-  src: url('../assets/fonts/PixelifyPS-400.ttf') format('truetype');
+  src: url('/assets/fonts/PixelifyPS-400.ttf') format('truetype');
   font-weight: 400 550;
   font-display: block;
 }
 @font-face {
   font-family: 'Pixelify';
-  src: url('../assets/fonts/PixelifyPS-700.ttf') format('truetype');
+  src: url('/assets/fonts/PixelifyPS-700.ttf') format('truetype');
   font-weight: 551 900;
   font-display: block;
 }

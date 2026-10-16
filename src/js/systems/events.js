@@ -18,10 +18,32 @@
  * Co-op: the host decides and announces with 'ev' (see coop.js). Everyone sees the
  * same thing and the reward is for everyone.
  */
-G.Events = (() => {
-  const B = G.Balance.events;
-  const R = G.RNG.stream('events');
-  const authority = () => !G.Coop.active || G.Coop.isHost;
+import { U } from '../core/util.js';
+import { RNG } from '../core/rng.js';
+import { Sync } from '../net/sync.js';
+import { Balance } from '../data/balance.js';
+import { DEX, DEX_BY } from '../data/pokedex.js';
+import { SPRITE_META } from '../data/sprites-meta.js';
+import { Audio } from '../core/audio.js';
+import { Sprites } from '../core/sprites.js';
+import { Camera } from '../core/camera.js';
+import { Enemies } from '../data/enemies.js';
+import { World } from '../world/world.js';
+import { FX } from '../entities/fx.js';
+import { Enemy, EnemyMgr } from '../entities/enemy.js';
+import { Pickups } from '../entities/pickup.js';
+import { Spawner } from './spawner.js';
+import { Rift } from './rift.js';
+import { Judgment } from './judgment.js';
+import { Coop } from '../net/coop.js';
+import { Icons } from '../ui/icons.js';
+import { HUD } from '../ui/hud.js';
+import { Game } from '../game.js';
+
+export const Events = (() => {
+  const B = Balance.events;
+  const R = RNG.stream('events');
+  const authority = () => !Coop.active || Coop.isHost;
 
   let nextT = 0,
     cur = null,
@@ -47,12 +69,12 @@ G.Events = (() => {
       if (cur.id !== 'lost' && cur.t >= cur.dur && authority()) end();
     }
     if (lost) lostTick(dt, players);
-    if (!authority() || G.Rift.inArena || G.Judgment.active) return;
+    if (!authority() || Rift.inArena || Judgment.active) return;
 
     if (thieves < B.thief.max) {
       thiefT -= dt;
       if (thiefT <= 0) {
-        if (G.EnemyMgr.bossAlive()) thiefT = B.thief.bossRetry;
+        if (EnemyMgr.bossAlive()) thiefT = B.thief.bossRetry;
         else {
           spawnThief(players, time);
           thieves++;
@@ -64,7 +86,7 @@ G.Events = (() => {
     if (cur) return;
     nextT -= dt;
     if (nextT > 0) return;
-    if (G.EnemyMgr.bossAlive()) {
+    if (EnemyMgr.bossAlive()) {
       nextT = B.bossRetry;
       return;
     }
@@ -76,43 +98,43 @@ G.Events = (() => {
   function start(id, time, players) {
     last = id;
     if (id === 'horde') {
-      const types = G.Enemies.hordeTypes(time);
+      const types = Enemies.hordeTypes(time);
       if (!types.length) return start('gold', time, players);
       const type = R.pick(types);
-      const defs = G.Enemies.hordeDefs(type, time);
-      G.Sprites.preload(defs.map(d => d.dex));
+      const defs = Enemies.hordeDefs(type, time);
+      Sprites.preload(defs.map(d => d.dex));
       cur = { id, t: 0, dur: B.horde.dur, type, defs };
-      G.Spawner.burst(Math.round(B.horde.burst * G.Coop.scaleRate(players.length)));
+      Spawner.burst(Math.round(B.horde.burst * Coop.scaleRate(players.length)));
     } else if (id === 'gold') {
       cur = { id, t: 0, dur: B.gold.dur };
-      for (const e of G.EnemyMgr.all()) if (!e.remote) e.makeGolden();
+      for (const e of EnemyMgr.all()) if (!e.remote) e.makeGolden();
     } else {
       if (!spawnLost(players)) return;
       cur = { id, t: 0, dur: Infinity };
     }
     announce();
-    if (G.Coop.isHost) G.Coop.broadcast(['ev', 's', id, cur.type || '']);
+    if (Coop.isHost) Coop.broadcast(['ev', 's', id, cur.type || '']);
   }
 
   function announce() {
     if (!cur) return;
-    if (cur.id === 'horde') say(`A ${G.U.TYPE_NAME[cur.type]}-type horde!`, 3, G.U.TYPE_COLOR[cur.type]);
+    if (cur.id === 'horde') say(`A ${U.TYPE_NAME[cur.type]}-type horde!`, 3, U.TYPE_COLOR[cur.type]);
     else if (cur.id === 'gold') say('Golden hour! Double experience', 3, '#ffd23f');
     else if (lost) say(`A ${lost.name} is lost! Find it and take it to the marker`, 3.4, '#7dffb0');
-    G.Audio.sfx(cur.id === 'gold' ? 'shiny' : 'surge');
+    Audio.sfx(cur.id === 'gold' ? 'shiny' : 'surge');
   }
 
   function say(text, secs) {
-    G.Spawner.say(text, secs, true);
+    Spawner.say(text, secs, true);
   }
 
   function end() {
     if (!cur) return;
     cur = null;
-    if (G.Coop.isHost) G.Coop.broadcast(['ev', 'e']);
+    if (Coop.isHost) Coop.broadcast(['ev', 'e']);
   }
 
-  /** What spawns during a horde (used by G.Enemies.bagAt). */
+  /** What spawns during a horde (used by Enemies.bagAt). */
   function bag() {
     return cur && cur.id === 'horde' && cur.defs.length ? cur.defs : null;
   }
@@ -123,10 +145,10 @@ G.Events = (() => {
     const T = B.thief;
     const gold = R.chance(T.goldChance);
     const dex = gold ? T.goldDex : T.dex;
-    const mon = G.DEX_BY[dex];
-    if (!mon || !G.SPRITE_META[dex]) return;
+    const mon = DEX_BY[dex];
+    if (!mon || !SPRITE_META[dex]) return;
     const pl = R.pick(players.filter(p => !p.dead).length ? players.filter(p => !p.dead) : players);
-    G.Sprites.preload([dex]);
+    Sprites.preload([dex]);
     const def = {
       dex,
       name: mon.name,
@@ -142,18 +164,18 @@ G.Events = (() => {
         d = R.range(T.spawnDist[0], T.spawnDist[1]);
       const x = pl.x + Math.cos(a) * d,
         y = pl.y + Math.sin(a) * d * 0.8;
-      if (!G.World.isFree(x, y, 14)) continue;
-      const e = new G.Enemy(def, x, y, { hp: 1, spd: 1, dmg: 1 });
+      if (!World.isFree(x, y, 14)) continue;
+      const e = new Enemy(def, x, y, { hp: 1, spd: 1, dmg: 1 });
       e.life = T.life;
-      G.EnemyMgr.add(e);
-      G.FX.ring(x, y, 4, 40, '#ffd23f', 0.5, 3);
-      G.Spawner.say(
+      EnemyMgr.add(e);
+      FX.ring(x, y, 4, 40, '#ffd23f', 0.5, 3);
+      Spawner.say(
         gold
           ? `A ${mon.name} with a ×10 ticket! Catch it before it runs away!`
           : `A ${mon.name} loaded with coins! Catch it before it runs away!`,
         3.2
       );
-      G.Audio.sfx('shiny');
+      Audio.sfx('shiny');
       return;
     }
   }
@@ -163,7 +185,7 @@ G.Events = (() => {
   function spawnLost(players) {
     const alive = players.filter(p => !p.dead);
     const pl = R.pick(alive.length ? alive : players);
-    const pool = G.DEX.filter(p => p.rarity <= B.lost.maxRarity && !p.leg && G.SPRITE_META[p.dex] && !G.Sprites.hovers(p.dex));
+    const pool = DEX.filter(p => p.rarity <= B.lost.maxRarity && !p.leg && SPRITE_META[p.dex] && !Sprites.hovers(p.dex));
     const mon = R.pick(pool);
     let at = null,
       to = null;
@@ -172,23 +194,23 @@ G.Events = (() => {
         d = R.range(B.lost.spawnDist[0], B.lost.spawnDist[1]);
       const x = pl.x + Math.cos(a) * d,
         y = pl.y + Math.sin(a) * d * 0.8;
-      if (G.World.isFree(x, y, 16)) at = [x, y];
+      if (World.isFree(x, y, 16)) at = [x, y];
     }
     for (let i = 0; i < 30 && at && !to; i++) {
       const a = R.angle(),
         d = R.range(B.lost.goalDist[0], B.lost.goalDist[1]);
       const x = at[0] + Math.cos(a) * d,
         y = at[1] + Math.sin(a) * d * 0.85;
-      if (G.World.isFree(x, y, 30)) to = [x, y];
+      if (World.isFree(x, y, 30)) to = [x, y];
     }
     if (!at || !to) return false;
     makeLost({ dex: mon.dex, x: at[0], y: at[1], tx: to[0], ty: to[1], state: 'wait', hp: B.lost.hp, grant: R.chance(B.lost.grant) });
-    G.Sprites.preload([mon.dex]);
+    Sprites.preload([mon.dex]);
     return true;
   }
 
   function makeLost(o) {
-    const mon = G.DEX_BY[o.dex];
+    const mon = DEX_BY[o.dex];
     lost = Object.assign(
       {
         name: mon ? mon.name : '',
@@ -197,8 +219,8 @@ G.Events = (() => {
         hitCd: 0,
         netT: 0,
         follow: null,
-        anim: new G.Sprites.Animator(o.dex, 1),
-        r: G.Sprites.bodyRadius(o.dex)
+        anim: new Sprites.Animator(o.dex, 1),
+        r: Sprites.bodyRadius(o.dex)
       },
       o
     );
@@ -215,34 +237,34 @@ G.Events = (() => {
     }
 
     if (L.state === 'wait') {
-      const p = players.find(o => !o.dead && G.U.dist2(o.x, o.y, L.x, L.y) < (o.r + L.r + C.touchPad) ** 2);
+      const p = players.find(o => !o.dead && U.dist2(o.x, o.y, L.x, L.y) < (o.r + L.r + C.touchPad) ** 2);
       if (p) {
         L.state = 'follow';
         L.follow = p;
         say(`${L.name} is following you! Take it to the green marker`, 3, '#7dffb0');
-        G.Audio.sfx('confirm');
+        Audio.sfx('confirm');
       }
       L.moving = false;
     } else {
       const p = L.follow && !L.follow.dead ? L.follow : players.find(o => !o.dead) || L.follow;
-      const d = G.U.dist(L.x, L.y, p.x, p.y),
+      const d = U.dist(L.x, L.y, p.x, p.y),
         keep = p.r + L.r + C.keepPad;
       L.moving = d > keep;
       if (L.moving) {
         const sp = Math.min(d - keep, Math.max(C.minSpd, p.spd * C.spdMul) * dt);
-        const [nx, ny] = G.U.norm(p.x - L.x, p.y - L.y);
+        const [nx, ny] = U.norm(p.x - L.x, p.y - L.y);
         L.x += nx * sp;
         L.y += ny * sp;
-        G.World.collide(L);
-        L.anim.dir = G.Sprites.dirFromAngle(Math.atan2(ny, nx));
+        World.collide(L);
+        L.anim.dir = Sprites.dirFromAngle(Math.atan2(ny, nx));
       }
-      if (G.U.dist2(L.x, L.y, L.tx, L.ty) < C.goalR * C.goalR) return rescued();
+      if (U.dist2(L.x, L.y, L.tx, L.ty) < C.goalR * C.goalR) return rescued();
     }
     L.anim.loop(L.moving ? 'Walk' : 'Idle');
 
     // Enemies touching it damage it.
     if ((L.hitCd -= dt) <= 0) {
-      const hits = G.EnemyMgr.queryCircle(L.x, L.y, L.r).filter(e => !e.dead && e.behavior !== 'thief');
+      const hits = EnemyMgr.queryCircle(L.x, L.y, L.r).filter(e => !e.dead && e.behavior !== 'thief');
       if (hits.length) {
         L.hitCd = C.hitCd;
         L.hp -= Math.min(
@@ -250,16 +272,16 @@ G.Events = (() => {
           hits.reduce((a, e) => a + C.hitBase + e.dmg * C.hitDmgMul, 0)
         );
         L.flash = 0.1;
-        G.FX.burst(L.x, L.y - 10, '#ff5f6d', 4, 60);
+        FX.burst(L.x, L.y - 10, '#ff5f6d', 4, 60);
         if (L.hp <= 0) return gone(`${L.name} got scared and ran away…!`);
       }
     }
     if (L.flash > 0) L.flash -= dt;
     if (L.t > C.time) return gone(`${L.name} got tired of waiting and left…`);
 
-    if (G.Coop.isHost && (L.netT -= dt) <= 0) {
+    if (Coop.isHost && (L.netT -= dt) <= 0) {
       L.netT = 0.1;
-      G.Coop.broadcast([
+      Coop.broadcast([
         'ev',
         'lp',
         L.dex,
@@ -278,9 +300,9 @@ G.Events = (() => {
   function rescued() {
     const L = lost;
     // (Where each coin lands is cosmetic.)
-    for (let i = 0; i < B.lost.coins; i++) G.Pickups.drop('coin', L.tx + G.U.rand(-40, 40), L.ty + G.U.rand(-30, 30), B.lost.coinValue);
-    G.Pickups.drop('ticket', L.tx, L.ty - 12, B.lost.tickets);
-    if (G.Coop.isHost) G.Coop.broadcast(['ev', 'rw', L.dex, L.grant ? 1 : 0]);
+    for (let i = 0; i < B.lost.coins; i++) Pickups.drop('coin', L.tx + U.rand(-40, 40), L.ty + U.rand(-30, 30), B.lost.coinValue);
+    Pickups.drop('ticket', L.tx, L.ty - 12, B.lost.tickets);
+    if (Coop.isHost) Coop.broadcast(['ev', 'rw', L.dex, L.grant ? 1 : 0]);
     reward(L.dex, L.grant);
     lost = null;
     end();
@@ -288,20 +310,20 @@ G.Events = (() => {
 
   /** On each computer: heal and, if it rolled so, the Pokémon joins your collection. */
   function reward(dex, grant) {
-    const pl = G.Game.player;
+    const pl = Game.player;
     if (pl && !pl.dead) {
       pl.heal(pl.maxHp * B.lost.heal);
-      G.FX.ring(pl.x, pl.y, 6, 70, '#5fe08a', 0.5, 3);
+      FX.ring(pl.x, pl.y, 6, 70, '#5fe08a', 0.5, 3);
     }
-    const name = (G.DEX_BY[dex] || {}).name || '';
-    G.FX.burst(lost ? lost.tx : pl.x, lost ? lost.ty - 10 : pl.y, '#7dffb0', 24, 180);
-    G.Audio.sfx('legend');
-    if (grant && G.onRescue) G.onRescue(dex, name);
+    const name = (DEX_BY[dex] || {}).name || '';
+    FX.burst(lost ? lost.tx : pl.x, lost ? lost.ty - 10 : pl.y, '#7dffb0', 24, 180);
+    Audio.sfx('legend');
+    if (grant) Game.onRescue(dex, name);
     else say(`You brought ${name} home! It thanks you`, 3.2, '#7dffb0');
   }
 
   function gone(msg) {
-    if (G.Coop.isHost) G.Coop.broadcast(['ev', 'lx', msg]);
+    if (Coop.isHost) Coop.broadcast(['ev', 'lx', msg]);
     say(msg, 3);
     lost = null;
     end();
@@ -309,7 +331,7 @@ G.Events = (() => {
 
   // ---------------- network ----------------
 
-  G.Sync.on('ev', ev => onNet(ev));
+  Sync.on('ev', ev => onNet(ev));
   function onNet(ev) {
     switch (ev[1]) {
       case 's':
@@ -361,7 +383,7 @@ G.Events = (() => {
         ctx.ellipse(L.tx, L.ty, B.lost.goalR, B.lost.goalR * (40 / 56), 0, 0, 6.2832);
         ctx.stroke();
         ctx.restore();
-        G.Icons.draw(ctx, 'heart', Math.round(L.tx - 8), Math.round(L.ty - 30 - k * 6), 16);
+        Icons.draw(ctx, 'heart', Math.round(L.tx - 8), Math.round(L.ty - 30 - k * 6), 16);
       }
     };
     const mon = {
@@ -374,9 +396,9 @@ G.Events = (() => {
         ctx.ellipse(L.x, L.y, L.r * 1.5, L.r * 0.6, 0, 0, 6.2832);
         ctx.fill();
         ctx.restore();
-        G.Sprites.drawShadow(ctx, L.dex, L.x, L.y, 1);
+        Sprites.drawShadow(ctx, L.dex, L.x, L.y, 1);
         L.anim.draw(ctx, L.x, L.y, { flash: L.flash > 0 });
-        const h = G.Sprites.bodyHeight(L.dex, 1);
+        const h = Sprites.bodyHeight(L.dex, 1);
         if (L.state === 'wait') {
           // Bouncing "!" above it: it is waiting for you to touch it.
           const by = L.y - h - 14 - Math.abs(Math.sin(now * 5)) * 6;
@@ -403,7 +425,7 @@ G.Events = (() => {
 
   /** Edge arrow toward the lost Pokémon (or toward the marker, once it follows you). */
   function drawHud(ctx, w, h, pl, F) {
-    const cam = G.Camera;
+    const cam = Camera;
     if (lost) {
       const L = lost,
         to = L.state === 'wait' ? [L.x, L.y - 10] : [L.tx, L.ty];
@@ -415,29 +437,29 @@ G.Events = (() => {
         to[0],
         to[1],
         '#7dffb0',
-        `${L.state === 'wait' ? L.name : 'Marker'} · ${Math.round(G.U.dist(pl.x, pl.y, to[0], to[1]) / 32)} m`
+        `${L.state === 'wait' ? L.name : 'Marker'} · ${Math.round(U.dist(pl.x, pl.y, to[0], to[1]) / 32)} m`
       );
     }
-    for (const e of G.EnemyMgr.all()) {
+    for (const e of EnemyMgr.all()) {
       if (e.behavior === 'thief' && !e.dead) edgeArrow(ctx, w, h, cam, e.x, e.y - 10, '#ffd23f', e.name);
     }
     if (cur && cur.id !== 'lost') {
       const left = Math.max(0, Math.ceil(cur.dur - cur.t));
-      const txt = cur.id === 'gold' ? `GOLDEN HOUR · ${left} s` : `${G.U.TYPE_NAME[cur.type].toUpperCase()} HORDE · ${left} s`;
+      const txt = cur.id === 'gold' ? `GOLDEN HOUR · ${left} s` : `${U.TYPE_NAME[cur.type].toUpperCase()} HORDE · ${left} s`;
       ctx.save();
       ctx.font = F(800, 12);
       ctx.textAlign = 'center';
       ctx.lineWidth = 4;
       ctx.strokeStyle = 'rgba(0,0,0,.8)';
       ctx.strokeText(txt, w / 2, 112);
-      ctx.fillStyle = cur.id === 'gold' ? '#ffd23f' : G.U.TYPE_COLOR[cur.type] || '#fff';
+      ctx.fillStyle = cur.id === 'gold' ? '#ffd23f' : U.TYPE_COLOR[cur.type] || '#fff';
       ctx.fillText(txt, w / 2, 112);
       ctx.restore();
     }
   }
 
   function edgeArrow(ctx, w, h, cam, x, y, col, label) {
-    G.HUD.edgeArrow(ctx, w, h, (x - cam.left()) * cam.scale, (y - cam.top()) * cam.scale, {
+    HUD.edgeArrow(ctx, w, h, (x - cam.left()) * cam.scale, (y - cam.top()) * cam.scale, {
       color: col,
       label,
       outline: '#000',
@@ -460,10 +482,10 @@ G.Events = (() => {
     },
     /** For tests. */
     debugStart(id) {
-      start(id, G.Game.st.time, G.Game.everyone());
+      start(id, Game.st.time, Game.everyone());
     },
     debugThief() {
-      spawnThief(G.Game.everyone(), G.Game.st.time);
+      spawnThief(Game.everyone(), Game.st.time);
     },
     _dbg() {
       return lost && { x: lost.x, y: lost.y, tx: lost.tx, ty: lost.ty, state: lost.state, hp: lost.hp };

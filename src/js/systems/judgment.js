@@ -28,9 +28,38 @@
  *   'jd' cfg (start) · 'jk' (skip the cutscene)
  *   and in every host update, ja: Arceus's [x, y, animation, direction].
  */
-G.Judgment = (() => {
-  const B = G.Balance.judgment;
-  const R = G.RNG.stream('judgment');
+import { U } from '../core/util.js';
+import { RNG } from '../core/rng.js';
+import { Sync } from '../net/sync.js';
+import { Balance } from '../data/balance.js';
+import { I18n } from '../core/i18n.js';
+import { DEX, DEX_BY } from '../data/pokedex.js';
+import { SPRITE_META } from '../data/sprites-meta.js';
+import { DB } from '../core/db.js';
+import { Audio } from '../core/audio.js';
+import { Touch } from '../core/touch.js';
+import { Sprites } from '../core/sprites.js';
+import { Camera } from '../core/camera.js';
+import { Tiles } from '../world/tiles.js';
+import { World } from '../world/world.js';
+import { FX } from '../entities/fx.js';
+import { Projectiles } from '../entities/projectile.js';
+import { Enemy, EnemyMgr } from '../entities/enemy.js';
+import { Pickups } from '../entities/pickup.js';
+import { Combat } from './combat.js';
+import { Spawner } from './spawner.js';
+import { Rift } from './rift.js';
+import { Events } from './events.js';
+import { Weather } from './weather.js';
+import { Progress } from './progress.js';
+import { Hazards } from './hazards.js';
+import { Coop } from '../net/coop.js';
+import { HUD } from '../ui/hud.js';
+import { Game } from '../game.js';
+
+export const Judgment = (() => {
+  const B = Balance.judgment;
+  const R = RNG.stream('judgment');
   const ARCEUS = 493;
   // Cutscene timeline (seconds).
   const T_TITLE = 1.3,
@@ -41,7 +70,7 @@ G.Judgment = (() => {
     T_BACK = 9.1,
     T_END = 10.1;
   const GOLD = '#ffd25e';
-  const authority = () => !G.Coop.active || G.Coop.isHost;
+  const authority = () => !Coop.active || Coop.isHost;
 
   let phase = null; // null | 'cine' | 'fight'
   let ct = 0; // cutscene clock
@@ -110,11 +139,11 @@ G.Judgment = (() => {
 
   /** Authority: picks the arena and the legendaries, and tells everyone. */
   function start() {
-    const pool = G.DEX.filter(p => p.leg && p.dex !== ARCEUS && G.SPRITE_META[p.dex]);
+    const pool = DEX.filter(p => p.leg && p.dex !== ARCEUS && SPRITE_META[p.dex]);
     const q = [];
     for (let i = 0; i < B.queue; i++) q.push(R.pick(pool).dex);
     const c = { tx: -6000 - Math.floor(R.next() * 2000), ty: -6000 - Math.floor(R.next() * 2000), q };
-    if (G.Coop.isHost) G.Coop.broadcast(['jd', c]);
+    if (Coop.isHost) Coop.broadcast(['jd', c]);
     begin(c);
   }
 
@@ -124,19 +153,19 @@ G.Judgment = (() => {
     cfg = c;
     phase = 'cine';
     ct = 0;
-    const s = G.DB.save;
+    const s = DB.save;
     // The first time it plays in full; in a group the host skips it.
     canSkip = !!(s && s.stats && s.stats.judged > 0) && authority();
-    G.Sprites.preload([ARCEUS, ...new Set(c.q.slice(0, 12))], 12000);
-    cineAnim = new G.Sprites.Animator(ARCEUS, 1);
-    G.Touch.reset();
-    G.Audio.music(null);
+    Sprites.preload([ARCEUS, ...new Set(c.q.slice(0, 12))], 12000);
+    cineAnim = new Sprites.Animator(ARCEUS, 1);
+    Touch.reset();
+    Audio.music(null);
   }
 
   /** Skip the cutscene (key or tap; in a group, the host). */
   function skip() {
     if (phase !== 'cine' || !canSkip || ct >= T_BACK) return;
-    if (G.Coop.isHost) G.Coop.broadcast(['jk']);
+    if (Coop.isHost) Coop.broadcast(['jk']);
     doSkip();
   }
   function doSkip() {
@@ -149,32 +178,32 @@ G.Judgment = (() => {
   /** Trip to the arena (mid-cutscene, hidden by the flash). */
   function port() {
     ported = true;
-    const pl = G.Game.player,
-      ts = G.World.TS;
-    G.Rift.reset();
-    if (authority()) G.EnemyMgr.stash();
-    else G.EnemyMgr.clearRemote();
-    G.Projectiles.clear();
-    G.Combat.clearFields();
-    G.Hazards.clear();
-    G.Pickups.clear();
-    G.Events.reset();
-    G.Weather.clear();
-    G.World.setArena({ tx: cfg.tx, ty: cfg.ty, r: B.arenaR, type: 'judgment' });
-    G.World.setBiome(G.Tiles.arenaBiome('judgment'), true);
+    const pl = Game.player,
+      ts = World.TS;
+    Rift.reset();
+    if (authority()) EnemyMgr.stash();
+    else EnemyMgr.clearRemote();
+    Projectiles.clear();
+    Combat.clearFields();
+    Hazards.clear();
+    Pickups.clear();
+    Events.reset();
+    Weather.clear();
+    World.setArena({ tx: cfg.tx, ty: cfg.ty, r: B.arenaR, type: 'judgment' });
+    World.setBiome(Tiles.arenaBiome('judgment'), true);
     center = { x: cfg.tx * ts + ts / 2, y: cfg.ty * ts + ts / 2 };
-    G.Rift.lineUp(center.x, center.y);
-    G.Camera.x = pl.x;
-    G.Camera.y = pl.y;
+    Rift.lineUp(center.x, center.y);
+    Camera.x = pl.x;
+    Camera.y = pl.y;
     const scale = B.arceus.scale;
-    const anim = new G.Sprites.Animator(ARCEUS, scale);
+    const anim = new Sprites.Animator(ARCEUS, scale);
     A = {
       x: center.x,
       y: center.y - ts * B.arceus.startNorth,
       lift: 900,
       anim,
-      r: G.Sprites.bodyRadius(ARCEUS, scale) * 0.9,
-      bodyH: G.Sprites.bodyHeight(ARCEUS, scale),
+      r: Sprites.bodyRadius(ARCEUS, scale) * 0.9,
+      bodyH: Sprites.bodyHeight(ARCEUS, scale),
       cd: B.arceus.firstCd,
       cast: null,
       touchCd: 0,
@@ -192,12 +221,12 @@ G.Judgment = (() => {
     A.lift = 0;
     A.anim.play('Attack', { speed: 0.8 });
     if (quiet) return;
-    G.Camera.kick(1.2);
-    G.Game.flash('#fff3c8', 0.7);
-    G.Audio.sfx('land');
-    for (let i = 0; i < 4; i++) G.FX.ring(A.x, A.y, 10 + i * 20, 260 + i * 140, i % 2 ? '#fff3c8' : GOLD, 0.5 + i * 0.25, 8 - i);
-    G.FX.burst(A.x, A.y - 20, GOLD, 60, 360);
-    G.FX.burst(A.x, A.y - 10, '#ffffff', 30, 240);
+    Camera.kick(1.2);
+    Game.flash('#fff3c8', 0.7);
+    Audio.sfx('land');
+    for (let i = 0; i < 4; i++) FX.ring(A.x, A.y, 10 + i * 20, 260 + i * 140, i % 2 ? '#fff3c8' : GOLD, 0.5 + i * 0.25, 8 - i);
+    FX.burst(A.x, A.y - 20, GOLD, 60, 360);
+    FX.burst(A.x, A.y - 10, '#ffffff', 30, 240);
   }
 
   /** End of the cutscene: the fight begins. */
@@ -209,13 +238,13 @@ G.Judgment = (() => {
     bossT = B.firstBoss;
     bossN = 0;
     downs = 0;
-    G.Progress.event('judge');
+    Progress.event('judge');
     // First legendary's HP: a few seconds of your damage to one enemy (with a minimum).
-    const n = G.Game.everyone().length,
-      t = G.Game.st.time;
-    const floor = G.Balance.rift.legend.hp(t) * B.floorFrac * G.Coop.scaleHp(n);
+    const n = Game.everyone().length,
+      t = Game.st.time;
+    const floor = Balance.rift.legend.hp(t) * B.floorFrac * Coop.scaleHp(n);
     base = Math.max(floor, singleDps() * B.firstSecs);
-    G.Spawner.say('Run from Arceus! It is invincible', 3, true);
+    Spawner.say('Run from Arceus! It is invincible', 3, true);
   }
 
   // ---------------- every frame ----------------
@@ -225,26 +254,26 @@ G.Judgment = (() => {
     const prev = ct;
     ct += dt;
     const at = x => prev < x && ct >= x;
-    const pl = G.Game.player;
+    const pl = Game.player;
     if (cineAnim) cineAnim.update(dt);
     if (at(0.01)) {
-      G.Audio.sfx('quake');
-      G.Camera.kick(0.9);
+      Audio.sfx('quake');
+      Camera.kick(0.9);
     }
-    if (ct < T_FLASH && Math.random() < dt * 3) G.Camera.kick(0.15);
-    if (at(T_TITLE)) G.Audio.sfx('toll');
-    if (at(T_TITLE + 1.7)) G.Audio.sfx('toll');
-    if (at(T_FLASH)) G.Game.flash('#ffffff', 0.9);
+    if (ct < T_FLASH && Math.random() < dt * 3) Camera.kick(0.15);
+    if (at(T_TITLE)) Audio.sfx('toll');
+    if (at(T_TITLE + 1.7)) Audio.sfx('toll');
+    if (at(T_FLASH)) Game.flash('#ffffff', 0.9);
     if (at(T_PORT) && !ported) port();
-    if (at(T_DESC)) G.Audio.sfx('descend');
+    if (at(T_DESC)) Audio.sfx('descend');
     if (A && !landed) {
       // Descent: slow at first and braking at the end (as if settling down).
-      const k = G.U.clamp((ct - T_DESC) / (T_LAND - T_DESC), 0, 1);
+      const k = U.clamp((ct - T_DESC) / (T_LAND - T_DESC), 0, 1);
       A.lift = 900 * Math.pow(1 - k, 2.2);
       A.anim.loop('Idle');
       if (ct > T_DESC && Math.random() < dt * 30)
-        G.FX.px(A.x + G.U.rand(-60, 60), A.y - A.lift - G.U.rand(0, 200), Math.random() < 0.5 ? GOLD : '#fff3c8', {
-          vy: G.U.rand(60, 160),
+        FX.px(A.x + U.rand(-60, 60), A.y - A.lift - U.rand(0, 200), Math.random() < 0.5 ? GOLD : '#fff3c8', {
+          vy: U.rand(60, 160),
           life: 0.9
         });
       if (at(T_LAND)) land();
@@ -260,10 +289,10 @@ G.Judgment = (() => {
       tx = A.x;
       ty = A.y - 60;
     }
-    if (!cam || at(T_PORT) || (ported && !cam.ported)) cam = { x: G.Camera.x, y: G.Camera.y, ported };
-    cam.x = G.U.damp(cam.x, tx, 2.2, dt);
-    cam.y = G.U.damp(cam.y, ty, 2.2, dt);
-    G.Camera.follow(cam.x, cam.y, dt);
+    if (!cam || at(T_PORT) || (ported && !cam.ported)) cam = { x: Camera.x, y: Camera.y, ported };
+    cam.x = U.damp(cam.x, tx, 2.2, dt);
+    cam.y = U.damp(cam.y, ty, 2.2, dt);
+    Camera.follow(cam.x, cam.y, dt);
     if (ct >= T_END) {
       cam = null;
       fight();
@@ -275,7 +304,7 @@ G.Judgment = (() => {
   function update(dt, pl, time) {
     if (!phase) {
       sampleDps(dt); // (for the first legendary's HP)
-      if (authority() && time >= B.at && !G.Rift.inArena) start();
+      if (authority() && time >= B.at && !Rift.inArena) start();
       return;
     }
     if (phase !== 'fight') return;
@@ -301,9 +330,9 @@ G.Judgment = (() => {
   function target() {
     let best = null,
       bd = Infinity;
-    for (const p of G.Game.everyone()) {
+    for (const p of Game.everyone()) {
       if (p.dead) continue;
-      const d = G.U.dist2(p.x, p.y, A.x, A.y);
+      const d = U.dist2(p.x, p.y, A.x, A.y);
       if (d < bd) {
         bd = d;
         best = p;
@@ -325,15 +354,15 @@ G.Judgment = (() => {
     // Slower than you at first; after ~35 s it catches up.
     const k = B.arceus.spd(arenaT);
     const spd = Math.max(B.arceus.minSpd, (tg.spd || 100) * k);
-    const [dx, dy] = G.U.norm(tg.x - A.x, tg.y - A.y);
+    const [dx, dy] = U.norm(tg.x - A.x, tg.y - A.y);
     A.x += dx * spd * dt;
     A.y += dy * spd * dt;
-    A.anim.dir = G.Sprites.dirFromAngle(Math.atan2(dy, dx));
+    A.anim.dir = Sprites.dirFromAngle(Math.atan2(dy, dx));
     A.anim.loop('Walk', Math.max(0.8, spd / 90));
-    if (Math.random() < dt * 14) G.FX.px(A.x + G.U.rand(-20, 20), A.y - G.U.rand(0, A.bodyH), GOLD, { vy: -30, life: 0.6 });
+    if (Math.random() < dt * 14) FX.px(A.x + U.rand(-20, 20), A.y - U.rand(0, A.bodyH), GOLD, { vy: -30, life: 0.6 });
     A.cd -= dt;
     if (A.cd <= 0) {
-      const d = G.U.dist(A.x, A.y, tg.x, tg.y);
+      const d = U.dist(A.x, A.y, tg.x, tg.y);
       const id = d < B.nova.near && R.chance(B.nova.chance) ? 'nova' : A.last === 'rain' ? 'cross' : 'rain';
       cast(id, tg);
     }
@@ -343,12 +372,12 @@ G.Judgment = (() => {
   function cast(id, tg) {
     A.last = id;
     const c = (A.cast = { id, t: 0, wind: B[id].wind });
-    const H = o => G.Hazards.add(Object.assign({ type: null, pure: true, dmg: 1, color: GOLD }, o));
+    const H = o => Hazards.add(Object.assign({ type: null, pure: true, dmg: 1, color: GOLD }, o));
     if (id === 'rain') {
       // Judgment: pillars of light on everyone (more the longer it lasts).
       const S = B.rain;
       const n = S.n(arenaT);
-      for (const p of G.Game.everyone()) {
+      for (const p of Game.everyone()) {
         if (p.dead) continue;
         for (let i = 0; i < n; i++) {
           const a = R.angle(),
@@ -379,13 +408,13 @@ G.Judgment = (() => {
       H({ kind: 'zone', x: A.x, y: A.y, r: S.r, delay: S.delay, pct: S.pct });
       A.anim.play('Charge', { speed: 1.2 });
     }
-    G.FX.ring(A.x, A.y, A.r, A.r * 3, GOLD, c.wind, 3);
+    FX.ring(A.x, A.y, A.r, A.r * 3, GOLD, c.wind, 3);
   }
 
   function castTick(dt, tg) {
     const c = A.cast;
     c.t += dt;
-    if (tg) A.anim.dir = G.Sprites.dirFromAngle(Math.atan2(tg.y - A.y, tg.x - A.x));
+    if (tg) A.anim.dir = Sprites.dirFromAngle(Math.atan2(tg.y - A.y, tg.x - A.x));
     if (c.t >= c.wind && !c.done) {
       c.done = true;
       A.anim.play(c.id === 'nova' ? 'Attack' : 'Shoot', { speed: 1.2 });
@@ -402,17 +431,17 @@ G.Judgment = (() => {
     if (!n) return;
     const ox = A.x,
       oy = A.y;
-    if (G.U.dist2(A.x, A.y, n.x, n.y) > 300 * 300) {
+    if (U.dist2(A.x, A.y, n.x, n.y) > 300 * 300) {
       A.x = n.x;
       A.y = n.y;
     } else {
-      A.x = G.U.damp(A.x, n.x, 10, dt);
-      A.y = G.U.damp(A.y, n.y, 10, dt);
+      A.x = U.damp(A.x, n.x, 10, dt);
+      A.y = U.damp(A.y, n.y, 10, dt);
     }
     A.anim.dir = n.dir;
     if (n.anim !== A.lastNetAnim) {
       A.lastNetAnim = n.anim;
-      const a = G.Coop.ANIMS[n.anim];
+      const a = Coop.ANIMS[n.anim];
       if (a === 'Charge' || a === 'Shoot' || a === 'Attack') A.anim.play(a);
     }
     A.anim.loop(Math.abs(A.x - ox) + Math.abs(A.y - oy) > 0.5 ? 'Walk' : 'Idle');
@@ -422,29 +451,29 @@ G.Judgment = (() => {
   function touch(pl) {
     if (!pl || pl.dead || A.touchCd > 0) return;
     const rr = A.r + pl.r;
-    if (G.U.dist2(A.x, A.y, pl.x, pl.y) > rr * rr) return;
+    if (U.dist2(A.x, A.y, pl.x, pl.y) > rr * rr) return;
     A.touchCd = B.arceus.touchCd;
     pl.invuln = 0;
     pl.hurt(pl.maxHp * B.arceus.touch, null, true);
-    G.Camera.kick(0.6);
-    G.FX.ring(pl.x, pl.y, 6, 70, GOLD, 0.4, 4);
+    Camera.kick(0.6);
+    FX.ring(pl.x, pl.y, 6, 70, GOLD, 0.4, 4);
     if (authority()) A.anim.play('Attack', { speed: 1.4 });
   }
 
   /** Nobody leaves the arena (Arceus, the legendaries and you). */
   function keepInside() {
-    G.Rift.keepIn(A, center.x, center.y, B.arenaR);
-    for (const e of G.EnemyMgr.all()) if (!e.remote) G.Rift.keepIn(e, center.x, center.y, B.arenaR);
+    Rift.keepIn(A, center.x, center.y, B.arenaR);
+    for (const e of EnemyMgr.all()) if (!e.remote) Rift.keepIn(e, center.x, center.y, B.arenaR);
   }
 
   // ---------------- legendaries ----------------
 
   function spawnBoss() {
     const dex = cfg.q[bossN % cfg.q.length];
-    const mon = G.DEX_BY[dex];
+    const mon = DEX_BY[dex];
     if (!mon) return;
-    const t = G.Game.st.time,
-      ts = G.World.TS;
+    const t = Game.st.time,
+      ts = World.TS;
     // Far from everyone (at the edge of the arena).
     let x = center.x,
       y = center.y;
@@ -453,20 +482,20 @@ G.Judgment = (() => {
         d = (B.arenaR - R.range(B.bossEdge[0], B.bossEdge[1])) * ts;
       x = center.x + Math.cos(a) * d;
       y = center.y + Math.sin(a) * d;
-      if (G.Game.everyone().every(p => G.U.dist2(p.x, p.y, x, y) > B.bossSafeDist * B.bossSafeDist)) break;
+      if (Game.everyone().every(p => U.dist2(p.x, p.y, x, y) > B.bossSafeDist * B.bossSafeDist)) break;
     }
     const k = Math.pow(B.growth, bossN); // each one stronger than the previous
-    const def = G.Rift.legendDef(mon, t, base * k, k);
-    const e = new G.Enemy(def, x, y, { hp: 1, spd: 1, dmg: 1 }, true);
+    const def = Rift.legendDef(mon, t, base * k, k);
+    const e = new Enemy(def, x, y, { hp: 1, spd: 1, dmg: 1 }, true);
     e.judge = true;
     e.flying = false;
-    G.EnemyMgr.add(e);
+    EnemyMgr.add(e);
     bossN++;
-    G.Sprites.preload([cfg.q[(bossN + 4) % cfg.q.length]], 8000);
-    G.FX.ring(x, y, 8, 120, GOLD, 0.6, 5);
-    G.FX.burst(x, y - 30, '#fff3c8', 24, 200);
-    G.Spawner.say(`${e.name} answers the Judgment!`, 1.8);
-    G.Audio.sfx('rift');
+    Sprites.preload([cfg.q[(bossN + 4) % cfg.q.length]], 8000);
+    FX.ring(x, y, 8, 120, GOLD, 0.6, 5);
+    FX.burst(x, y - 30, '#fff3c8', 24, 200);
+    Spawner.say(`${e.name} answers the Judgment!`, 1.8);
+    Audio.sfx('rift');
   }
 
   /** An arena legendary has fallen (on each computer). */
@@ -486,7 +515,7 @@ G.Judgment = (() => {
     const lift = A.lift;
     const now = performance.now() / 1000;
     // Shadow that grows as it descends.
-    const near = G.U.clamp(1 - lift / 900, 0, 1);
+    const near = U.clamp(1 - lift / 900, 0, 1);
     ctx.save();
     ctx.globalAlpha = 0.15 + near * 0.3;
     ctx.fillStyle = '#000';
@@ -545,13 +574,13 @@ G.Judgment = (() => {
   /** Above everything (in the world): the pillar of light it descends through. */
   function drawAir(ctx) {
     if (!A || !ported) return;
-    const cam = G.Camera;
+    const cam = Camera;
     let a = 0;
-    if (phase === 'cine') a = G.U.clamp((ct - T_PORT) / 0.6, 0, 1) * G.U.clamp((T_LAND + 0.6 - ct) / 0.6, 0, 1);
+    if (phase === 'cine') a = U.clamp((ct - T_PORT) / 0.6, 0, 1) * U.clamp((T_LAND + 0.6 - ct) / 0.6, 0, 1);
     if (a <= 0) return;
     const top = cam.top() - 40,
       bot = A.y + 6;
-    const near = G.U.clamp(1 - A.lift / 900, 0, 1);
+    const near = U.clamp(1 - A.lift / 900, 0, 1);
     const w = 40 + near * 40 + Math.sin(ct * 9) * 6;
     ctx.save();
     const g = ctx.createLinearGradient(A.x - w, 0, A.x + w, 0);
@@ -586,15 +615,15 @@ G.Judgment = (() => {
 
   function drawCine(ctx, w, h) {
     const t = ct;
-    G.Touch.clearButtons(); // (the HUD isn't drawn during the cutscene)
+    Touch.clearButtons(); // (the HUD isn't drawn during the cutscene)
     ctx.save();
     // Everything darkens (until the trip).
     if (t < T_PORT + 0.1) {
-      ctx.fillStyle = `rgba(10,6,2,${(G.U.clamp(t / 1.1, 0, 1) * 0.86).toFixed(3)})`;
+      ctx.fillStyle = `rgba(10,6,2,${(U.clamp(t / 1.1, 0, 1) * 0.86).toFixed(3)})`;
       ctx.fillRect(0, 0, w, h);
     }
     // "THE JUDGMENT OF ARCEUS"
-    const a = G.U.clamp((t - T_TITLE + 0.3) / 0.5, 0, 1) * G.U.clamp((T_FLASH + 0.2 - t) / 0.35, 0, 1);
+    const a = U.clamp((t - T_TITLE + 0.3) / 0.5, 0, 1) * U.clamp((T_FLASH + 0.2 - t) / 0.35, 0, 1);
     if (a > 0) {
       const cx = w / 2,
         cy = h * 0.34,
@@ -620,12 +649,12 @@ G.Judgment = (() => {
       ctx.restore();
       // Arceus as a silhouette of light, behind its wheel.
       wheel(ctx, cx, cy - R * 0.05, R, t * 0.35, a * 0.9);
-      const idle = G.Sprites.sheet(ARCEUS, 'Idle');
+      const idle = Sprites.sheet(ARCEUS, 'Idle');
       if (cineAnim && idle && idle.ready) {
         // Light silhouette filling the wheel (in multiples of 0.5: whole pixels).
-        const body = (G.Sprites.animMeta(ARCEUS, 'Idle').ay || 47) * G.Sprites.PX;
+        const body = (Sprites.animMeta(ARCEUS, 'Idle').ay || 47) * Sprites.PX;
         cineAnim.scale = Math.max(1, Math.round(((R * 1.7) / body) * 2) / 2);
-        const rise = (1 - G.U.clamp((t - T_TITLE + 0.3) / 0.8, 0, 1)) * R * 0.3;
+        const rise = (1 - U.clamp((t - T_TITLE + 0.3) / 0.8, 0, 1)) * R * 0.3;
         ctx.save();
         ctx.globalAlpha = a * 0.85;
         ctx.shadowColor = '#ffcf4a';
@@ -634,11 +663,11 @@ G.Judgment = (() => {
         ctx.restore();
       }
       // The title, letter by letter, below the wheel.
-      const size = Math.round(G.U.clamp(Math.min(w / 13, h / 9), 24, 64));
+      const size = Math.round(U.clamp(Math.min(w / 13, h / 9), 24, 64));
       const ty = cy + R + size * 1.15;
       title(ctx, 'THE JUDGMENT', cx, ty, size, T_TITLE, a);
       title(ctx, 'OF ARCEUS', cx, ty + size * 0.95, Math.round(size * 0.8), T_TITLE + 0.75, a);
-      ctx.globalAlpha = a * G.U.clamp((t - T_TITLE - 1.6) / 0.6, 0, 1);
+      ctx.globalAlpha = a * U.clamp((t - T_TITLE - 1.6) / 0.6, 0, 1);
       ctx.font = F(700, Math.round(size * 0.32));
       ctx.textAlign = 'center';
       ctx.fillStyle = '#f3e2b0';
@@ -646,7 +675,7 @@ G.Judgment = (() => {
     }
     // Black cinema bars during the descent.
     if (t > T_PORT) {
-      const k = G.U.clamp((t - T_PORT) / 0.5, 0, 1) * G.U.clamp((T_END - t) / 0.6, 0, 1);
+      const k = U.clamp((t - T_PORT) / 0.5, 0, 1) * U.clamp((T_END - t) / 0.6, 0, 1);
       const bh = Math.round(h * 0.11 * k);
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#000';
@@ -654,10 +683,10 @@ G.Judgment = (() => {
       ctx.fillRect(0, h - bh, w, bh);
     }
     // It has descended!
-    const b = G.U.clamp((t - T_LAND - 0.15) / 0.3, 0, 1) * G.U.clamp((T_END - t) / 0.5, 0, 1);
+    const b = U.clamp((t - T_LAND - 0.15) / 0.3, 0, 1) * U.clamp((T_END - t) / 0.5, 0, 1);
     if (b > 0) {
-      const size = Math.round(G.U.clamp(w / 20, 20, 40));
-      const pop = 1 + (1 - G.U.clamp((t - T_LAND - 0.15) / 0.25, 0, 1)) * 0.6;
+      const size = Math.round(U.clamp(w / 20, 20, 40));
+      const pop = 1 + (1 - U.clamp((t - T_LAND - 0.15) / 0.25, 0, 1)) * 0.6;
       ctx.save();
       ctx.globalAlpha = b;
       ctx.translate(w / 2, h * 0.24);
@@ -679,9 +708,9 @@ G.Judgment = (() => {
       ctx.font = F(700, 11);
       ctx.textAlign = 'right';
       ctx.fillStyle = '#f3e2b0';
-      ctx.fillText(G.Touch.active ? 'Tap the screen to skip' : 'Press Space to skip', w - 16, h - 14);
+      ctx.fillText(Touch.active ? 'Tap the screen to skip' : 'Press Space to skip', w - 16, h - 14);
       // The whole screen is a button (mobile and mouse).
-      G.Touch.addButton(0, 0, w, h, skip, 0);
+      Touch.addButton(0, 0, w, h, skip, 0);
     }
     ctx.restore();
   }
@@ -707,7 +736,7 @@ G.Judgment = (() => {
 
   /** Title that appears letter by letter (each one drops and settles). */
   function title(ctx, raw, cx, y, size, t0, alpha) {
-    const s = G.I18n ? G.I18n.t(raw) : raw;
+    const s = I18n ? I18n.t(raw) : raw;
     ctx.save();
     ctx.font = F(800, size);
     const total = ctx.measureText(s).width;
@@ -715,7 +744,7 @@ G.Judgment = (() => {
     for (let i = 0; i < s.length; i++) {
       const ch = s[i];
       const cw = ctx.measureText(ch).width;
-      const p = G.U.clamp((ct - t0 - i * 0.055) / 0.28, 0, 1);
+      const p = U.clamp((ct - t0 - i * 0.055) / 0.28, 0, 1);
       if (p > 0 && ch !== ' ') {
         const k = 1 + (1 - p) * 1.8;
         ctx.save();
@@ -746,26 +775,26 @@ G.Judgment = (() => {
     }
     ctx.globalAlpha = 1;
     // Counter below the clock.
-    const boss = G.EnemyMgr.all().some(e => e.boss && !e.dead);
+    const boss = EnemyMgr.all().some(e => e.boss && !e.dead);
     ctx.textAlign = 'center';
     ctx.font = F(800, 12);
     ctx.lineWidth = 3;
     ctx.strokeStyle = 'rgba(0,0,0,.7)';
-    const txt = `JUDGMENT · ${G.U.mmss(arenaT)} · BOSSES ${downs}`;
+    const txt = `JUDGMENT · ${U.mmss(arenaT)} · BOSSES ${downs}`;
     ctx.strokeText(txt, w / 2, boss ? 98 : 76);
     ctx.fillStyle = GOLD;
     ctx.fillText(txt, w / 2, boss ? 98 : 76);
     // Arrow toward Arceus if it's off screen.
-    const cam = G.Camera,
-      pl = G.Game.player;
+    const cam = Camera,
+      pl = Game.player;
     const beat = 0.5 + Math.sin(performance.now() / 120) * 0.5;
-    G.HUD.edgeArrow(ctx, w, h, (A.x - cam.left()) * cam.scale, (A.y - A.bodyH * 0.5 - cam.top()) * cam.scale, {
+    HUD.edgeArrow(ctx, w, h, (A.x - cam.left()) * cam.scale, (A.y - A.bodyH * 0.5 - cam.top()) * cam.scale, {
       margin: 46,
       tip: 34,
       base: 17,
       halo: { color: '#ff6a3d', r: 26 + beat * 6, a: 0.2 + beat * 0.25 },
       color: beat > 0.5 ? '#fff3c8' : GOLD,
-      label: `ARCEUS · ${Math.round(G.U.dist(pl.x, pl.y, A.x, A.y) / 32)} m`,
+      label: `ARCEUS · ${Math.round(U.dist(pl.x, pl.y, A.x, A.y) / 32)} m`,
       labelColor: GOLD,
       labelAt: [30, 26]
     });
@@ -782,9 +811,9 @@ G.Judgment = (() => {
       embers.push({
         x: Math.random() * w,
         y: -6,
-        vx: G.U.rand(-25, 10),
-        vy: G.U.rand(20, 55),
-        life: G.U.rand(5, 10),
+        vx: U.rand(-25, 10),
+        vy: U.rand(20, 55),
+        life: U.rand(5, 10),
         s: spark ? 2 : 3,
         a: spark ? 0.9 : 0.45,
         c: spark ? '#ffb347' : '#8a8078'
@@ -801,9 +830,9 @@ G.Judgment = (() => {
 
   // ---------------- network ----------------
 
-  G.Sync.on(['jd', 'jk'], ev => onEvent(ev));
+  Sync.on(['jd', 'jk'], ev => onEvent(ev));
   // Arceus' position and animation, in every host frame during the fight.
-  G.Sync.field('ja', { send: () => netState(), apply: a => netApply(a) });
+  Sync.field('ja', { send: () => netState(), apply: a => netApply(a) });
   function onEvent(ev) {
     if (ev[0] === 'jd') begin(ev[1]);
     else if (ev[0] === 'jk') doSkip();
@@ -812,7 +841,7 @@ G.Judgment = (() => {
   /** Host: where Arceus is (sent in every update). */
   function netState() {
     if (phase !== 'fight' || !A) return null;
-    const a = G.Coop.ANIMS.indexOf(A.anim.cur);
+    const a = Coop.ANIMS.indexOf(A.anim.cur);
     return [Math.round(A.x), Math.round(A.y), a < 0 ? 0 : a, A.anim.dir];
   }
   function netApply(a) {

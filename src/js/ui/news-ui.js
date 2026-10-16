@@ -2,11 +2,16 @@
  * Button in the top bar that opens the list of game changes
  * (js/data/changelog.js). It shows a dot while there is something you haven't seen.
  */
-G.NewsUI = (() => {
-  const $ = G.UI.$;
+import { I18n } from '../core/i18n.js';
+import { CHANGELOG } from '../data/changelog.js';
+import { Icons } from './icons.js';
+import { UI } from './ui.js';
+
+export const NewsUI = (() => {
+  const $ = UI.$;
   const KEY = 'ps.news.seen';
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-  const latest = () => (G.CHANGELOG[0] || {}).d || '';
+  const latest = () => (CHANGELOG[0] || {}).d || '';
   function seen() {
     try {
       return localStorage.getItem(KEY) || '';
@@ -17,7 +22,7 @@ G.NewsUI = (() => {
 
   function init() {
     const b = $('btn-news');
-    b.innerHTML = G.Icons.html('book', 18) + ' <span>What\'s new</span><i class="dot"></i>';
+    b.innerHTML = Icons.html('book', 18) + ' <span>What\'s new</span><i class="dot"></i>';
     b.onclick = open;
     $('news-close').onclick = close;
     refresh();
@@ -28,7 +33,7 @@ G.NewsUI = (() => {
 
   function fmt(d) {
     const [y, m, day] = d.split('-').map(Number);
-    return new Date(y, m - 1, day).toLocaleDateString(G.I18n.locale, {
+    return new Date(y, m - 1, day).toLocaleDateString(I18n.locale, {
       day: 'numeric',
       month: 'long',
       year: 'numeric'
@@ -37,14 +42,14 @@ G.NewsUI = (() => {
 
   function open() {
     // Each entry is [English, Spanish].
-    const li = G.I18n.lang === 'es' ? 1 : 0;
+    const li = I18n.lang === 'es' ? 1 : 0;
     // Every text is already in its language: translate="no" so i18n leaves it alone.
     const PARTS = [
       ['new', ['New', 'Nuevo']],
       ['chg', ['Changes', 'Cambios']],
       ['fix', ['Fixes', 'Arreglos']]
     ];
-    $('news-body').innerHTML = G.CHANGELOG.map(
+    $('news-body').innerHTML = CHANGELOG.map(
       v =>
         `<div class="news-day" translate="no"><h3>${esc(v.title ? v.title[li] : '')}<small>${fmt(v.d)}</small></h3>` +
         PARTS.filter(([k]) => v[k] && v[k].length)

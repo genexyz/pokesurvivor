@@ -320,7 +320,7 @@ plucked guitar, bass, pad, lead and drums, with reverb). Zero audio files.
 
 ## 10. Technical
 
-- Vanilla HTML + CSS + JavaScript on Canvas 2D. No build, no dependencies.
+- Vanilla HTML + CSS + JavaScript (ES modules) on Canvas 2D, no framework. Vite serves it in dev and bundles it for publishing.
 - **Sprites:** [SpriteCollab](https://github.com/PMDCollab/SpriteCollab), 966
   Pokémon × 7 animations × 8 directions, normal and shiny, in `assets/pokemon/`
   (76 MB, lossless palette PNG). **CC BY-NC 4.0: non-commercial use and

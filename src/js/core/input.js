@@ -1,5 +1,8 @@
 /* ============ input.js — keyboard and mouse (touch is in touch.js) ============ */
-G.Input = (() => {
+import { U } from './util.js';
+import { Touch } from './touch.js';
+
+export const Input = (() => {
   const down = new Set();
   const pressed = new Set(); // cleared every frame
   let mx = 0,
@@ -38,7 +41,7 @@ G.Input = (() => {
   return {
     /** Player movement vector (keyboard or touch joystick). */
     axis() {
-      const t = G.Touch && G.Touch.vector();
+      const t = Touch && Touch.vector();
       if (t && (t[0] || t[1])) return t;
       let x = 0,
         y = 0;
@@ -46,7 +49,7 @@ G.Input = (() => {
       if (MOVE_KEYS.right.some(k => down.has(k))) x += 1;
       if (MOVE_KEYS.up.some(k => down.has(k))) y -= 1;
       if (MOVE_KEYS.down.some(k => down.has(k))) y += 1;
-      return G.U.norm(x, y);
+      return U.norm(x, y);
     },
     held(c) {
       return down.has(c);

@@ -1,10 +1,10 @@
 /* ============ util.js — shared helpers ============ */
-window.G = window.G || {};
+import { I18n } from './i18n.js';
 
 /** Height at which projectiles and effects fly above the ground plane. */
-G.LIFT = 18;
+export const LIFT = 18;
 
-G.U = {
+export const U = {
   clamp(v, a, b) {
     return v < a ? a : v > b ? b : v;
   },
@@ -61,11 +61,11 @@ G.U = {
 
   /** A number for on-screen text, in the game's language (1.5 / 1,5). */
   num(v) {
-    return (+v).toLocaleString(G.I18n ? G.I18n.locale : 'en-US', { maximumFractionDigits: 2 });
+    return (+v).toLocaleString(I18n ? I18n.locale : 'en-US', { maximumFractionDigits: 2 });
   },
   /** A fraction as a percentage number for text: 0.4 -> "40". */
   pct(v) {
-    return G.U.num(Math.round(v * 10000) / 100);
+    return U.num(Math.round(v * 10000) / 100);
   },
 
   /** "3:07" from seconds. */

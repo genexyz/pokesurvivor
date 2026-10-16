@@ -16,7 +16,7 @@
  * Language: the one chosen in Settings; otherwise /es/ in the address, or the
  * browser's (Spanish if the browser is in Spanish, English otherwise).
  */
-G.I18n = (() => {
+export const I18n = (() => {
   const KEY = 'ps.lang';
   let saved = null;
   try {
@@ -126,7 +126,7 @@ G.I18n = (() => {
     return lead + (r === undefined ? body : r) + tail;
   }
 
-  /** Text with slots for code: G.I18n.f('Level {x}', 5). */
+  /** Text with slots for code: I18n.f('Level {x}', 5). */
   function f(src, ...vals) {
     let i = 0;
     return t(src).replace(/\{x\}/g, () => vals[i++]);
@@ -217,4 +217,4 @@ G.I18n = (() => {
 
   return { lang, locale, add, t, f, es, page, set, startDom, walk };
 })();
-G.T = G.I18n.t;
+export const T = I18n.t;

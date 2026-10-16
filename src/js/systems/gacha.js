@@ -8,14 +8,21 @@
  *   - after 70 pulls without a 5★ on that banner, the next one is a guaranteed 5★
  * Shiny: 1 in 100 pulls comes out in its shiny version.
  * Duplicates: turned into Pokécoins (duplicate shinies, triple).
- * All of these numbers live in G.Balance.gacha. Pulls roll on Math.random on
+ * All of these numbers live in Balance.gacha. Pulls roll on Math.random on
  * purpose: a run seed must not make the gacha predictable.
  *
  * Pulls cost TICKETS (earned by playing):
  *   ×1   1 ticket
  *   ×10  10 normal tickets, or 1 ×10 ticket (you choose which)
  */
-G.Gacha = (() => {
+import { U } from '../core/util.js';
+import { Balance } from '../data/balance.js';
+import { DEX } from '../data/pokedex.js';
+import { SPRITE_META } from '../data/sprites-meta.js';
+import { Sprites } from '../core/sprites.js';
+import { Spawner } from './spawner.js';
+
+export const Gacha = (() => {
   /** What does a pull of n cost? → { t1, t10 } or null if you can't afford it. */
   /** @param use  't1' (normal tickets) or 't10' (one ×10 ticket, only for the ×10 pull) */
   function costOf(save, n, use = 't1') {
@@ -23,9 +30,9 @@ G.Gacha = (() => {
     if (n === 10 && use === 't10') return t.t10 >= 1 ? { t1: 0, t10: 1 } : null;
     return t.t1 >= n ? { t1: n, t10: 0 } : null;
   }
-  const B = G.Balance.gacha;
+  const B = Balance.gacha;
   // Shiny roll with the debug override (for testing and videos), shared with the spawner.
-  const shinies = G.Spawner.shinyRoller(() => B.shinyRate, Math.random);
+  const shinies = Spawner.shinyRoller(() => B.shinyRate, Math.random);
 
   const RARITY_NAME = { 1: 'Common', 2: 'Uncommon', 3: 'Rare', 4: 'Epic', 5: 'Legendary' };
   const RARITY_COLOR = { 1: '#9fb1c9', 2: '#5fe08a', 3: '#4fb4ff', 4: '#c47bff', 5: '#ffcb3d' };
@@ -43,12 +50,12 @@ G.Gacha = (() => {
   ];
 
   function inBanner(p, gen) {
-    return p.gen === gen && !!G.SPRITE_META[p.dex];
+    return p.gen === gen && !!SPRITE_META[p.dex];
   }
 
   /** Pokémon of one rarity in a banner. */
   function pool(rarity, gen) {
-    return G.DEX.filter(p => inBanner(p, gen) && p.rarity === rarity);
+    return DEX.filter(p => inBanner(p, gen) && p.rarity === rarity);
   }
 
   /** Nearest non-empty pool (some generations have almost-empty rarities). */
@@ -59,7 +66,7 @@ G.Gacha = (() => {
       const p = pool(r, gen);
       if (p.length) return { rarity: r, list: p };
     }
-    return { rarity, list: G.DEX.filter(p => inBanner(p, gen)) };
+    return { rarity, list: DEX.filter(p => inBanner(p, gen)) };
   }
 
   function rollRarity(min = 1) {
@@ -75,7 +82,7 @@ G.Gacha = (() => {
 
   /** The 3 strongest of the generation, for the banner poster. */
   function featured(gen) {
-    return G.DEX.filter(p => inBanner(p, gen) && p.rarity === 5)
+    return DEX.filter(p => inBanner(p, gen) && p.rarity === 5)
       .sort((a, b) => b.bst - a.bst)
       .slice(0, 3)
       .map(p => p.dex);
@@ -105,13 +112,13 @@ G.Gacha = (() => {
 
       const { rarity, list } = poolNear(want, gen);
       if (rarity === 5) save.pity[gen] = 0;
-      let mon = G.U.pick(list);
-      let shiny = G.Sprites.hasShiny(mon.dex) && shinies.roll();
+      let mon = U.pick(list);
+      let shiny = Sprites.hasShiny(mon.dex) && shinies.roll();
       // Shinies don't repeat: if you already have that one, another of the same rarity
       // whose shiny you're missing comes out; if you have them all, it comes out normal.
       if (shiny && save.shiny[mon.dex]) {
-        const missing = list.filter(p => G.Sprites.hasShiny(p.dex) && !save.shiny[p.dex]);
-        if (missing.length) mon = G.U.pick(missing);
+        const missing = list.filter(p => Sprites.hasShiny(p.dex) && !save.shiny[p.dex]);
+        if (missing.length) mon = U.pick(missing);
         else shiny = false;
       }
 

@@ -1,12 +1,14 @@
 /* ============ tiles.js — world pixel art, painted in code ============
  * Everything is painted at ART resolution (16 px per tile) by writing into an
- * ImageData, then drawn scaled ×G.Sprites.PX without smoothing. That way the
+ * ImageData, then drawn scaled ×Sprites.PX without smoothing. That way the
  * tiles share the pixel size of the Mystery Dungeon sprites.
  *
  * Autotiling: each tile looks at its 8 neighbours when painted (wall edges,
  * front face, rounded corners, shoreline foam...).
  */
-G.Tiles = (() => {
+import { U } from '../core/util.js';
+
+export const Tiles = (() => {
   const T = 16; // art pixels per tile
 
   const BIOMES = [
@@ -515,7 +517,7 @@ G.Tiles = (() => {
     };
   }
 
-  const H = (x, y, s) => G.U.hash(x, y, s);
+  const H = (x, y, s) => U.hash(x, y, s);
 
   // ---------------- ground chunk ----------------
 

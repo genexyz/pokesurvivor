@@ -1,5 +1,5 @@
 /* ============ progress.js — missions, achievements and account stats ============
- * The game reports what happens with G.Progress.event(kind, data):
+ * The game reports what happens with Progress.event(kind, data):
  *
  *   kill      { types, boss, legend }  (also on co-op copies)
  *   chest     locked chest opened
@@ -17,13 +17,26 @@
  *   legends{dex} · arenas{type} · itemsFound{id} · evoMoves{id} · ach{id}
  *   missions { day, daily[], rerolled, week, weekly[] }
  *
- * Missions: 3 daily + 2 weekly (G.Balance.run.missions), drawn with a seed from the date and
+ * Missions: 3 daily + 2 weekly (Balance.run.missions), drawn with a seed from the date and
  * the account (the same ones on any computer). The reward is claimed
  * by hand; achievements are granted automatically when earned.
  */
-G.Progress = (() => {
-  const TYPES = Object.keys(G.U.TYPE_NAME);
-  const BR = G.Balance.run;
+import { U } from '../core/util.js';
+import { RNG } from '../core/rng.js';
+import { Balance } from '../data/balance.js';
+import { DB } from '../core/db.js';
+import { Audio } from '../core/audio.js';
+import { MissionDefs } from '../data/missions.js';
+import { AchDefs } from '../data/achievements.js';
+import { Rift } from './rift.js';
+import { Judgment } from './judgment.js';
+import { Ranking } from '../net/ranking.js';
+import { Icons } from '../ui/icons.js';
+import { UI } from '../ui/ui.js';
+
+export const Progress = (() => {
+  const TYPES = Object.keys(U.TYPE_NAME);
+  const BR = Balance.run;
   let achT = 0,
     toastQ = [],
     toastT = 0;
@@ -32,7 +45,7 @@ G.Progress = (() => {
 
   /** A generator seeded by a text (FNV-1a + mulberry32, the same as the run streams in core/rng.js). */
   function rng(seedStr) {
-    const st = new G.RNG.Stream(seedStr);
+    const st = new RNG.Stream(seedStr);
     st.reseed(0); // state = hash of the text
     return () => st.next();
   }
@@ -53,23 +66,23 @@ G.Progress = (() => {
   /** Creates the day's / week's missions if they have changed. */
   function ensure(s) {
     if (!s) return;
-    const ids = G.Ranking.periodIds();
+    const ids = Ranking.periodIds();
     const key = String(s.created || 0);
     s.missions = s.missions || {};
     const M = s.missions;
     if (M.day !== ids.d) {
       M.day = ids.d;
       M.rerolled = false;
-      M.daily = pickSet(G.MissionDefs.daily, BR.missions.daily, rng(ids.d + key));
+      M.daily = pickSet(MissionDefs.daily, BR.missions.daily, rng(ids.d + key));
     }
     if (M.week !== ids.w) {
       M.week = ids.w;
-      M.weekly = pickSet(G.MissionDefs.weekly, BR.missions.weekly, rng(ids.w + key));
+      M.weekly = pickSet(MissionDefs.weekly, BR.missions.weekly, rng(ids.w + key));
     }
   }
 
   function text(m) {
-    return G.MissionDefs.BY[m.id].text(m.goal, m.param);
+    return MissionDefs.BY[m.id].text(m.goal, m.param);
   }
   function done(m) {
     return m.prog >= m.goal;
@@ -78,7 +91,7 @@ G.Progress = (() => {
   function advance(list, kind, d) {
     for (const m of list || []) {
       if (m.claimed || done(m)) continue;
-      const def = G.MissionDefs.BY[m.id];
+      const def = MissionDefs.BY[m.id];
       if (!def || def.ev !== kind) continue;
       if (def.match && !def.match(d, m.param)) continue;
       const v = def.value ? def.value(d) : 1;
@@ -92,26 +105,26 @@ G.Progress = (() => {
 
   /** Claims the reward of a finished mission. */
   function claim(m, weekly = false) {
-    const s = G.DB.save;
+    const s = DB.save;
     if (!s || m.claimed || !done(m)) return false;
     m.claimed = true;
-    grant(G.MissionDefs.BY[m.id].reward);
+    grant(MissionDefs.BY[m.id].reward);
     s.stats.missionsDone = (s.stats.missionsDone || 0) + 1;
     event('missionDone', { daily: !weekly });
-    G.DB.commit(true);
+    DB.commit(true);
     return true;
   }
 
   /** Swaps an unfinished daily for another one (once a day). */
   function reroll(i) {
-    const s = G.DB.save;
+    const s = DB.save;
     ensure(s);
     const M = s.missions;
     const m = M.daily[i];
     if (!m || M.rerolled || m.claimed) return false;
     const r = rng(M.day + 'cambio' + Date.now());
     const [n] = pickSet(
-      G.MissionDefs.daily,
+      MissionDefs.daily,
       1,
       r,
       M.daily.map(x => x.id)
@@ -119,24 +132,24 @@ G.Progress = (() => {
     if (!n) return false;
     M.daily[i] = n;
     M.rerolled = true;
-    G.DB.commit();
+    DB.commit();
     return true;
   }
 
   function grant(r) {
-    const s = G.DB.save;
+    const s = DB.save;
     if (!r) return;
     s.tickets = s.tickets || { t1: 0, t10: 0 };
     if (r.coins) s.coins += r.coins;
     if (r.t1) s.tickets.t1 += r.t1;
     if (r.t10) s.tickets.t10 += r.t10;
-    if (G.UI && G.UI.refreshCoins && !document.getElementById('topbar').classList.contains('hidden')) G.UI.refreshCoins();
+    if (UI && UI.refreshCoins && !document.getElementById('topbar').classList.contains('hidden')) UI.refreshCoins();
   }
 
   function rewardText(r) {
     const p = [];
-    if (r.t10) p.push(G.Icons.html('ticket10', 12) + ' ' + r.t10 + ' ×10');
-    if (r.t1) p.push(G.Icons.html('ticket', 12) + ' ' + r.t1);
+    if (r.t10) p.push(Icons.html('ticket10', 12) + ' ' + r.t10 + ' ×10');
+    if (r.t1) p.push(Icons.html('ticket', 12) + ' ' + r.t1);
     if (r.coins) p.push('<span class="coin"></span> ' + r.coins);
     return p.join(' &nbsp;');
   }
@@ -144,7 +157,7 @@ G.Progress = (() => {
   // ---------------- events ----------------
 
   function event(kind, d = {}) {
-    const s = G.DB.save;
+    const s = DB.save;
     if (!s) return;
     ensure(s);
     const S = s.stats;
@@ -194,23 +207,23 @@ G.Progress = (() => {
   function kill(e) {
     // The legendaries of Arceus's Judgment don't count as bosses (neither for
     // missions nor for boss achievements): they have their own counter.
-    if (G.Judgment.active && e.boss) {
-      G.Judgment.bossDown();
+    if (Judgment.active && e.boss) {
+      Judgment.bossDown();
       event('kill', { types: e.types || [], boss: false, legend: 0 });
       return;
     }
-    const legend = e.legend || (G.Rift.inArena && e.boss) ? e.dex : 0;
+    const legend = e.legend || (Rift.inArena && e.boss) ? e.dex : 0;
     event('kill', { types: e.types || [], boss: !!e.boss, legend });
   }
 
   // ---------------- achievements ----------------
 
   function checkAch() {
-    const s = G.DB.save;
+    const s = DB.save;
     if (!s) return;
     achT = performance.now();
     s.ach = s.ach || {};
-    for (const a of G.AchDefs.LIST) {
+    for (const a of AchDefs.LIST) {
       if (s.ach[a.id]) continue;
       if (a.value(s) < a.goal) continue;
       s.ach[a.id] = Date.now();
@@ -221,20 +234,20 @@ G.Progress = (() => {
 
   /** Titles you own (from the achievements earned), as { id, title }. */
   function titles() {
-    const s = G.DB.save;
-    return G.AchDefs.LIST.filter(a => a.title && s && s.ach && s.ach[a.id]).map(a => ({ id: a.id, title: a.title }));
+    const s = DB.save;
+    return AchDefs.LIST.filter(a => a.title && s && s.ach && s.ach[a.id]).map(a => ({ id: a.id, title: a.title }));
   }
 
   /** Text of a profile title. It is stored as the achievement id; profiles published
    * by older versions still hold the Spanish text itself, shown as is. */
   function titleText(t) {
-    const a = t && G.AchDefs.BY[t];
+    const a = t && AchDefs.BY[t];
     return a && a.title ? a.title : t || '';
   }
 
   /** Mission rewards waiting to be claimed (for the menu badge). */
   function pending() {
-    const s = G.DB.save;
+    const s = DB.save;
     if (!s) return 0;
     ensure(s);
     return [...s.missions.daily, ...s.missions.weekly].filter(m => done(m) && !m.claimed).length;
@@ -257,11 +270,11 @@ G.Progress = (() => {
       el.className = 'box ach-pop';
       document.body.appendChild(el);
     }
-    const icon = n.ach ? (n.ach.dex ? '' : G.Icons.html('medal' + n.ach.tier, 24)) : G.Icons.html('medal2', 24);
+    const icon = n.ach ? (n.ach.dex ? '' : Icons.html('medal' + n.ach.tier, 24)) : Icons.html('medal2', 24);
     el.innerHTML = `${icon}<div><b>${n.title}</b>${n.sub ? `<small>${n.sub}</small>` : ''}</div>`;
-    if (n.ach && n.ach.dex) el.prepend(G.UI.spriteCanvas(n.ach.dex, 48, 40, { scale: 1 }));
+    if (n.ach && n.ach.dex) el.prepend(UI.spriteCanvas(n.ach.dex, 48, 40, { scale: 1 }));
     el.classList.remove('hidden');
-    G.Audio.sfx(n.ach ? 'legend' : 'confirm');
+    Audio.sfx(n.ach ? 'legend' : 'confirm');
     clearTimeout(toastT);
     toastT = setTimeout(() => {
       el.classList.add('hidden');

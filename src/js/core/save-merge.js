@@ -1,6 +1,6 @@
 /* ============ save-merge.js — merge two versions of a save ============
- * Used by the browser (G.SaveMerge, from db.js) and the server (server/api.mjs,
- * via require): so the save is merged exactly the same way in both places.
+ * Used by the browser (SaveMerge, from db.js) and the server (server/api.mjs,
+ * via import): so the save is merged exactly the same way in both places.
  * It doesn't depend on anything from the game.
  *
  * Coin and ticket LEDGER (14-10-2026). Coins and tickets used to be "those of
@@ -13,7 +13,7 @@
  *   led.base: the balance before the ledger existed (or at the start).
  *   led.old:  changes from an older version of the game (tabs not yet updated).
  */
-(() => {
+export const SaveMerge = (() => {
   const CUR = {
     c: [
       s => s.coins,
@@ -146,7 +146,5 @@
     return r;
   }
 
-  const api = { CUR, isObj, num, ledOf, ledSum, merge };
-  if (typeof module !== 'undefined' && module.exports) module.exports = api;
-  else G.SaveMerge = api;
+  return { CUR, isObj, num, ledOf, ledSum, merge };
 })();

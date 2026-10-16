@@ -131,7 +131,7 @@ def main():
         ' * rarity 1-5 for the gacha · gen = generation (banner) · starter = test',
         ' * leg = legendary or mythical (they only appear in rifts)',
         ' */',
-        'G.DEX = [',
+        'export const DEX = [',
     ]
     for r in rows:
         o = {
@@ -146,9 +146,9 @@ def main():
     lines += [
         '];',
         '',
-        'G.DEX_BY = {};',
-        'for (const p of G.DEX) G.DEX_BY[p.dex] = p;',
-        'G.getPokemon = dex => G.DEX_BY[dex];',
+        'export const DEX_BY = {};',
+        'for (const p of DEX) DEX_BY[p.dex] = p;',
+        'export const getPokemon = dex => DEX_BY[dex];',
         '',
     ]
     with io.open(OUT, 'w', encoding='utf-8', newline='\n') as f:

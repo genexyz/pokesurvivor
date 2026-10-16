@@ -3,9 +3,12 @@
  * single source: perks() multiplies it by the level and `unit`, the label,
  * is built from it with `text`).
  */
-G.Upgrades = (() => {
-  const num = G.U.num,
-    pct = G.U.pct;
+import { U } from '../core/util.js';
+import { Balance } from './balance.js';
+
+export const Upgrades = (() => {
+  const num = U.num,
+    pct = U.pct;
   const LIST = [
     { id: 'hp', icon: 'heart', name: 'Vitality', text: x => `+${num(x)} HP`, per: 8, max: 10, base: 60, grow: 1.35 },
     { id: 'atk', icon: 'fist', name: 'Strength', text: x => `+${pct(x)}% damage`, per: 0.04, max: 10, base: 80, grow: 1.38 },
@@ -21,7 +24,7 @@ G.Upgrades = (() => {
       id: 'crit',
       icon: 'star',
       name: 'Critical Hit',
-      text: x => `+${pct(x)}% critical chance (x${num(G.Balance.combat.crit.mul)} damage)`,
+      text: x => `+${pct(x)}% critical chance (x${num(Balance.combat.crit.mul)} damage)`,
       per: 0.03,
       max: 10,
       base: 90,
@@ -59,7 +62,7 @@ G.Upgrades = (() => {
     return Math.round((u.base * Math.pow(u.grow, lvl)) / 10) * 10;
   }
 
-  /** Purchased levels -> modifiers for G.Player. */
+  /** Purchased levels -> modifiers for Player. */
   function perks(levels = {}) {
     // Never above the max (a hand-edited save gives no extra power).
     const L = id => Math.max(0, Math.min(BY[id].max, Math.floor(+levels[id] || 0)));

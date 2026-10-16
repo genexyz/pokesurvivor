@@ -1,6 +1,6 @@
-/* PokéSurvivor server (replaces nginx and scripts/dev-server.js).
+/* PokéSurvivor server (replaces nginx).
  *   npm start      ->  dist/ exactly as published (run npm run build first). This is what runs on Coolify.
- *   npm run dev    ->  src/ + public/, reloads on save.
+ *   npm run dev    ->  src/ + public/ through Vite (middleware mode): CSS hot-swaps, JS reloads the page.
  * With DATABASE_URL there is a cloud: Google accounts, saves, friends, leaderboard and
  * co-op rooms (api.mjs, live.mjs). Without it, the game runs in local mode
  * (in dev) or the server only serves the files.
@@ -18,7 +18,7 @@ import { authHandler, migrateAuth, haveGoogle, BASE_URL } from './auth.mjs';
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEV = process.argv.includes('--dev');
 const PORT = +process.env.PORT || 3000;
-const DIRS = DEV ? [path.join(ROOT, 'src'), path.join(ROOT, 'public')] : [path.join(ROOT, 'dist')];
+const DIRS = DEV ? [path.join(ROOT, 'public')] : [path.join(ROOT, 'dist')];
 const CLOUD = !!pool;
 
 const TYPES = {
@@ -52,10 +52,10 @@ process.on('unhandledRejection', e => console.error('[server] unhandled rejectio
 
 // ---------------- files ----------------
 
-/** Same caching that deploy/nginx.conf used to do. */
+/** Same caching that deploy/nginx.conf used to do. Vite puts a content hash in js/ and css/ names. */
 function cacheOf(p) {
   if (DEV || p === '/version.json') return 'no-store';
-  if (p.startsWith('/js/')) return 'public, max-age=31536000, immutable';
+  if (/^\/(js|css)\/.+-[\w-]{8,}\.(js|css)$/.test(p)) return 'public, max-age=31536000, immutable';
   if (p.startsWith('/assets/')) return 'public, max-age=2592000';
   return 'no-cache';
 }
@@ -110,26 +110,12 @@ function sendText(res, status, type, text) {
   res.end(text);
 }
 
-// ---------------- development: reload on save ----------------
-
-const reloaders = new Set();
-if (DEV) {
-  let t = 0;
-  fs.watch(path.join(ROOT, 'src'), { recursive: true }, () => {
-    clearTimeout(t);
-    t = setTimeout(() => {
-      for (const res of reloaders) res.write('data: reload\n\n');
-    }, 100);
-  });
-}
+// ---------------- development: Vite ----------------
 
 function devPage(es) {
   let html = fs.readFileSync(path.join(ROOT, 'src', 'index.html'), 'utf8');
   // Without a database, the game runs in local mode (no cloud).
-  const inject =
-    (CLOUD ? '<script>' : `<script>window.PS_DEV = 'local';`) +
-    `new EventSource('/__reload').onmessage = () => location.reload();</script>\n`;
-  html = html.replace('<!-- scripts:begin -->', inject + '<!-- scripts:begin -->');
+  if (!CLOUD) html = html.replace('<script type="module"', `<script>window.PS_DEV = 'local';</script>\n<script type="module"`);
   // /es/: the game in Spanish, just like scripts/make_seo_pages.py generates it.
   if (es)
     html = html
@@ -138,25 +124,14 @@ function devPage(es) {
   return html;
 }
 
-function devRoute(req, res, p) {
-  if (p === '/__reload') {
-    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
-    res.write(': ok\n\n');
-    reloaders.add(res);
-    req.on('close', () => reloaders.delete(res));
-    return true;
-  }
-  if (p === '/' || p === '/index.html') {
-    sendText(res, 200, TYPES['.html'], devPage(false));
+async function devRoute(req, res, p) {
+  if (p === '/' || p === '/index.html' || p === '/es/' || p === '/es/index.html') {
+    sendText(res, 200, TYPES['.html'], await vite.transformIndexHtml(req.url, devPage(p.startsWith('/es/'))));
     return true;
   }
   if (p === '/es') {
     res.writeHead(301, { Location: '/es/' });
     res.end();
-    return true;
-  }
-  if (p === '/es/' || p === '/es/index.html') {
-    sendText(res, 200, TYPES['.html'], devPage(true));
     return true;
   }
   // updater.js does nothing in dev.
@@ -184,7 +159,15 @@ const server = http.createServer(async (req, res) => {
     if (p.startsWith('/api/auth/')) return authHandler(req, res);
     return api.handleApi(req, res, new URL(req.url, BASE_URL));
   }
-  if (DEV && devRoute(req, res, p)) return;
+  if (DEV) {
+    if (await devRoute(req, res, p)) return;
+    // Vite serves src/ (modules, CSS, HMR client) and public/; whatever it leaves goes to serveFile.
+    return vite.middlewares(req, res, () => serveFile(req, res, p));
+  }
+  serveFile(req, res, p);
+});
+
+function serveFile(req, res, p) {
   const hit = find(p);
   if (hit) {
     // /pokedex -> /pokedex/ (like a normal static server), so relative links work.
@@ -202,9 +185,24 @@ const server = http.createServer(async (req, res) => {
     TYPES['.txt'],
     `404: ${p}` + (DEV ? '\nThe website pages (guide, pokédex...) only exist after npm run build; view them with npm start.' : '')
   );
-});
+}
 
-if (live) server.on('upgrade', (req, socket, head) => live.handleUpgrade(req, socket, head).catch(() => socket.destroy()));
+// Vite (vite.config.mjs) only in development: the production image has no devDependencies.
+// Its HMR WebSocket shares this server, so only /ws goes to live.mjs.
+const vite = DEV
+  ? await (
+      await import('vite')
+    ).createServer({
+      configFile: path.join(ROOT, 'vite.config.mjs'),
+      server: { middlewareMode: true, hmr: { server } },
+      appType: 'custom'
+    })
+  : null;
+
+server.on('upgrade', (req, socket, head) => {
+  if (live && new URL(req.url, 'http://x').pathname === '/ws') live.handleUpgrade(req, socket, head).catch(() => socket.destroy());
+  else if (!DEV) socket.destroy(); // in dev, Vite's HMR socket
+});
 
 if (CLOUD) {
   await migrateAuth();

@@ -18,21 +18,42 @@
  *   guest -> host     { k:'f', p:[state], ev:[events] }
  *   host -> guest     { k:'f', t, lv, xp, xn, ki, bo, co, p:{uid:[state]},
  *                       e:[[id,x,y,hp,anim,dir,flags]], ev:[events],
- *                       x:{ key: state } (G.Sync fields, e.g. ja = Arceus) }
+ *                       x:{ key: state } (Sync fields, e.g. ja = Arceus) }
  *   host -> everyone  { k:'start', seed, host, members:[{uid,name,dex,shiny}] }
  *
- * What each event code does is registered with G.Sync (net/sync.js): the
+ * What each event code does is registered with Sync (net/sync.js): the
  * core ones below, the rest next to the logic they belong to (rift.js,
- * weather.js...). Enemy flags (burn, shield...) are G.Sync.flag entries.
+ * weather.js...). Enemy flags (burn, shield...) are Sync.flag entries.
  */
-G.Coop = (() => {
+import { U } from '../core/util.js';
+import { Sync } from './sync.js';
+import { Balance } from '../data/balance.js';
+import { DEX_BY } from '../data/pokedex.js';
+import { Audio } from '../core/audio.js';
+import { Sprites } from '../core/sprites.js';
+import { Camera } from '../core/camera.js';
+import { startMoveOf } from '../data/starters.js';
+import { World } from '../world/world.js';
+import { VFX } from '../entities/vfx.js';
+import { FX } from '../entities/fx.js';
+import { Projectiles } from '../entities/projectile.js';
+import { EnemyMgr } from '../entities/enemy.js';
+import { Pickups } from '../entities/pickup.js';
+import { Player } from '../entities/player.js';
+import { Combat } from '../systems/combat.js';
+import { Spawner } from '../systems/spawner.js';
+import { Social } from './social.js';
+import { Net } from './net.js';
+import { Flow } from '../game.js';
+
+export const Coop = (() => {
   const ANIMS = ['Idle', 'Walk', 'Attack', 'Shoot', 'Charge', 'Hurt', 'Faint'];
   const COLORS = ['#ffcb3d', '#5fc8ff', '#7ee07a', '#ff8ad8'];
   // Messages per second: 15 over the direct connection and 3 over the
   // Realtime Database relay (off: $1 per GB).
   const RATE_FAST = 1 / 15,
     RATE_SLOW = 1 / 3;
-  const rateFor = u => (G.Net.slow(u) ? RATE_SLOW : RATE_FAST);
+  const rateFor = u => (Net.slow(u) ? RATE_SLOW : RATE_FAST);
   const NEAR = 950; // radius of enemies sent to each player
 
   let active = false,
@@ -65,9 +86,9 @@ G.Coop = (() => {
 
   // ---------------- difficulty scaling ----------------
 
-  // Formulas in G.Balance.coop (read at call time).
-  const scaleRate = n => G.Balance.coop.scaleRate(n);
-  const scaleHp = n => G.Balance.coop.scaleHp(n);
+  // Formulas in Balance.coop (read at call time).
+  const scaleRate = n => Balance.coop.scaleRate(n);
+  const scaleHp = n => Balance.coop.scaleHp(n);
 
   // ---------------- start / end ----------------
 
@@ -78,7 +99,7 @@ G.Coop = (() => {
    */
   function begin(cfg, pl, cb) {
     active = true;
-    me = G.Net.uid;
+    me = Net.uid;
     hostUid = cfg.host;
     host = me === hostUid;
     local = pl;
@@ -108,8 +129,8 @@ G.Coop = (() => {
         pl.tagColor = COLORS[i];
         return;
       }
-      const mon = G.DEX_BY[m.dex] || G.DEX_BY[25];
-      const p = new G.Player(mon, {}, !!m.shiny);
+      const mon = DEX_BY[m.dex] || DEX_BY[25];
+      const p = new Player(mon, {}, !!m.shiny);
       p.remote = true;
       p.uid = m.uid;
       p.tag = m.name;
@@ -125,13 +146,13 @@ G.Coop = (() => {
         hp: p.maxHp,
         maxHp: p.maxHp,
         dead: 0,
-        mv: G.startMoveOf(mon.dex),
+        mv: startMoveOf(mon.dex),
         ml: 1,
         mag: 78,
         aim: Math.PI / 2,
         rev: 0
       };
-      G.Sprites.preload([mon.dex], 8000, p.shiny);
+      Sprites.preload([mon.dex], 8000, p.shiny);
       mates.set(m.uid, { uid: m.uid, name: m.name, color: COLORS[i], pl: p, connected: true, q: [], flushT: 0, xpMul: 1 });
     });
   }
@@ -186,7 +207,7 @@ G.Coop = (() => {
         s += m.xpMul || 1;
         n++;
       }
-    return s / n / local.xpMul / (1 + G.Balance.coop.xpShare * (n - 1));
+    return s / n / local.xpMul / (1 + Balance.coop.xpShare * (n - 1));
   }
 
   // ---------------- a player's state ----------------
@@ -249,16 +270,16 @@ G.Coop = (() => {
   function emitNear(ev, x, y, except) {
     for (const m of mates.values()) {
       if (!m.connected || m.uid === except) continue;
-      if (G.U.dist2(m.pl.x, m.pl.y, x, y) > 700 * 700) continue;
+      if (U.dist2(m.pl.x, m.pl.y, x, y) > 700 * 700) continue;
       if (m.q.length > 400) continue;
       m.q.push(ev);
     }
   }
 
-  /** The G.Sync enemy flags of `e` packed into one number (bit i = flag i). */
+  /** The Sync enemy flags of `e` packed into one number (bit i = flag i). */
   function flagBits(e) {
     let b = 0;
-    G.Sync.flags.forEach((f, i) => {
+    Sync.flags.forEach((f, i) => {
       if (f.test(e)) b |= 1 << i;
     });
     return b;
@@ -267,8 +288,8 @@ G.Coop = (() => {
   function enemyList(near) {
     const out = [];
     const r2n = NEAR * NEAR;
-    for (const e of G.EnemyMgr.all()) {
-      if (e.dead || G.U.dist2(e.x, e.y, near.x, near.y) > r2n) continue;
+    for (const e of EnemyMgr.all()) {
+      if (e.dead || U.dist2(e.x, e.y, near.x, near.y) > r2n) continue;
       const a = ANIMS.indexOf(e.anim.cur);
       out.push([e.id, r1(e.x), r1(e.y), Math.ceil(e.hp), a < 0 ? 0 : a, e.anim.dir, flagBits(e)]);
     }
@@ -297,9 +318,9 @@ G.Coop = (() => {
       e: enemyList(m.pl),
       ev
     };
-    // State registered by the modules (G.Sync.field), only when there is any.
+    // State registered by the modules (Sync.field), only when there is any.
     let x = null;
-    for (const [key, d] of G.Sync.fields) {
+    for (const [key, d] of Sync.fields) {
       const v = d.send();
       if (v != null) (x = x || {})[key] = v;
     }
@@ -311,12 +332,12 @@ G.Coop = (() => {
   }
 
   function flushAll() {
-    for (const m of mates.values()) if (m.connected) G.Net.send(m.uid, hostFrame(m));
+    for (const m of mates.values()) if (m.connected) Net.send(m.uid, hostFrame(m));
   }
 
   function flushClient(force) {
     if (!force && !outEv.length && flushT > 0) return;
-    G.Net.toHost({ k: 'f', p: myState(), ev: outEv });
+    Net.toHost({ k: 'f', p: myState(), ev: outEv });
     outEv = [];
   }
 
@@ -329,7 +350,7 @@ G.Coop = (() => {
         m.flushT -= dt;
         if (m.flushT > 0) continue;
         m.flushT = rateFor(m.uid);
-        G.Net.send(m.uid, hostFrame(m));
+        Net.send(m.uid, hostFrame(m));
       }
     } else {
       if (!stalled && performance.now() - lastHostAt > STALL_MS) {
@@ -339,7 +360,7 @@ G.Coop = (() => {
       flushT -= dt;
       if (flushT <= 0) {
         flushT = rateFor(hostUid);
-        G.Net.toHost({ k: 'f', p: myState(), ev: outEv });
+        Net.toHost({ k: 'f', p: myState(), ev: outEv });
         outEv = [];
       }
     }
@@ -347,10 +368,10 @@ G.Coop = (() => {
 
   // ---------------- receiving ----------------
 
-  G.Net.on((from, msg) => {
+  Net.on((from, msg) => {
     if (!msg) return;
     if (msg.k === 'start') {
-      if (G.Flow.startCoop) G.Flow.startCoop(msg);
+      if (Flow.startCoop) Flow.startCoop(msg);
       return;
     }
     if (!active || msg.k !== 'f') return;
@@ -358,7 +379,7 @@ G.Coop = (() => {
     else if (from === hostUid) onHostFrame(msg);
   });
 
-  G.Net.onPeer((u, mode) => {
+  Net.onPeer((u, mode) => {
     if (!active || (mode !== 'closed' && mode !== 'failed')) return;
     if (host) mateGone(u);
     else if (u === hostUid) {
@@ -372,8 +393,8 @@ G.Coop = (() => {
     const m = mates.get(u);
     if (!m || !m.connected) return;
     m.connected = false;
-    G.Projectiles.clearOrbs(m.pl);
-    G.Spawner.say(m.name + ' left the game', 2.6);
+    Projectiles.clearOrbs(m.pl);
+    Spawner.say(m.name + ' left the game', 2.6);
     if (waiting.has(u)) picked(u);
     if (holds.has(u)) holdOff(u);
     if (api.mateLeft) api.mateLeft(m);
@@ -391,39 +412,39 @@ G.Coop = (() => {
       reconcile(from, m.pl.net);
     }
     for (const ev of msg.ev || []) {
-      const fn = G.Sync.fromGuest.get(ev[0]);
+      const fn = Sync.fromGuest.get(ev[0]);
       if (fn) fn(ev, from, m);
       else unknown(ev[0]);
     }
   }
 
-  // Core events a guest sends (the modules register theirs with G.Sync.onGuest).
-  G.Sync.onGuest('h', (ev, from) => {
-    const e = G.EnemyMgr.get(ev[1]);
+  // Core events a guest sends (the modules register theirs with Sync.onGuest).
+  Sync.onGuest('h', (ev, from) => {
+    const e = EnemyMgr.get(ev[1]);
     if (!e || e.dead || e.remote) return;
     hitFrom = from;
     e.hurt(ev[2], ev[3], ev[4], ev[5], ev[6]);
     hitFrom = null;
   });
-  G.Sync.onGuest('s', ev => {
-    const e = G.EnemyMgr.get(ev[1]);
+  Sync.onGuest('s', ev => {
+    const e = EnemyMgr.get(ev[1]);
     if (!e || e.dead) return;
     if (ev[2] === 'b') e.applyBurn(ev[3]);
     else if (ev[2] === 'p') e.applyPoison(ev[3]);
     else if (ev[2] === 's') e.applySlow(ev[3]);
   });
-  G.Sync.onGuest('c', (ev, from, m) => {
-    G.Combat.ghostCast(m.pl, ev[1], ev[2], ev[3], ev[4]);
+  Sync.onGuest('c', (ev, from, m) => {
+    Combat.ghostCast(m.pl, ev[1], ev[2], ev[3], ev[4]);
     emit(['c', from, ev[1], ev[2], ev[3], ev[4]], from);
   });
-  G.Sync.onGuest('pb', (ev, from) => {
-    G.World.breakAt(ev[1], ev[2]);
+  Sync.onGuest('pb', (ev, from) => {
+    World.breakAt(ev[1], ev[2]);
     emit(['pb', ev[1], ev[2]], from);
   });
-  G.Sync.onGuest('lp', (ev, from) => picked(from));
-  G.Sync.onGuest('hs', (ev, from) => holdOn(from));
-  G.Sync.onGuest('he', (ev, from) => holdOff(from));
-  G.Sync.onGuest('bye', (ev, from) => mateGone(from));
+  Sync.onGuest('lp', (ev, from) => picked(from));
+  Sync.onGuest('hs', (ev, from) => holdOn(from));
+  Sync.onGuest('he', (ev, from) => holdOff(from));
+  Sync.onGuest('bye', (ev, from) => mateGone(from));
 
   // An event nobody registered: a newer/older version of the game on the other side.
   const warned = new Set();
@@ -463,7 +484,7 @@ G.Coop = (() => {
       updateAway();
     }
     for (const ev of msg.ev || []) applyHostEvent(ev);
-    for (const [key, d] of G.Sync.fields) if (msg.x && msg.x[key] != null) d.apply(msg.x[key]);
+    for (const [key, d] of Sync.fields) if (msg.x && msg.x[key] != null) d.apply(msg.x[key]);
     // Who is choosing and the level cards, even if a notice was lost.
     if (msg.ho) {
       const k = msg.ho.join('|');
@@ -493,13 +514,13 @@ G.Coop = (() => {
     }
     const now = performance.now();
     for (const a of msg.e || []) {
-      const e = G.EnemyMgr.get(a[0]);
+      const e = EnemyMgr.get(a[0]);
       if (!e || !e.remote || e.dead) continue;
       const n = e.net;
       const dts = (now - (n.last || now)) / 1000;
       if (dts > 0.02 && dts < 1) {
-        n.vx = G.U.clamp((a[1] - n.x) / dts, -600, 600);
-        n.vy = G.U.clamp((a[2] - n.y) / dts, -600, 600);
+        n.vx = U.clamp((a[1] - n.x) / dts, -600, 600);
+        n.vy = U.clamp((a[2] - n.y) / dts, -600, 600);
       } else {
         n.vx = 0;
         n.vy = 0;
@@ -516,14 +537,14 @@ G.Coop = (() => {
   }
 
   function applyHostEvent(ev) {
-    const fn = G.Sync.fromHost.get(ev[0]);
+    const fn = Sync.fromHost.get(ev[0]);
     if (fn) fn(ev);
     else unknown(ev[0]);
   }
 
-  // Core events from the host (the modules register theirs with G.Sync.on).
-  G.Sync.on('ne', ev =>
-    G.EnemyMgr.addRemote({
+  // Core events from the host (the modules register theirs with Sync.on).
+  Sync.on('ne', ev =>
+    EnemyMgr.addRemote({
       id: ev[1],
       dex: ev[2],
       x: ev[3],
@@ -535,14 +556,14 @@ G.Coop = (() => {
       beh: ev[9]
     })
   );
-  G.Sync.on('ed', ev => G.EnemyMgr.removeRemote(ev[1], true));
-  G.Sync.on('eg', ev => G.EnemyMgr.removeRemote(ev[1], false));
-  G.Sync.on('hn', ev => {
-    const e = G.EnemyMgr.get(ev[1]);
+  Sync.on('ed', ev => EnemyMgr.removeRemote(ev[1], true));
+  Sync.on('eg', ev => EnemyMgr.removeRemote(ev[1], false));
+  Sync.on('hn', ev => {
+    const e = EnemyMgr.get(ev[1]);
     if (e && !e.dead) e.showHurt(ev[2], ev[3]);
   });
-  G.Sync.on('es', ev =>
-    G.Projectiles.spawn({
+  Sync.on('es', ev =>
+    Projectiles.spawn({
       x: ev[1],
       y: ev[2],
       vx: ev[3],
@@ -552,59 +573,59 @@ G.Coop = (() => {
       life: ev[7],
       friendly: false,
       color: '#ff7a9e',
-      vis: G.VFX.forType(ev[8]),
+      vis: VFX.forType(ev[8]),
       mtype: ev[8]
     })
   );
-  G.Sync.on('c', ev => {
+  Sync.on('c', ev => {
     const m = mates.get(ev[1]);
-    if (m) G.Combat.ghostCast(m.pl, ev[2], ev[3], ev[4], ev[5]);
+    if (m) Combat.ghostCast(m.pl, ev[2], ev[3], ev[4], ev[5]);
   });
-  G.Sync.on('item', ev => api.item(ev[1]));
-  G.Sync.on('pk', ev => G.Pickups.addRemote(ev[1], ev[2], ev[3], ev[4], ev[5]));
-  G.Sync.on('pc', ev => G.Pickups.removeId(ev[1]));
-  G.Sync.on('mag', () => {
-    G.Pickups.pullAll();
-    G.FX.ring(local.x, local.y, 10, 420, '#ff9ed8', 0.6, 4);
+  Sync.on('item', ev => api.item(ev[1]));
+  Sync.on('pk', ev => Pickups.addRemote(ev[1], ev[2], ev[3], ev[4], ev[5]));
+  Sync.on('pc', ev => Pickups.removeId(ev[1]));
+  Sync.on('mag', () => {
+    Pickups.pullAll();
+    FX.ring(local.x, local.y, 10, 420, '#ff9ed8', 0.6, 4);
   });
-  G.Sync.on('bomb', ev => {
-    G.FX.ring(ev[1], ev[2], 20, G.Camera.outerRadius(), '#ff7b3d', 0.5, 6);
-    if (G.U.dist2(ev[1], ev[2], local.x, local.y) < 500 * 500) G.Camera.kick(0.8);
-    G.Audio.sfx('break');
+  Sync.on('bomb', ev => {
+    FX.ring(ev[1], ev[2], 20, Camera.outerRadius(), '#ff7b3d', 0.5, 6);
+    if (U.dist2(ev[1], ev[2], local.x, local.y) < 500 * 500) Camera.kick(0.8);
+    Audio.sfx('break');
   });
-  G.Sync.on('pb', ev => G.World.breakAt(ev[1], ev[2]));
-  G.Sync.on('say', ev => G.Spawner.say(ev[1], ev[2]));
-  G.Sync.on('heal', ev => {
+  Sync.on('pb', ev => World.breakAt(ev[1], ev[2]));
+  Sync.on('say', ev => Spawner.say(ev[1], ev[2]));
+  Sync.on('heal', ev => {
     if (local.dead) return;
     local.heal(local.maxHp * ev[1]);
-    G.FX.ring(local.x, local.y, 6, 60, '#5fe08a', 0.4, 3);
+    FX.ring(local.x, local.y, 6, 60, '#5fe08a', 0.4, 3);
   });
-  G.Sync.on('lu', ev => {
+  Sync.on('lu', ev => {
     if (!ev[2] || ev[2] > seenSeq) {
       seenSeq = ev[2] || seenSeq;
       api.levelStart(ev[1]);
     }
   });
-  G.Sync.on('lw', ev => api.waiting(ev[1]));
-  G.Sync.on('lr', () => api.resume());
-  G.Sync.on('hp', ev => {
+  Sync.on('lw', ev => api.waiting(ev[1]));
+  Sync.on('lr', () => api.resume());
+  Sync.on('hp', ev => {
     lastHo = (ev[1] || []).join('|');
     api.hold && api.hold(ev[1]);
   });
-  G.Sync.on('ha', ev => {
+  Sync.on('ha', ev => {
     hostAway = !!ev[1];
     updateAway();
   });
-  G.Sync.on('sh', ev => api.shiny(ev[1]));
-  G.Sync.on('ov', ev => {
+  Sync.on('sh', ev => api.shiny(ev[1]));
+  Sync.on('ov', ev => {
     const cb = api.over;
     end();
     cb(ev[1]);
   });
   // A visual effect the host played (see fx()).
-  G.Sync.on('fx', ev => {
-    const f = G.FX[ev[1]];
-    if (typeof f === 'function') f.apply(G.FX, ev.slice(2));
+  Sync.on('fx', ev => {
+    const f = FX[ev[1]];
+    if (typeof f === 'function') f.apply(FX, ev.slice(2));
   });
 
   // ---------------- hooks called by the game modules ----------------
@@ -668,12 +689,12 @@ G.Coop = (() => {
   }
 
   /**
-   * A G.FX effect played here and, on the host, on every guest too:
-   * G.Coop.fx('ring', x, y, r0, r1, color, life, width). Numbers are rounded
+   * A FX effect played here and, on the host, on every guest too:
+   * Coop.fx('ring', x, y, r0, r1, color, life, width). Numbers are rounded
    * to 2 decimals for the trip. Purely visual: guests can't act on it.
    */
   function fx(name, ...args) {
-    G.FX[name](...args);
+    FX[name](...args);
     if (active && host) emit(['fx', name, ...args.map(v => (typeof v === 'number' ? r2(v) : v))]);
   }
 
@@ -691,7 +712,7 @@ G.Coop = (() => {
   }
 
   function nameOf(u) {
-    return u === me ? (G.Social.me ? G.Social.me.name : 'You') : (mates.get(u) || {}).name || '?';
+    return u === me ? (Social.me ? Social.me.name : 'You') : (mates.get(u) || {}).name || '?';
   }
 
   function sendWaiting() {

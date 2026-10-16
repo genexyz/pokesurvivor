@@ -1,15 +1,18 @@
 /* ============ audio.js — synthesizer, sequencer and sound effects ============
  * All sound is generated on the fly with Web Audio: there are no files.
  *
- *   G.Audio.music('village')   switches track with a fade (see data/music.js)
- *   G.Audio.sfx('coin')        sound effect (with a repeat limit)
- *   G.Audio.setVolume('music' | 'sfx', 0..1) · toggleMute()
+ *   Audio.music('village')   switches track with a fade (see data/music.js)
+ *   Audio.sfx('coin')        sound effect (with a repeat limit)
+ *   Audio.setVolume('music' | 'sfx', 0..1) · toggleMute()
  *
  * Browsers don't allow any sound until the first click or key press, so the
  * context is created then and starts whatever music was requested.
  * The volume is stored in localStorage (it belongs to the browser, not the account).
  */
-G.Audio = (() => {
+import { U } from './util.js';
+import { MUSIC } from '../data/music.js';
+
+export const Audio = (() => {
   const KEY = 'ps.audio';
   let ctx = null,
     master,
@@ -101,7 +104,7 @@ G.Audio = (() => {
   }
 
   function setVolume(which, v) {
-    settings[which] = G.U.clamp(v, 0, 1);
+    settings[which] = U.clamp(v, 0, 1);
     save();
     applyVolumes();
   }
@@ -380,8 +383,8 @@ G.Audio = (() => {
   const compiled = {};
 
   function startSong(name) {
-    if (!ctx || !G.MUSIC[name]) return;
-    const song = compiled[name] || (compiled[name] = compile(G.MUSIC[name]));
+    if (!ctx || !MUSIC[name]) return;
+    const song = compiled[name] || (compiled[name] = compile(MUSIC[name]));
     const bus = ctx.createGain();
     bus.gain.setValueAtTime(0.0001, ctx.currentTime);
     bus.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.8);

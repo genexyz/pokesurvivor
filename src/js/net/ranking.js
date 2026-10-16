@@ -15,7 +15,11 @@
  *
  * Periods are counted in Spanish time (Europe/Madrid).
  */
-G.Ranking = (() => {
+import { DB } from '../core/db.js';
+import { Social } from './social.js';
+import { UI } from '../ui/ui.js';
+
+export const Ranking = (() => {
   const TZ = 'Europe/Madrid';
   const PERIODS = [
     ['d', 'Daily'],
@@ -28,8 +32,8 @@ G.Ranking = (() => {
   const MIN_T = 120;
   const TTL = 60 * 1000; // fetched data is valid for 1 min
 
-  const on = () => G.DB.online;
-  const api = (path, opts) => G.DB.api(path, opts);
+  const on = () => DB.online;
+  const api = (path, opts) => DB.api(path, opts);
 
   // ---------------- periods ----------------
 
@@ -101,8 +105,8 @@ G.Ranking = (() => {
   let busy = Promise.resolve(),
     runMarked = '';
   function runStarted(mode) {
-    if (!on() || runMarked === G.DB.uid) return;
-    runMarked = G.DB.uid;
+    if (!on() || runMarked === DB.uid) return;
+    runMarked = DB.uid;
     const go = n =>
       api('api/run-start', { method: 'POST', body: { mode } }).catch(e => {
         console.warn('[Ranking] start:', e.code || e.message);
@@ -143,16 +147,16 @@ G.Ranking = (() => {
     const best = PERIODS.map(p => p[0])
       .filter(p => better.includes(p))
       .pop();
-    G.UI.toast(`New best record ${names[best]} on the leaderboard!`, 3400);
+    UI.toast(`New best record ${names[best]} on the leaderboard!`, 3400);
   }
 
   function submitSolo(r) {
     return track(submitSoloNow(r));
   }
   async function submitSoloNow(r) {
-    if (!on() || !G.Social.me || r.t < MIN_T) return [];
+    if (!on() || !Social.me || r.t < MIN_T) return [];
     const ids = boardIds();
-    const entry = { t: r.t, uids: [G.DB.uid], dex: [r.dex], shiny: [!!r.shiny], lv: r.lv, kills: r.kills };
+    const entry = { t: r.t, uids: [DB.uid], dex: [r.dex], shiny: [!!r.shiny], lv: r.lv, kills: r.kills };
     const boards = PERIODS.map(([p]) => ['s_' + ids[p], p]);
     boards.push(['s_' + ALL + '_p' + r.dex, 'p']);
     const better = await store('s', boards, entry);
@@ -210,7 +214,7 @@ G.Ranking = (() => {
   // ---------------- reports and moderation ----------------
 
   /** Reports a suspicious record (once per record and player). → true if it was sent */
-  const repKey = () => 'ps.rk.rep.' + (G.DB.uid || '');
+  const repKey = () => 'ps.rk.rep.' + (DB.uid || '');
   function reported() {
     try {
       return new Set(JSON.parse(localStorage.getItem(repKey()) || '[]'));
@@ -238,7 +242,7 @@ G.Ranking = (() => {
   }
 
   // Moderator account (ADMIN_EMAILS on the server): the hidden screen in js/ui/mod-ui.js.
-  const isAdmin = () => on() && G.DB.isAdmin;
+  const isAdmin = () => on() && DB.isAdmin;
 
   /** Admin: the reports, grouped by record (most reported first). */
   async function reports() {

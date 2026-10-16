@@ -50,8 +50,9 @@ git push             # Coolify rebuilds and publishes
 `dist/` is not committed: the image generates it on every deploy.
 
 Players move to the new version on their own (`src/js/core/updater.js` checks
-`/version.json` every 5 min). The server serves `version.json` and the pages with no cache
-and `js/app.min.js` with a long cache (the URL carries the `?v=` fingerprint).
+`/version.json` every 5 min against the `<meta name="ps-version">` of the page they loaded; both are
+written by the `ps-release` plugin in `vite.config.mjs`). The server serves `version.json` and the pages
+with no cache, and `js/app-<hash>.js` / `css/*-<hash>.css` with a long cache (the hash changes with the content).
 
 ### Mandatory update
 
@@ -65,7 +66,7 @@ an alias, but if Coolify still has `BUILD_ARGS=--forzar` saved, update it to `--
 ```
 cp .env.example .env   # and fill in BETTER_AUTH_SECRET and the Google keys
 npm run db:up          # Postgres in Docker (docker-compose.dev.yml)
-npm run dev            # http://localhost:3000, with cloud; without DATABASE_URL it runs in local mode
+npm run dev            # http://localhost:3000 through Vite, with cloud; without DATABASE_URL it runs in local mode
 ```
 
 **Or against the Coolify Postgres** (instead of `db:up`):

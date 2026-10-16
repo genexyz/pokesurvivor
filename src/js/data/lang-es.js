@@ -3,7 +3,10 @@
  * number...). See js/core/i18n.js. Move, item and type names use the official
  * Spanish names.
  */
-G.I18n.add({
+import { I18n } from '../core/i18n.js';
+
+/** Translations, also read by scripts/export_data.js for the Spanish web pages. */
+export const ES = {
   // ---------------- types and regions ----------------
   Steel: 'Acero',
   Water: 'Agua',
@@ -1291,27 +1294,26 @@ G.I18n.add({
   unknown: 'desconocido',
   'no Google link': 'sin enlace de Google',
   "Couldn't save the nickname.": 'No se pudo guardar el apodo.'
-});
+};
+I18n.add(ES);
 
 // Whole texts only: common single words that must not change inside other sentences.
-G.I18n.add(
-  {
-    Timid: 'Tímido',
-    Impish: 'Travieso',
-    Jolly: 'Alegre',
-    Calm: 'Sereno',
-    Relaxed: 'Tranquilo',
-    Lonely: 'Solitario',
-    Hasty: 'Impulsivo',
-    Quirky: 'Caótico',
-    Loyal: 'Leal',
-    Patient: 'Paciente',
-    Gentle: 'Dulce',
-    Clever: 'Astuto',
-    Determined: 'Tenaz',
-    Proud: 'Orgulloso',
-    Careful: 'Prudente',
-    solo: 'en solitario'
-  },
-  true
-);
+export const ES_EXACT = {
+  Timid: 'Tímido',
+  Impish: 'Travieso',
+  Jolly: 'Alegre',
+  Calm: 'Sereno',
+  Relaxed: 'Tranquilo',
+  Lonely: 'Solitario',
+  Hasty: 'Impulsivo',
+  Quirky: 'Caótico',
+  Loyal: 'Leal',
+  Patient: 'Paciente',
+  Gentle: 'Dulce',
+  Clever: 'Astuto',
+  Determined: 'Tenaz',
+  Proud: 'Orgulloso',
+  Careful: 'Prudente',
+  solo: 'en solitario'
+};
+I18n.add(ES_EXACT, true);

@@ -6,7 +6,7 @@
  * rarity 1-5 para el gacha · gen = generación (banner) · starter = test
  * leg = legendario o singular (sólo salen en las grietas)
  */
-G.DEX = [
+export const DEX = [
   {"dex":1,"name":"Bulbasaur","types":["grass","poison"],"hp":90,"spd":97,"atk":1.06,"rarity":1,"bst":318,"starter":true,"gen":1},
   {"dex":2,"name":"Ivysaur","types":["grass","poison"],"hp":97,"spd":103,"atk":1.14,"rarity":2,"bst":405,"starter":false,"gen":1},
   {"dex":3,"name":"Venusaur","types":["grass","poison"],"hp":106,"spd":112,"atk":1.25,"rarity":4,"bst":525,"starter":false,"gen":1},
@@ -975,6 +975,6 @@ G.DEX = [
   {"dex":1024,"name":"Terapagos","types":["normal"],"hp":110,"spd":103,"atk":1.06,"rarity":5,"bst":450,"starter":false,"gen":9,"leg":true},
 ];
 
-G.DEX_BY = {};
-for (const p of G.DEX) G.DEX_BY[p.dex] = p;
-G.getPokemon = dex => G.DEX_BY[dex];
+export const DEX_BY = {};
+for (const p of DEX) DEX_BY[p.dex] = p;
+export const getPokemon = dex => DEX_BY[dex];

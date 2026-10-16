@@ -20,6 +20,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 COPY server ./server
+# The save merge is shared with the browser (an ES module: src/package.json says "type": "module").
+COPY src/package.json ./src/package.json
 COPY src/js/core/save-merge.js ./src/js/core/save-merge.js
 COPY --from=build /app/dist ./dist
 EXPOSE 80

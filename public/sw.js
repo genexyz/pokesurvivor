@@ -5,14 +5,14 @@
  *   (saved as they get used: nothing is downloaded all at once).
  * - External services are left alone.
  */
-const CODE = 'ps-code-v1',
+const CODE = 'ps-code-v2',
   ART = 'ps-art-v1';
 
 self.addEventListener('install', e => {
   e.waitUntil(
     caches
       .open(CODE)
-      .then(c => c.addAll(['./', './index.html', './css/style.css', './manifest.webmanifest']))
+      .then(c => c.addAll(['./', './index.html', './manifest.webmanifest']))
       .catch(() => {})
   );
   self.skipWaiting();

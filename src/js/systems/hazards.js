@@ -11,19 +11,29 @@
  * Arceus's ones (systems/judgment.js) take a % of max HP (pct) ignoring
  * types and defense (pure), and Judgment falls as a pillar of light (vis).
  */
-G.Hazards = (() => {
-  const B = G.Balance.hazards;
+import { LIFT, U } from '../core/util.js';
+import { Sync } from '../net/sync.js';
+import { Balance } from '../data/balance.js';
+import { Audio } from '../core/audio.js';
+import { Camera } from '../core/camera.js';
+import { VFX } from '../entities/vfx.js';
+import { FX } from '../entities/fx.js';
+import { Coop } from '../net/coop.js';
+import { Game } from '../game.js';
+
+export const Hazards = (() => {
+  const B = Balance.hazards;
   let list = [];
 
   // The host's telegraphed attacks, drawn (and dodged) by everyone.
-  G.Sync.on('hz', ev => add(ev[1], true));
+  Sync.on('hz', ev => add(ev[1], true));
 
   /** h: { kind, x, y, r | angle, len, w, delay, dmg, type, color, pct?, pure?, vis? } */
   function add(h, fromNet = false) {
     const o = Object.assign({ t: 0, hit: false, end: B.linger }, h);
     list.push(o);
-    if (!fromNet && G.Coop.isHost) {
-      G.Coop.broadcast([
+    if (!fromNet && Coop.isHost) {
+      Coop.broadcast([
         'hz',
         {
           kind: o.kind,
@@ -51,7 +61,7 @@ G.Hazards = (() => {
   }
 
   function inside(h, x, y, r) {
-    if (h.kind === 'zone') return G.U.dist2(x, y, h.x, h.y) < (h.r + r * B.bodyFrac) ** 2;
+    if (h.kind === 'zone') return U.dist2(x, y, h.x, h.y) < (h.r + r * B.bodyFrac) ** 2;
     const ca = Math.cos(h.angle),
       sa = Math.sin(h.angle);
     const px = x - h.x,
@@ -62,7 +72,7 @@ G.Hazards = (() => {
   }
 
   function update(dt) {
-    const pl = G.Game.player;
+    const pl = Game.player;
     for (let i = list.length - 1; i >= 0; i--) {
       const h = list[i];
       h.t += dt;
@@ -79,26 +89,26 @@ G.Hazards = (() => {
   }
 
   function detonate(h) {
-    const near = G.Camera.sees(h.x, h.y, 120);
+    const near = Camera.sees(h.x, h.y, 120);
     if (h.vis === 'pillar') {
       // Pillar of light falling from the sky.
-      G.FX.beam(h.x, h.y, -Math.PI / 2, 420, h.r * 1.1, h.color, G.VFX.forType('electric'));
-      G.FX.ring(h.x, h.y, 4, h.r * 1.3, '#fff3c8', 0.4, 5);
-      G.FX.burst(h.x, h.y - 6, h.color, 10, 180);
+      FX.beam(h.x, h.y, -Math.PI / 2, 420, h.r * 1.1, h.color, VFX.forType('electric'));
+      FX.ring(h.x, h.y, 4, h.r * 1.3, '#fff3c8', 0.4, 5);
+      FX.burst(h.x, h.y - 6, h.color, 10, 180);
       if (near) {
-        G.Audio.sfx('judge');
-        G.Camera.kick(0.2);
+        Audio.sfx('judge');
+        Camera.kick(0.2);
       }
     } else if (h.kind === 'zone') {
-      G.FX.ring(h.x, h.y, 4, h.r, h.color, 0.35, 5);
-      G.FX.burst(h.x, h.y - 6, h.color, Math.round(h.r / 3), 160);
+      FX.ring(h.x, h.y, 4, h.r, h.color, 0.35, 5);
+      FX.burst(h.x, h.y - 6, h.color, Math.round(h.r / 3), 160);
       if (near) {
-        G.Audio.sfx('break');
-        if (h.r > 60) G.Camera.kick(0.35);
+        Audio.sfx('break');
+        if (h.r > 60) Camera.kick(0.35);
       }
     } else {
-      G.FX.beam(h.x, h.y - G.LIFT, h.angle, h.len, h.w, h.color, G.VFX.forType(h.type || (h.pure ? 'electric' : 'normal')));
-      if (near) G.Audio.sfx('shot', { kind: 'beam', type: h.type });
+      FX.beam(h.x, h.y - LIFT, h.angle, h.len, h.w, h.color, VFX.forType(h.type || (h.pure ? 'electric' : 'normal')));
+      if (near) Audio.sfx('shot', { kind: 'beam', type: h.type });
     }
   }
 

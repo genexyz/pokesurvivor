@@ -1,6 +1,6 @@
 /* ============ updater.js — automatic updates ============
  * When a new version is published (npm run build writes version.json with
- * the fingerprint of js/app.min.js), every player gets it without losing anything:
+ * the fingerprint of the game bundle, also in <meta name="ps-version">), every player gets it without losing anything:
  *
  *   - Every 5 min (and when coming back to the tab) version.json is checked
  *     (a static file from our own server: it costs nothing).
@@ -19,15 +19,20 @@
  *     ends as if abandoned (coins, tickets, records and leaderboard are
  *     saved), it is uploaded to the cloud and the page reloads. Only players
  *     who already have this updater.js understand it (since 15-10-2026).
- * It only works on the published site (with app.min.js); with npm run dev (src/index.html) or
+ * It only works on the published site (with the ps-version meta); with npm run dev or
  * by double-clicking (file://) it does nothing.
  */
-G.Updater = (() => {
+import { DB } from './db.js';
+import { UI } from '../ui/ui.js';
+import { Game } from '../game.js';
+
+export const Updater = (() => {
   const EVERY = 5 * 60 * 1000,
     COUNTDOWN = 5,
     FORCED = 10;
-  const tag = document.querySelector('script[src*="app.min.js?v="]');
-  const mine = tag ? (tag.getAttribute('src').match(/v=([0-9a-f]+)/) || [])[1] : null;
+  // Written by the ps-release plugin in vite.config.mjs (same value as version.json).
+  const tag = document.querySelector('meta[name="ps-version"]');
+  const mine = tag ? tag.content : null;
   let pending = false,
     forced = false,
     lastCheck = 0,
@@ -53,8 +58,8 @@ G.Updater = (() => {
 
   /** Can the page reload now without interrupting anything? */
   function safe() {
-    if (!G.Game || G.Game.state !== 'ui') return false; // in a run or on the summary
-    if (['scr-gacha', 'scr-upgrades', 'scr-settings'].some(id => document.getElementById(id) && G.UI.isOpen(id))) return false;
+    if (!Game || Game.state !== 'ui') return false; // in a run or on the summary
+    if (['scr-gacha', 'scr-upgrades', 'scr-settings'].some(id => document.getElementById(id) && UI.isOpen(id))) return false;
     const fx = document.getElementById('pull-fx');
     if (fx && !fx.classList.contains('hidden')) return false; // gacha pull in progress
     const a = document.activeElement;
@@ -64,10 +69,10 @@ G.Updater = (() => {
 
   async function reload() {
     // Let the save reach the cloud before reloading (6 s at most).
-    const dirty = G.DB.syncState && G.DB.syncState !== 'ok' && G.DB.syncState !== 'local';
+    const dirty = DB.syncState && DB.syncState !== 'ok' && DB.syncState !== 'local';
     if (dirty) {
       try {
-        await Promise.race([G.DB.flush(), new Promise(r => setTimeout(r, 6000))]);
+        await Promise.race([DB.flush(), new Promise(r => setTimeout(r, 6000))]);
       } catch (e) {
         /* it stays in this browser */
       }
@@ -81,14 +86,14 @@ G.Updater = (() => {
     const tick = () => {
       if (!safe()) {
         counting = false;
-        G.UI.toast('', 1);
+        UI.toast('', 1);
         return;
       } // a run has started: wait
       if (n <= 0) {
         reload();
         return;
       }
-      G.UI.toast('A new version of the game is out: updating in ' + n + ' s…', 1500);
+      UI.toast('A new version of the game is out: updating in ' + n + ' s…', 1500);
       n--;
       setTimeout(tick, 1000);
     };
@@ -97,7 +102,7 @@ G.Updater = (() => {
 
   /** Is a run being played (which a required version must end)? */
   function inRun() {
-    return G.Game && G.Game.state !== 'ui' && G.Game.state !== 'over';
+    return Game && Game.state !== 'ui' && Game.state !== 'over';
   }
 
   /** Required version during a run: notice, the run ends (everything is saved) and the page reloads. */
@@ -110,11 +115,11 @@ G.Updater = (() => {
         return;
       } // the player ended it themselves
       if (n <= 0) {
-        G.Game.quit(); // like abandoning: earnings are saved
+        Game.quit(); // like abandoning: earnings are saved
         setTimeout(reload, 4000); // let the record and leaderboard go out
         return;
       }
-      G.UI.toast('Required update: your run is saved and the game reloads in ' + n + ' s…', 1500);
+      UI.toast('Required update: your run is saved and the game reloads in ' + n + ' s…', 1500);
       n--;
       setTimeout(tick, 1000);
     };
@@ -126,7 +131,7 @@ G.Updater = (() => {
       forceEnd();
       return;
     }
-    if (pending && forced && !counting && G.Game && G.Game.state === 'over') {
+    if (pending && forced && !counting && Game && Game.state === 'over') {
       reload();
       return;
     } // summary: already saved

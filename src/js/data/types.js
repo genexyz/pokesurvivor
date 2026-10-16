@@ -6,11 +6,14 @@
  *   here     ×1.6    ×0.6    ×0.3
  *
  * With two types they multiply (×1.6 · ×1.6 = ×2.56), capped to [×0.3, ×2.4].
- * (The live values are in G.Balance.combat.types.)
+ * (The live values are in Balance.combat.types.)
  * Used both ways: your attacks against enemies and the enemies' attacks
  * against you (their main type, or the type of their shot).
  */
-G.Types = (() => {
+import { U } from '../core/util.js';
+import { Balance } from './balance.js';
+
+export const Types = (() => {
   // attacker -> { defender: multiplier from the games } (×1 entries are omitted)
   const CHART = {
     normal: { rock: 0.5, ghost: 0, steel: 0.5 },
@@ -32,8 +35,8 @@ G.Types = (() => {
     steel: { fire: 0.5, water: 0.5, electric: 0.5, ice: 2, rock: 2, steel: 0.5, fairy: 2 },
     fairy: { fire: 0.5, fighting: 2, poison: 0.5, dragon: 2, dark: 2, steel: 0.5 }
   };
-  // Softening and clamp: G.Balance.combat.types.
-  const B = G.Balance.combat;
+  // Softening and clamp: Balance.combat.types.
+  const B = Balance.combat;
 
   /** Multiplier of an `atk`-type attack against a Pokémon with types `def`. */
   function mult(atk, def) {
@@ -42,12 +45,7 @@ G.Types = (() => {
     const T = B.types;
     let m = 1;
     for (const t of def) if (row[t] != null) m *= T.soft[row[t]];
-    return G.U.clamp(m, T.min, T.max);
-  }
-
-  /** Full damage multiplier of an attack: type chart × weather (used for every hit, both ways). */
-  function attackMult(atk, def) {
-    return mult(atk, def) * G.Weather.mult(atk);
+    return U.clamp(m, T.min, T.max);
   }
 
   /** 'super' | 'weak' | null, to show the hint. */
@@ -55,5 +53,5 @@ G.Types = (() => {
     return m > 1.05 ? 'super' : m < 0.95 ? 'weak' : null;
   }
 
-  return { CHART, mult, attackMult, label };
+  return { CHART, mult, label };
 })();

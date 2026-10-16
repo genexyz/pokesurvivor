@@ -4,17 +4,21 @@
  *
  *   lever → the 3 reels spin → they stop one by one on the symbol of the
  *   rarity that came out (Poké, Great, Ultra, Luxury and Master Ball, as in
- *   G.Icons.rarity; the red star is shiny). If it's Epic, Legendary or shiny, the
+ *   Icons.rarity; the red star is shiny). If it's Epic, Legendary or shiny, the
  *   last reel keeps you waiting and the lights go wild.
  *   The ×10 is 10 quick pulls; each prize drops into the tray as a ball.
  *
  * A click speeds up the animation.
  */
-G.Slots = (() => {
+import { Audio } from '../core/audio.js';
+import { Gacha } from '../systems/gacha.js';
+import { Icons } from './icons.js';
+
+export const Slots = (() => {
   const W = 176,
     H = 170,
     CELL = 30;
-  const SYM = G.Icons.RARITY_BALL;
+  const SYM = Icons.RARITY_BALL;
   const STRIP = ['ball', 'ball2', 'ball', 'ball3', 'ball', 'ball2', 'ballLux', 'ball', 'ball4', 'ball2', 'ball3', 'shiny', 'ball', 'ball2'];
   const REEL_X = [26, 65, 104],
     REEL_W = 36,
@@ -46,7 +50,7 @@ G.Slots = (() => {
     fast = false;
 
   const symOf = r => (r.shiny ? 'shiny' : SYM[r.rarity]);
-  const colOf = r => (r.shiny ? '#9ae6ff' : G.Gacha.RARITY_COLOR[r.rarity]);
+  const colOf = r => (r.shiny ? '#9ae6ff' : Gacha.RARITY_COLOR[r.rarity]);
 
   function wait(s) {
     return new Promise(res => {
@@ -87,7 +91,7 @@ G.Slots = (() => {
       const r = results[i];
       if (ten) st.led = 'PULL ' + (i + 1) + '/10';
       // Lever.
-      G.Audio.sfx('ball');
+      Audio.sfx('ball');
       await tween(
         v => {
           st.lever = v;
@@ -127,17 +131,17 @@ G.Slots = (() => {
           );
         }
         stopReel(st.reels[k], symOf(r));
-        G.Audio.sfx('shake');
+        Audio.sfx('shake');
         await wait(ten ? 0.08 : 0.32);
       }
       st.frenzy = 0;
       // Prize.
       st.win = { col: colOf(r), t: 0 };
-      st.led = (r.shiny ? 'SHINY · ' : '') + G.Gacha.RARITY_NAME[r.rarity].toUpperCase();
+      st.led = (r.shiny ? 'SHINY · ' : '') + Gacha.RARITY_NAME[r.rarity].toUpperCase();
       st.ledCol = colOf(r);
-      G.Audio.sfx('reveal', { rarity: r.rarity });
-      if (r.rarity === 5) G.Audio.sfx('legend');
-      if (r.shiny) G.Audio.sfx('shiny');
+      Audio.sfx('reveal', { rarity: r.rarity });
+      if (r.rarity === 5) Audio.sfx('legend');
+      if (r.shiny) Audio.sfx('shiny');
       if (big) burst(colOf(r), r.rarity === 5 || r.shiny ? 60 : 30);
       st.tray.push({ sym: symOf(r), y: 104, vy: 0, done: false });
       await wait(ten ? (big ? 0.7 : 0.28) : 1.0);
@@ -204,7 +208,7 @@ G.Slots = (() => {
       }
       if (rl.bounce > 0) rl.bounce = Math.max(0, rl.bounce - dt * 5);
     }
-    if (tick && Math.random() < 0.5) G.Audio.sfx('hover');
+    if (tick && Math.random() < 0.5) Audio.sfx('hover');
     if (st.win) st.win.t += dt;
     for (const b of st.tray)
       if (!b.done) {
@@ -304,7 +308,7 @@ G.Slots = (() => {
       const n = st.ten ? 10 : 1;
       const x = n === 1 ? 81 - 12 : 30 + j * 10;
       const size = n === 1 ? 24 : 12;
-      G.Icons.draw(ctx, b.sym, x, Math.round(b.y - (n === 1 ? 10 : 0)), size);
+      Icons.draw(ctx, b.sym, x, Math.round(b.y - (n === 1 ? 10 : 0)), size);
     });
 
     // --- lever ---
@@ -350,10 +354,10 @@ G.Slots = (() => {
         const name = STRIP[(((i0 - k) % STRIP.length) + STRIP.length) % STRIP.length];
         const y = Math.round(MID - 12 + k * CELL + base);
         ctx.globalAlpha = rl.speed > 300 ? 0.75 : 1;
-        G.Icons.draw(ctx, name, x + 6, y, 24);
+        Icons.draw(ctx, name, x + 6, y, 24);
         if (rl.speed > 300) {
           ctx.globalAlpha = 0.25;
-          G.Icons.draw(ctx, name, x + 6, y - 6, 24);
+          Icons.draw(ctx, name, x + 6, y - 6, 24);
         }
         ctx.globalAlpha = 1;
       }
@@ -361,10 +365,10 @@ G.Slots = (() => {
       const by = Math.round(Math.sin(rl.bounce * Math.PI) * 5);
       const n = STRIP.indexOf(rl.sym);
       ctx.globalAlpha = 0.35;
-      G.Icons.draw(ctx, STRIP[(n + 3) % STRIP.length], x + 6, MID - 12 - CELL + by, 24);
-      G.Icons.draw(ctx, STRIP[(n + 5) % STRIP.length], x + 6, MID - 12 + CELL + by, 24);
+      Icons.draw(ctx, STRIP[(n + 3) % STRIP.length], x + 6, MID - 12 - CELL + by, 24);
+      Icons.draw(ctx, STRIP[(n + 5) % STRIP.length], x + 6, MID - 12 + CELL + by, 24);
       ctx.globalAlpha = 1;
-      G.Icons.draw(ctx, rl.sym, x + 6, MID - 12 + by, 24);
+      Icons.draw(ctx, rl.sym, x + 6, MID - 12 + by, 24);
     }
     // Curved reel shading (darker at top and bottom).
     ctx.globalAlpha = 0.28;

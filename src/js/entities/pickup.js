@@ -7,7 +7,14 @@
  * others get a copy. They all fly towards the nearest player; the host
  * decides who picked them up.
  */
-G.Pickups = (() => {
+import { U } from '../core/util.js';
+import { RNG } from '../core/rng.js';
+import { Balance } from '../data/balance.js';
+import { Camera } from '../core/camera.js';
+import { Coop } from '../net/coop.js';
+import { Icons } from '../ui/icons.js';
+
+export const Pickups = (() => {
   let list = [];
   const MAX = 420;
   let nextId = 1;
@@ -23,13 +30,13 @@ G.Pickups = (() => {
     ticket10: { color: '#c47bff', glow: '#8a3fd0', r: 8 },
     item: { color: '#ffd23f', glow: '#c08a10', r: 9 } // value = item id
   };
-  // Drop chances, ticket rates and magnet pull: G.Balance.drops.
+  // Drop chances, ticket rates and magnet pull: Balance.drops.
   // Whether something drops is rolled on the seeded 'loot' stream.
-  const B = G.Balance.drops;
-  const R = G.RNG.stream('loot');
+  const B = Balance.drops;
+  const R = RNG.stream('loot');
   // Where drops land changes when you can grab them, so it's seeded too (its own
   // stream: the scatter never shifts what drops).
-  const S = G.RNG.stream('scatter');
+  const S = RNG.stream('scatter');
 
   function clear() {
     list = [];
@@ -40,10 +47,10 @@ G.Pickups = (() => {
 
   function push(o) {
     // In co-op only the host creates pickups (copies arrive over the network).
-    if (G.Coop.active && !G.Coop.isHost) return;
+    if (Coop.active && !Coop.isHost) return;
     o.id = nextId++;
     list.push(o);
-    if (G.Coop.isHost) G.Coop.pickupAdded(o);
+    if (Coop.isHost) Coop.pickupAdded(o);
     if (list.length > MAX) {
       // Merge the two oldest XP orbs so the list doesn't grow unbounded.
       const i = list.findIndex(p => p.kind === 'xp' || p.kind === 'xpBig');
@@ -54,10 +61,10 @@ G.Pickups = (() => {
           list[j].value += a.value;
           list[j].kind = 'xpBig';
         }
-        if (G.Coop.isHost) G.Coop.pickupGone(a.id);
+        if (Coop.isHost) Coop.pickupGone(a.id);
       } else {
         const a = list.shift();
-        if (G.Coop.isHost) G.Coop.pickupGone(a.id);
+        if (Coop.isHost) Coop.pickupGone(a.id);
       }
     }
   }
@@ -144,7 +151,7 @@ G.Pickups = (() => {
         d2 = Infinity;
       for (const o of players) {
         if (o.dead && players.length > 1) continue;
-        const dd = G.U.dist2(o.x, o.y, p.x, p.y);
+        const dd = U.dist2(o.x, o.y, p.x, p.y);
         if (dd < d2) {
           d2 = dd;
           pl = o;
@@ -160,8 +167,8 @@ G.Pickups = (() => {
         const d = Math.sqrt(d2) || 1;
         const P = B.pull;
         const pull = P.base + P.near / d;
-        p.vx = G.U.damp(p.vx, (dx / d) * pull, P.damp, dt);
-        p.vy = G.U.damp(p.vy, (dy / d) * pull, P.damp, dt);
+        p.vx = U.damp(p.vx, (dx / d) * pull, P.damp, dt);
+        p.vy = U.damp(p.vy, (dy / d) * pull, P.damp, dt);
       } else {
         p.vx *= Math.pow(B.pull.friction, dt);
         p.vy *= Math.pow(B.pull.friction, dt);
@@ -179,7 +186,7 @@ G.Pickups = (() => {
 
   function draw(ctx) {
     for (const p of list) {
-      if (!G.Camera.sees(p.x, p.y, 30)) continue;
+      if (!Camera.sees(p.x, p.y, 30)) continue;
       const k = KIND[p.kind];
       const bounce = Math.abs(Math.sin(p.t * 0.8)) * 3;
       const r = k.r;
@@ -230,7 +237,7 @@ G.Pickups = (() => {
           ctx.fill();
           ctx.globalAlpha = 1;
         }
-        G.Icons.draw(ctx, p.kind === 'item' ? p.value : ICON[p.kind], p.x - sz / 2, y - sz / 2 - 1, sz);
+        Icons.draw(ctx, p.kind === 'item' ? p.value : ICON[p.kind], p.x - sz / 2, y - sz / 2 - 1, sz);
         continue;
       }
       ctx.fillStyle = 'rgba(255,255,255,.8)';

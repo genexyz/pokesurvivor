@@ -1,7 +1,7 @@
 /* ============ weather.js — weather (rare event) ============
  * Every now and then (from minute 2, ~1 in every 6 minutes) a weather arrives
  * that lasts about a minute. It changes damage by the attack's type,
- * for you and for the enemies (numbers in G.Balance.weather):
+ * for you and for the enemies (numbers in Balance.weather):
  *
  *   sun      Fire ×1.5 · Water ×0.5
  *   rain     Water ×1.5 · Electric ×1.2 · Fire ×0.5
@@ -14,7 +14,21 @@
  *
  * Co-op: the host decides it and sends it with 'wx'.
  */
-G.Weather = (() => {
+import { U } from '../core/util.js';
+import { RNG } from '../core/rng.js';
+import { Sync } from '../net/sync.js';
+import { Balance } from '../data/balance.js';
+import { Types } from '../data/types.js';
+import { Audio } from '../core/audio.js';
+import { World } from '../world/world.js';
+import { FX } from '../entities/fx.js';
+import { EnemyMgr } from '../entities/enemy.js';
+import { Spawner } from './spawner.js';
+import { Rift } from './rift.js';
+import { Judgment } from './judgment.js';
+import { Coop } from '../net/coop.js';
+
+export const Weather = (() => {
   const KINDS = {
     sun: {
       name: 'Harsh sunlight',
@@ -52,15 +66,15 @@ G.Weather = (() => {
       hint: 'Ghost, Fairy and Psychic are boosted'
     }
   };
-  // (Display only: what each weather does is in G.Balance.weather.kinds.)
-  const B = G.Balance.weather;
-  const R = G.RNG.stream('weather');
+  // (Display only: what each weather does is in Balance.weather.kinds.)
+  const B = Balance.weather;
+  const R = RNG.stream('weather');
 
   let cur = null; // { kind, t, dur }
   let checkT = B.check,
     chipT = 0;
   let parts = [];
-  const authority = () => !G.Coop.active || G.Coop.isHost;
+  const authority = () => !Coop.active || Coop.isHost;
 
   function reset() {
     cur = null;
@@ -72,7 +86,7 @@ G.Weather = (() => {
   function def() {
     return cur ? KINDS[cur.kind] : null;
   }
-  /** The current weather's effects (G.Balance.weather.kinds). */
+  /** The current weather's effects (Balance.weather.kinds). */
   function rules() {
     return cur ? B.kinds[cur.kind] : null;
   }
@@ -81,6 +95,11 @@ G.Weather = (() => {
   function mult(type) {
     const d = rules();
     return d && d.mult && d.mult[type] ? 1 + (d.mult[type] - 1) * level() : 1;
+  }
+
+  /** Full damage multiplier of an attack: type chart × weather (used for every hit, both ways). */
+  function attackMult(atk, def) {
+    return Types.mult(atk, def) * mult(atk);
   }
 
   /** Intensity 0..1 (fades in and out over B.fade s). */
@@ -109,8 +128,8 @@ G.Weather = (() => {
   function start(kind, dur) {
     cur = { kind, t: 0, dur };
     const d = KINDS[kind];
-    G.Spawner.say(`${d.name}: ${d.hint}`, 3.4, true);
-    G.Audio.sfx('biome');
+    Spawner.say(`${d.name}: ${d.hint}`, 3.4, true);
+    Audio.sfx('biome');
   }
 
   function stop() {
@@ -133,15 +152,15 @@ G.Weather = (() => {
     if (cur) {
       cur.t += dt;
       if (cur.t >= cur.dur) cur = null;
-    } else if (authority() && time > B.from && !G.Rift.inArena && !G.Judgment.active) {
+    } else if (authority() && time > B.from && !Rift.inArena && !Judgment.active) {
       checkT -= dt;
       if (checkT <= 0) {
         checkT = B.check;
         if (R.chance(B.chance)) {
-          const kind = pick(G.World.biome),
+          const kind = pick(World.biome),
             dur = Math.round(R.range(B.dur[0], B.dur[1]));
           start(kind, dur);
-          if (G.Coop.isHost) G.Coop.broadcast(['wx', kind, dur]);
+          if (Coop.isHost) Coop.broadcast(['wx', kind, dur]);
         }
       }
     }
@@ -153,11 +172,11 @@ G.Weather = (() => {
         const d = Math.max(1, pl.maxHp * B.chipPlayer);
         if (pl.hp > d + 1) {
           pl.hp -= d;
-          G.FX.dmgText(pl.x, pl.y - pl.bodyH - 4, '-' + Math.round(d), def().color);
+          FX.dmgText(pl.x, pl.y - pl.bodyH - 4, '-' + Math.round(d), def().color);
         }
       }
       if (authority() && cur && rules().safe && level() > B.chipLevel) {
-        for (const e of G.EnemyMgr.all()) {
+        for (const e of EnemyMgr.all()) {
           if (e.dead || e.remote || e.boss) continue;
           if (!hurts(e.types || [])) continue;
           e.hp -= e.maxHp * B.chipEnemy + 1;
@@ -173,7 +192,7 @@ G.Weather = (() => {
     if (ev[1]) start(ev[1], ev[2]);
     else stop();
   }
-  G.Sync.on('wx', onEvent);
+  Sync.on('wx', onEvent);
 
   // ---------------- drawing (screen space) ----------------
 
@@ -216,14 +235,13 @@ G.Weather = (() => {
     const kind = cur.kind;
     const y = anywhere ? Math.random() * h : -10;
     if (kind === 'rain') return { x: Math.random() * (w + 200), y, vx: -120, vy: 720, a: 0.5, c: '#cfe2ff', t: 0, life: 9 };
-    if (kind === 'snow')
-      return { x: Math.random() * w, y, vx: G.U.rand(-20, 20), vy: G.U.rand(40, 80), a: 0.7, c: '#ffffff', t: 0, life: 20 };
+    if (kind === 'snow') return { x: Math.random() * w, y, vx: U.rand(-20, 20), vy: U.rand(40, 80), a: 0.7, c: '#ffffff', t: 0, life: 20 };
     if (kind === 'sand')
       return {
         x: anywhere ? Math.random() * w : w + 20,
         y: Math.random() * h,
-        vx: G.U.rand(-520, -380),
-        vy: G.U.rand(20, 60),
+        vx: U.rand(-520, -380),
+        vy: U.rand(20, 60),
         a: 0.4,
         c: '#e8cf8f',
         t: 0,
@@ -233,8 +251,8 @@ G.Weather = (() => {
     return {
       x: Math.random() * w,
       y: anywhere ? Math.random() * h : h + 5,
-      vx: G.U.rand(-8, 8),
-      vy: -G.U.rand(15, 30),
+      vx: U.rand(-8, 8),
+      vy: -U.rand(15, 30),
       a: 0.45,
       c: '#fff1b0',
       t: 0,
@@ -244,6 +262,7 @@ G.Weather = (() => {
 
   return {
     KINDS,
+    attackMult,
     reset,
     update,
     draw,
@@ -268,7 +287,7 @@ G.Weather = (() => {
     },
     debugStart(kind = 'rain', dur = 60) {
       start(kind, dur);
-      if (G.Coop.isHost) G.Coop.broadcast(['wx', kind, dur]);
+      if (Coop.isHost) Coop.broadcast(['wx', kind, dur]);
     }
   };
 })();

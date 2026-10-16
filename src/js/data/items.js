@@ -8,8 +8,12 @@
  * Items that react to something (lethal hit, damage dealt...) are checked
  * by the player with pl.hasItem(id).
  */
-G.Items = (() => {
-  const pct = G.U.pct;
+import { U } from '../core/util.js';
+import { RNG } from '../core/rng.js';
+import { Balance } from './balance.js';
+
+export const Items = (() => {
+  const pct = U.pct;
   /**
    * An item that multiplies a stat while held: by (1 + val), or by (1 - val)
    * with `down`. The factor applied is kept on the player, so a live balance
@@ -33,7 +37,7 @@ G.Items = (() => {
     };
     return it;
   }
-  const SASH = G.Balance.items.focusSash;
+  const SASH = Balance.items.focusSash;
   const LIST = [
     {
       id: 'leftovers',
@@ -56,7 +60,7 @@ G.Items = (() => {
       id: 'focussash',
       name: 'Focus Sash',
       get desc() {
-        return `A hit that would knock you out leaves you at 1 HP (every ${G.U.num(SASH.cooldown)} s).`;
+        return `A hit that would knock you out leaves you at 1 HP (every ${U.num(SASH.cooldown)} s).`;
       },
       on: () => {},
       off: () => {}
@@ -87,7 +91,7 @@ G.Items = (() => {
   for (const it of LIST) BY[it.id] = it;
 
   // Item drops and chest rolls use the seeded 'loot' stream.
-  const R = G.RNG.stream('loot');
+  const R = RNG.stream('loot');
 
   /** A random one, different from the one you already hold. */
   function roll(except) {

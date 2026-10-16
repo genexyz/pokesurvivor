@@ -4,12 +4,20 @@
  *   up    upgrade a move you already have
  *   stat  permanent upgrade for the run
  */
-G.LevelUp = (() => {
-  const B = G.Balance.levelup;
-  const R = G.RNG.stream('levelup');
+import { U } from '../core/util.js';
+import { RNG } from '../core/rng.js';
+import { Balance } from '../data/balance.js';
+import { Audio } from '../core/audio.js';
+import { Moves } from '../data/moves.js';
+import { FX } from '../entities/fx.js';
+import { Progress } from './progress.js';
+
+export const LevelUp = (() => {
+  const B = Balance.levelup;
+  const R = RNG.stream('levelup');
   // Stat cards: `val` is what one card grants (its text is built from it).
-  const pct = G.U.pct,
-    num = G.U.num;
+  const pct = U.pct,
+    num = U.num;
   const STATS = [
     {
       id: 'hp',
@@ -120,18 +128,18 @@ G.LevelUp = (() => {
       // With `buffCap` buffs no more are offered: buffs deal no damage and
       // filling all 4 slots with them leaves the run at a dead end.
       const buffs = pl.moves.filter(m => m.kind === 'buff').length;
-      const pool = G.Moves.poolFor(pl.mon).filter(
-        id => !pl.hasMove(id) && !(pl.banned && pl.banned.has(id)) && !(buffs >= B.buffCap && G.Moves.BY_ID[id].kind === 'buff')
+      const pool = Moves.poolFor(pl.mon).filter(
+        id => !pl.hasMove(id) && !(pl.banned && pl.banned.has(id)) && !(buffs >= B.buffCap && Moves.BY_ID[id].kind === 'buff')
       );
       for (const id of R.pickN(pool, B.newSample)) {
-        const d = G.Moves.BY_ID[id];
+        const d = Moves.BY_ID[id];
         out.push({
           w: B.weight.new,
           type: 'new',
           key: 'new:' + id,
           icon: 'move:' + id,
-          color: G.U.TYPE_COLOR[d.type],
-          tag: G.U.TYPE_NAME[d.type],
+          color: U.TYPE_COLOR[d.type],
+          tag: U.TYPE_NAME[d.type],
           title: d.name,
           desc: d.desc,
           apply: p => p.addMove(id)
@@ -142,7 +150,7 @@ G.LevelUp = (() => {
     // --- evolutions: move maxed out + its condition met ---
     const waiting = {}; // stat -> move waiting for it to evolve
     for (const m of pl.moves) {
-      const ev = G.Moves.evoInfo(m, pl.statsTaken);
+      const ev = Moves.evoInfo(m, pl.statsTaken);
       if (!ev) continue;
       if (!ev.ready) {
         waiting[ev.needs] = m;
@@ -158,29 +166,29 @@ G.LevelUp = (() => {
         title: m.name + ' → ' + ev.name,
         desc: ev.text,
         apply: p => {
-          G.Moves.evolve(m);
-          G.FX.ring(p.x, p.y, 8, 120, '#ffd23f', 0.8, 6);
-          G.FX.burst(p.x, p.y - p.bodyH * 0.5, '#ffe14d', 40, 240);
-          G.Audio.sfx('legend');
-          G.Progress.event('evolve', { move: m.id });
+          Moves.evolve(m);
+          FX.ring(p.x, p.y, 8, 120, '#ffd23f', 0.8, 6);
+          FX.burst(p.x, p.y - p.bodyH * 0.5, '#ffe14d', 40, 240);
+          Audio.sfx('legend');
+          Progress.event('evolve', { move: m.id });
         }
       });
     }
 
     // --- upgrades for moves you already have ---
     for (const m of pl.moves) {
-      const txt = G.Moves.nextUpText(m);
+      const txt = Moves.nextUpText(m);
       if (!txt) continue;
       out.push({
         w: B.weight.up,
         type: 'up',
         key: 'up:' + m.id,
         icon: 'move:' + m.id,
-        color: G.U.TYPE_COLOR[m.type],
+        color: U.TYPE_COLOR[m.type],
         tag: 'Lv.' + m.lvl + ' > ' + (m.lvl + 1),
         title: m.name,
         desc: txt,
-        apply: () => G.Moves.levelUp(m)
+        apply: () => Moves.levelUp(m)
       });
     }
 
@@ -215,7 +223,7 @@ G.LevelUp = (() => {
     return out;
   }
 
-  /** Returns `n` (G.Balance.levelup.offer) different cards, picked by weight. */
+  /** Returns `n` (Balance.levelup.offer) different cards, picked by weight. */
   function offer(pl, n = B.offer) {
     const pool = candidates(pl);
     const picked = [];

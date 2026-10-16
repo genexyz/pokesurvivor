@@ -10,7 +10,7 @@
  *           C whole chord · "-" extends the previous note · "." rest
  * drums:  X loud · x medium · o soft · . nothing
  */
-G.MUSIC = {
+export const MUSIC = {
   // ---------------- Menu: a quiet village ----------------
   village: {
     bpm: 100,
@@ -181,7 +181,7 @@ G.MUSIC = {
 /* ---------------- Rift: duel against the legendary ----------------
  * Faster and tenser than the boss theme: A minor, galloping bass and the
  * melody climbing to the high octave in the second half. */
-G.MUSIC.rift = {
+MUSIC.rift = {
   bpm: 164,
   chords: ['Am', 'F', 'G', 'E', 'Am', 'F', 'Dm', 'E', 'F', 'G', 'Am', 'Am', 'Dm', 'E', 'Am', 'E'],
   melody: [
@@ -219,7 +219,7 @@ G.MUSIC.rift = {
 /* ---------------- Arceus's Judgment (minute 30) ----------------
  * Solemn and inescapable: D minor with a darkening E flat (Phrygian),
  * low bells on every bar and the melody rising to the end. */
-G.MUSIC.judgment = {
+MUSIC.judgment = {
   bpm: 140,
   chords: ['Dm', 'Bb', 'Gm', 'A', 'Dm', 'Eb', 'C', 'A', 'Bb', 'C', 'Dm', 'Dm', 'Gm', 'A', 'Dm', 'A'],
   melody: [
@@ -255,4 +255,4 @@ G.MUSIC.judgment = {
 };
 
 /** Theme of each biome during the run. */
-G.BIOME_MUSIC = ['forest', 'cave', 'volcano'];
+export const BIOME_MUSIC = ['forest', 'cave', 'volcano'];

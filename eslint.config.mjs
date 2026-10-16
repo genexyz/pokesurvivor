@@ -8,16 +8,13 @@ export default [
 
   js.configs.recommended,
 
-  // The game: classic scripts (no modules) that share the global object G.
+  // The game: ES modules bundled by Vite (entry: src/js/main.js).
   {
     files: ['src/js/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: 'script',
-      globals: {
-        ...globals.browser,
-        G: 'writable'
-      }
+      sourceType: 'module',
+      globals: { ...globals.browser }
     }
   },
 
@@ -30,15 +27,9 @@ export default [
     languageOptions: { sourceType: 'script', globals: { ...globals.serviceworker } }
   },
 
-  // Save merging: also loaded by the server with require.
+  // The server (server/) and the Vite config: Node modules.
   {
-    files: ['src/js/core/save-merge.js'],
-    languageOptions: { globals: { module: 'readonly' } }
-  },
-
-  // The server (server/): Node modules.
-  {
-    files: ['server/**/*.mjs'],
+    files: ['server/**/*.mjs', 'vite.config.mjs'],
     languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.node } }
   },
 

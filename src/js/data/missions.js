@@ -3,14 +3,17 @@
  * random goals and types. They are completed by playing and the reward is
  * claimed on the Missions screen. The logic is in systems/progress.js.
  *
- *   ev      event that advances it (see G.Progress.event)
+ *   ev      event that advances it (see Progress.event)
  *   match   (data, param) -> does this event count?
  *   value   data -> how much it is worth; with mode 'max' the highest is kept,
  *           with 'add' (default) it is summed (1 if there is no value)
  *   param   'type': picks a random Pokémon type for the mission
  */
-G.MissionDefs = (() => {
-  const T = t => G.U.TYPE_NAME[t];
+import { U } from '../core/util.js';
+import { I18n } from '../core/i18n.js';
+
+export const MissionDefs = (() => {
+  const T = t => U.TYPE_NAME[t];
   const min = d => Math.floor(d.time / 60);
 
   const daily = [
@@ -86,7 +89,7 @@ G.MissionDefs = (() => {
       ev: 'kill',
       goals: [4000, 6000],
       reward: { t10: 1, coins: 800 },
-      text: n => `Defeat ${n.toLocaleString(G.I18n.locale)} Pokémon`
+      text: n => `Defeat ${n.toLocaleString(I18n.locale)} Pokémon`
     },
     {
       id: 'wrift',

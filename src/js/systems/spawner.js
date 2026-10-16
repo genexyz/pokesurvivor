@@ -4,19 +4,34 @@
  * rush from one specific side, to break the rhythm.
  *
  * Each enemy has a 1/4096 chance of being shiny (as in the classic games;
- * G.Balance.spawn.shinyRate).
+ * Balance.spawn.shinyRate).
  * A run kills 1,500–4,000, so one shows up every 1–3 runs.
  *
  * Co-op (host only): they appear around a random living player, out of
  * EVERYONE's view, and there are more and stronger ones the more of you
- * are playing (see G.Coop.scaleRate / scaleHp).
+ * are playing (see Coop.scaleRate / scaleHp).
  */
-G.Spawner = (() => {
+import { U } from '../core/util.js';
+import { RNG } from '../core/rng.js';
+import { Balance } from '../data/balance.js';
+import { Audio } from '../core/audio.js';
+import { Sprites } from '../core/sprites.js';
+import { Camera } from '../core/camera.js';
+import { Enemies } from '../data/enemies.js';
+import { World } from '../world/world.js';
+import { Enemy, EnemyMgr } from '../entities/enemy.js';
+import { Rift } from './rift.js';
+import { Judgment } from './judgment.js';
+import { Events } from './events.js';
+import { Coop } from '../net/coop.js';
+import { Game } from '../game.js';
+
+export const Spawner = (() => {
   // Tuning (cap and elites, density, hp curve, spawn rate, swarms, shiny rate)
-  // lives in G.Balance.spawn. The cap was 420 once: that many slowed it down.
+  // lives in Balance.spawn. The cap was 420 once: that many slowed it down.
   // Past the elite threshold new spawns are "elite", so the difficulty doesn't drop.
-  const B = G.Balance.spawn;
-  const R = G.RNG.stream('spawn');
+  const B = Balance.spawn;
+  const R = RNG.stream('spawn');
   let acc = 0,
     bossIdx = 0,
     surgeT = B.swarm.first,
@@ -51,8 +66,8 @@ G.Spawner = (() => {
     announce = null;
     announceT = 0;
     preloadT = 0;
-    G.Enemies.rollRun();
-    G.Sprites.preload(G.Enemies.upcomingDex(0, 80));
+    Enemies.rollRun();
+    Sprites.preload(Enemies.upcomingDex(0, 80));
   }
 
   /** Enemies per second based on the run's minute. */
@@ -61,7 +76,7 @@ G.Spawner = (() => {
   }
 
   function ringPoint(pl, angle) {
-    const d = G.Camera.outerRadius() + R.range(B.ring.min, B.ring.max);
+    const d = Camera.outerRadius() + R.range(B.ring.min, B.ring.max);
     return [pl.x + Math.cos(angle) * d, pl.y + Math.sin(angle) * d * 0.9];
   }
 
@@ -69,8 +84,8 @@ G.Spawner = (() => {
 
   /** Would any player see it? (so nothing pops up in front of anyone) */
   function seenByAnyone(x, y) {
-    const r = G.Camera.outerRadius() - 30;
-    return players.some(o => G.U.dist2(o.x, o.y, x, y) < r * r);
+    const r = Camera.outerRadius() - 30;
+    return players.some(o => U.dist2(o.x, o.y, x, y) < r * r);
   }
 
   /** A point on the ring where it fits: not inside walls or in water. */
@@ -79,7 +94,7 @@ G.Spawner = (() => {
       const a = angle + (i === 0 ? 0 : R.range(-B.ringJitter, B.ringJitter));
       const [x, y] = ringPoint(pl, a);
       if (players.length > 1 && seenByAnyone(x, y)) continue;
-      if (flying || G.World.isFree(x, y, 14)) return [x, y];
+      if (flying || World.isFree(x, y, 14)) return [x, y];
     }
     return null;
   }
@@ -95,46 +110,46 @@ G.Spawner = (() => {
   }
 
   function isFlyer(def) {
-    return G.Sprites.hovers(def.dex);
+    return Sprites.hovers(def.dex);
   }
 
   function rollShiny(dex) {
-    if (!G.Sprites.hasShiny(dex)) return false;
+    if (!Sprites.hasShiny(dex)) return false;
     return shinies.roll();
   }
 
   function spawnOne(pl, t, angle) {
-    const def = R.pick(G.Enemies.bagAt(t));
+    const def = R.pick(Enemies.bagAt(t));
     const pt = freePoint(pl, angle == null ? R.angle() : angle, isFlyer(def));
     if (!pt) return null;
     const shiny = rollShiny(def.dex);
-    const e = new G.Enemy(def, pt[0], pt[1], scaled(G.Enemies.scale(t), G.Coop.scaleHp(players.length) * B.hpK(t)));
+    const e = new Enemy(def, pt[0], pt[1], scaled(Enemies.scale(t), Coop.scaleHp(players.length) * B.hpK(t)));
     e.dmg *= B.dmgK;
     e.xp = Math.round(e.xp * B.xpK);
-    if (G.EnemyMgr.count >= B.cap * B.eliteFrom) {
+    if (EnemyMgr.count >= B.cap * B.eliteFrom) {
       e.maxHp = e.hp = Math.round(e.maxHp * B.elite.hp);
       e.dmg *= B.elite.dmg;
       e.xp = Math.round(e.xp * B.elite.xp);
     }
     if (shiny) e.makeShiny();
-    if (G.Events.golden) e.makeGolden();
-    G.EnemyMgr.add(e);
+    if (Events.golden) e.makeGolden();
+    EnemyMgr.add(e);
     if (shiny) {
       say(`A shiny ${e.name} is nearby!`, 3.4);
-      G.Audio.sfx('shiny');
+      Audio.sfx('shiny');
     }
     return e;
   }
 
   function spawnBoss(pl, t, b) {
     const [x, y] = ringPoint(pl, R.angle());
-    const k = G.Coop.scaleHp(players.length) * (players.length > 1 ? G.Balance.coop.bossHp : 1);
-    const e = new G.Enemy(b, x, y, scaled(G.Enemies.bossScale(t), k), true);
+    const k = Coop.scaleHp(players.length) * (players.length > 1 ? Balance.coop.bossHp : 1);
+    const e = new Enemy(b, x, y, scaled(Enemies.bossScale(t), k), true);
     if (rollShiny(b.dex)) e.makeShiny();
-    G.EnemyMgr.add(e);
+    EnemyMgr.add(e);
     say(e.shiny ? `A wild shiny ${e.name} appeared!` : `A wild ${e.name} appeared!`, 3.2);
-    G.Camera.kick(1.1);
-    G.Audio.sfx('boss');
+    Camera.kick(1.1);
+    Audio.sfx('boss');
     return e;
   }
 
@@ -144,17 +159,17 @@ G.Spawner = (() => {
     if (announceT > 0) announceT -= dt;
     // Nothing else spawns in the rift arena (and the boss clock waits).
     // During Arceus's Judgment, only its legendaries (systems/judgment.js).
-    if (G.Rift.inArena || G.Judgment.active) return;
+    if (Rift.inArena || Judgment.active) return;
 
     // Preload whatever will spawn in the next minute.
     preloadT -= dt;
     if (preloadT <= 0) {
       preloadT = 10;
-      G.Sprites.preload(G.Enemies.upcomingDex(t, 60));
+      Sprites.preload(Enemies.upcomingDex(t, 60));
     }
 
     // --- bosses ---
-    const b = G.Enemies.BOSSES[bossIdx];
+    const b = Enemies.BOSSES[bossIdx];
     if (b && t >= b.at) {
       spawnBoss(anchor(), t, b);
       bossIdx++;
@@ -162,14 +177,14 @@ G.Spawner = (() => {
 
     // Boss fight: waves drop (B.bossFightRate) and there are no swarms, so the boss
     // gets its own moment and can be targeted through the crowd.
-    const bossFight = G.EnemyMgr.bossAlive();
+    const bossFight = EnemyMgr.bossAlive();
 
     // --- normal trickle ---
-    if (G.EnemyMgr.count < B.cap) {
-      acc += B.rate(t) * G.Coop.scaleRate(players.length) * (bossFight ? B.bossFightRate : 1) * dt;
+    if (EnemyMgr.count < B.cap) {
+      acc += B.rate(t) * Coop.scaleRate(players.length) * (bossFight ? B.bossFightRate : 1) * dt;
       let n = Math.floor(acc);
       acc -= n;
-      while (n-- > 0 && G.EnemyMgr.count < B.cap) spawnOne(anchor(), t);
+      while (n-- > 0 && EnemyMgr.count < B.cap) spawnOne(anchor(), t);
     }
 
     // --- swarm ---
@@ -179,23 +194,20 @@ G.Spawner = (() => {
       surgeT = R.range(S.every[0], S.every[1]);
       const base = R.angle();
       const target = anchor();
-      const n = Math.min(
-        B.cap - G.EnemyMgr.count,
-        Math.round((S.base + Math.floor(t / S.growEvery)) * G.Coop.scaleRate(players.length) * S.k)
-      );
+      const n = Math.min(B.cap - EnemyMgr.count, Math.round((S.base + Math.floor(t / S.growEvery)) * Coop.scaleRate(players.length) * S.k));
       for (let i = 0; i < n; i++) spawnOne(target, t, base + R.range(-S.spread, S.spread));
       say('Pokémon swarm!', 2.2);
-      G.Audio.sfx('surge');
+      Audio.sfx('surge');
     }
   }
 
   /** A bunch at once from one side (when a horde starts). */
   function burst(n) {
     const base = R.angle(),
-      target = anchor() || G.Game.player,
-      t = G.Game.st.time,
+      target = anchor() || Game.player,
+      t = Game.st.time,
       S = B.burst;
-    for (let i = 0; i < n && G.EnemyMgr.count < B.cap + S.overCap; i++) spawnOne(target, t, base + R.range(-S.spread, S.spread));
+    for (let i = 0; i < n && EnemyMgr.count < B.cap + S.overCap; i++) spawnOne(target, t, base + R.range(-S.spread, S.spread));
   }
 
   /**
@@ -223,7 +235,7 @@ G.Spawner = (() => {
   function say(text, secs = 2.6, local = false) {
     announce = text;
     announceT = secs;
-    if (G.Coop.isHost && !local) G.Coop.say(text, secs);
+    if (Coop.isHost && !local) Coop.say(text, secs);
   }
 
   function banner() {
@@ -256,8 +268,8 @@ G.Spawner = (() => {
     },
     /** Dev panel: the next scheduled boss, right now (the schedule doesn't move). */
     debugBoss() {
-      const list = G.Enemies.BOSSES;
-      return spawnBoss(anchor() || G.Game.player, G.Game.st.time, list[Math.min(bossIdx, list.length - 1)]);
+      const list = Enemies.BOSSES;
+      return spawnBoss(anchor() || Game.player, Game.st.time, list[Math.min(bossIdx, list.length - 1)]);
     }
   };
 })();

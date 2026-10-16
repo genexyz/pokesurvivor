@@ -1,7 +1,23 @@
 /* ============ hud.js — interface inside the canvas ============
  * Drawn in SCREEN coordinates (without the camera transform).
  */
-G.HUD = (() => {
+import { U } from '../core/util.js';
+import { Audio } from '../core/audio.js';
+import { Touch } from '../core/touch.js';
+import { Camera } from '../core/camera.js';
+import { Items } from '../data/items.js';
+import { World } from '../world/world.js';
+import { EnemyMgr } from '../entities/enemy.js';
+import { Player } from '../entities/player.js';
+import { Spawner } from '../systems/spawner.js';
+import { Rift } from '../systems/rift.js';
+import { Events } from '../systems/events.js';
+import { Weather } from '../systems/weather.js';
+import { Coop } from '../net/coop.js';
+import { Icons } from './icons.js';
+import { Game } from '../game.js';
+
+export const HUD = (() => {
   const F = (w, s) => `${w} ${s}px Pixelify,"Segoe UI",system-ui,sans-serif`;
 
   function roundRect(ctx, x, y, w, h, r) {
@@ -23,7 +39,7 @@ G.HUD = (() => {
       roundRect(ctx, x, y, w, h, h / 2);
       ctx.clip();
       ctx.fillStyle = col;
-      ctx.fillRect(x, y, w * G.U.clamp(frac, 0, 1), h);
+      ctx.fillRect(x, y, w * U.clamp(frac, 0, 1), h);
       ctx.restore();
     }
   }
@@ -39,8 +55,8 @@ G.HUD = (() => {
   function edgeArrow(ctx, w, h, sx, sy, o) {
     if (sx > 0 && sx < w && sy > 0 && sy < h) return false;
     const M = o.margin || 44,
-      ex = G.U.clamp(sx, M, w - M),
-      ey = G.U.clamp(sy, M + 70, h - M - 80);
+      ex = U.clamp(sx, M, w - M),
+      ey = U.clamp(sy, M + 70, h - M - 80);
     const a = Math.atan2(sy - ey, sx - ex),
       ca = Math.cos(a),
       sa = Math.sin(a);
@@ -99,8 +115,8 @@ G.HUD = (() => {
   function draw(ctx, w, h, pl, st) {
     ctx.save();
     ctx.textBaseline = 'alphabetic';
-    G.Touch.clearButtons();
-    const touch = G.Touch.active;
+    Touch.clearButtons();
+    const touch = Touch.active;
 
     // ---------- experience bar (top edge) ----------
     const xpF = pl.xp / pl.xpNext;
@@ -110,7 +126,7 @@ G.HUD = (() => {
     g.addColorStop(0, '#4fd1ff');
     g.addColorStop(1, '#a98bff');
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w * G.U.clamp(xpF, 0, 1), 7);
+    ctx.fillRect(0, 0, w * U.clamp(xpF, 0, 1), 7);
 
     // ---------- health + level ----------
     const px = 16,
@@ -153,13 +169,13 @@ G.HUD = (() => {
     ctx.textAlign = 'center';
     ctx.font = F(800, 26);
     ctx.fillStyle = 'rgba(255,255,255,.95)';
-    ctx.fillText(G.U.mmss(st.time), w / 2, 42);
+    ctx.fillText(U.mmss(st.time), w / 2, 42);
     ctx.font = F(600, 10);
     ctx.fillStyle = '#8fa3c4';
-    ctx.fillText(G.World.biomeName().toUpperCase() + '  ·  ' + pl.kills + ' DEFEATED  ·  ' + pl.coins + ' COINS', w / 2, 58);
+    ctx.fillText(World.biomeName().toUpperCase() + '  ·  ' + pl.kills + ' DEFEATED  ·  ' + pl.coins + ' COINS', w / 2, 58);
 
     // ---------- weather (top right) ----------
-    const wx = G.Weather.current;
+    const wx = Weather.current;
     if (wx) {
       ctx.font = F(800, 11);
       ctx.textAlign = 'left';
@@ -170,13 +186,13 @@ G.HUD = (() => {
       roundRect(ctx, x0, y0, tw, 26, 9);
       ctx.fillStyle = 'rgba(0,0,0,.55)';
       ctx.fill();
-      G.Icons.draw(ctx, wx.icon, x0 + 6, y0 + 3, 20);
+      Icons.draw(ctx, wx.icon, x0 + 6, y0 + 3, 20);
       ctx.fillStyle = wx.color;
       ctx.fillText(txt, x0 + 32, y0 + 17);
     }
 
     // ---------- boss bar ----------
-    const boss = G.EnemyMgr.all().find(e => e.boss && !e.dead);
+    const boss = EnemyMgr.all().find(e => e.boss && !e.dead);
     if (boss) {
       const bw = Math.min(420, w - 80);
       bar(ctx, (w - bw) / 2, 70, bw, 12, boss.hp / boss.maxHp, '#ffcb3d');
@@ -187,15 +203,15 @@ G.HUD = (() => {
 
     // ---------- notice ----------
     // ---------- off-screen shinies: sparkle on the edge ----------
-    const cam = G.Camera,
+    const cam = Camera,
       pulse = 0.6 + Math.sin(performance.now() / 160) * 0.4;
-    for (const e of G.EnemyMgr.shinies()) {
+    for (const e of EnemyMgr.shinies()) {
       const sx = (e.x - cam.left()) * cam.scale,
         sy = (e.y - cam.top()) * cam.scale;
       if (sx > 0 && sx < w && sy > 0 && sy < h) continue;
       const M = 34;
-      const ex = G.U.clamp(sx, M, w - M),
-        ey = G.U.clamp(sy, M + 60, h - M - 70);
+      const ex = U.clamp(sx, M, w - M),
+        ey = U.clamp(sy, M + 60, h - M - 70);
       const a = Math.atan2(sy - ey, sx - ex);
       ctx.save();
       ctx.globalAlpha = pulse;
@@ -207,7 +223,7 @@ G.HUD = (() => {
       ctx.lineTo(Math.cos(a - 2.5) * 12, Math.sin(a - 2.5) * 12);
       ctx.fill();
       ctx.globalAlpha = 1;
-      G.Icons.draw(ctx, 'shiny', -12, -12, 24);
+      Icons.draw(ctx, 'shiny', -12, -12, 24);
       ctx.restore();
     }
 
@@ -226,17 +242,17 @@ G.HUD = (() => {
       bx += tw + 5;
     }
 
-    if (G.Coop.active) drawCoop(ctx, w, h, pl, px, py + (bx > px ? 56 : 40));
+    if (Coop.active) drawCoop(ctx, w, h, pl, px, py + (bx > px ? 56 : 40));
 
     // Rift: big pulsing arrow on the edge when off-screen; when visible, a
     // bouncing arrow above it; inside the arena, a countdown.
-    const rift = G.Rift.rift;
+    const rift = Rift.rift;
     if (rift) {
       const sx = (rift.x - cam.left()) * cam.scale,
         sy = (rift.y - 40 - cam.top()) * cam.scale;
       const now = performance.now() / 1000,
         beat = 0.5 + Math.sin(now * 7) * 0.5;
-      const label = 'RIFT · ' + Math.round(G.U.dist(pl.x, pl.y, rift.x, rift.y) / 32) + ' m · ' + Math.ceil(rift.ttl) + ' s';
+      const label = 'RIFT · ' + Math.round(U.dist(pl.x, pl.y, rift.x, rift.y) / 32) + ' m · ' + Math.ceil(rift.ttl) + ' s';
       const off = sx < 0 || sx > w || sy < 0 || sy > h;
       ctx.save();
       if (off)
@@ -277,15 +293,15 @@ G.HUD = (() => {
       }
       ctx.restore();
     }
-    if (G.Rift.inArena) {
+    if (Rift.inArena) {
       ctx.textAlign = 'center';
       ctx.font = F(800, 12);
       ctx.fillStyle = '#d9c2ff';
-      ctx.fillText('RIFT · ' + G.U.mmss(G.Rift.timeLeft), w / 2, boss ? 98 : 76);
+      ctx.fillText('RIFT · ' + U.mmss(Rift.timeLeft), w / 2, boss ? 98 : 76);
     }
 
     // Events: countdown, arrow to the lost Pokémon / the marker and the goblins.
-    G.Events.drawHud(ctx, w, h, pl, F);
+    Events.drawHud(ctx, w, h, pl, F);
 
     // Dedicated notice when a rift opens (other notices don't cover it).
     if (rift && rift.t < 4.5) {
@@ -316,7 +332,7 @@ G.HUD = (() => {
       ctx.restore();
     }
 
-    const ban = G.Spawner.banner();
+    const ban = Spawner.banner();
     if (ban) {
       const a = Math.min(1, ban.t * 1.6);
       ctx.save();
@@ -340,19 +356,19 @@ G.HUD = (() => {
     const totalW = n * S + (n - 1) * GAP;
     let sx = (w - totalW) / 2;
     // Above the iPhone home bar (taps there sometimes don't register).
-    let sy = h - S - 18 - (touch ? Math.min(28, G.Touch.safeArea().bottom) : 0);
+    let sy = h - S - 18 - (touch ? Math.min(28, Touch.safeArea().bottom) : 0);
     // On mobile, wherever the player put it: the item + all slots block (even
     // if not filled yet), by its center, as in the editor (layout-ui.js); new
     // moves appear towards the right.
-    const pb = touch && G.Touch.spot('bar');
+    const pb = touch && Touch.spot('bar');
     if (pb) {
       const nAll = Math.max(n, pl.maxMoves),
         bw = S + 18 + nAll * S + (nAll - 1) * GAP;
-      sx = G.U.clamp(pb[0] * w - bw / 2, 6, Math.max(6, w - bw - 6)) + S + 18;
-      sy = G.U.clamp(pb[1] * h - S / 2, 24, h - S - 6);
+      sx = U.clamp(pb[0] * w - bw / 2, 6, Math.max(6, w - bw - 6)) + S + 18;
+      sy = U.clamp(pb[1] * h - S / 2, 24, h - S - 6);
     }
     const BOND = '#ff8ad8';
-    const cdOf = m => (m.kind === 'orbit' ? 0 : G.U.clamp(m.t / (m.cd * pl.cdMul), 0, 1));
+    const cdOf = m => (m.kind === 'orbit' ? 0 : U.clamp(m.t / (m.cd * pl.cdMul), 0, 1));
 
     for (let i = 0; i < n; i++) {
       const g = pl.slots[i] || [];
@@ -363,20 +379,20 @@ G.HUD = (() => {
       const y = on ? sy - 6 : sy;
       // Tapping (or clicking) an icon activates that move.
       if (m)
-        G.Touch.addButton(
+        Touch.addButton(
           x,
           y,
           S,
           S,
           () => {
-            if (G.Game.state === 'playing' && pl.active !== i) {
+            if (Game.state === 'playing' && pl.active !== i) {
               pl.setActive(i);
-              G.Audio.sfx('click');
+              Audio.sfx('click');
             }
           },
           GAP / 2 + 3
         );
-      const col = m ? G.U.TYPE_COLOR[m.type] : '#4a5468';
+      const col = m ? U.TYPE_COLOR[m.type] : '#4a5468';
 
       // background
       roundRect(ctx, x, y, S, S, 12);
@@ -396,7 +412,7 @@ G.HUD = (() => {
         g.forEach((gm, k) => {
           const cx = x + P + (k % 2) * (C + P),
             cy = y + P + Math.floor(k / 2) * (C + P);
-          G.Icons.draw(ctx, 'move:' + gm.id, cx, cy, C);
+          Icons.draw(ctx, 'move:' + gm.id, cx, cy, C);
           const f = cdOf(gm);
           if (f > 0) {
             ctx.fillStyle = 'rgba(0,0,0,.55)';
@@ -427,7 +443,7 @@ G.HUD = (() => {
         }
 
         // type emblem + family badge
-        G.Icons.draw(ctx, 'move:' + m.id, x + (S - 32) / 2, y + (S - 32) / 2 - 2, 32);
+        Icons.draw(ctx, 'move:' + m.id, x + (S - 32) / 2, y + (S - 32) / 2 - 2, 32);
 
         // move level (dots)
         const dots = m.def.maxLvl;
@@ -459,7 +475,7 @@ G.HUD = (() => {
     if (pl.bonds > 0) {
       const bx = sx + totalW + 12,
         by = sy + S / 2 - 12;
-      G.Icons.draw(ctx, 'bond', bx, by, 24);
+      Icons.draw(ctx, 'bond', bx, by, 24);
       if (pl.bonds > 1) {
         ctx.font = F(800, 10);
         ctx.textAlign = 'left';
@@ -479,20 +495,20 @@ G.HUD = (() => {
       ctx.strokeStyle = pl.item ? '#ffd23f' : 'rgba(140,170,210,.18)';
       ctx.stroke();
       if (pl.item) {
-        G.Icons.draw(ctx, pl.item, ix + (S - 36) / 2, iy + (S - 36) / 2, 36);
+        Icons.draw(ctx, pl.item, ix + (S - 36) / 2, iy + (S - 36) / 2, 36);
         ctx.font = F(700, 9);
         ctx.textAlign = 'center';
         ctx.fillStyle = '#ffd23f';
-        ctx.fillText(G.Items.BY[pl.item].name, ix + S / 2, iy - 6);
+        ctx.fillText(Items.BY[pl.item].name, ix + S / 2, iy - 6);
       }
     }
 
     // ---------- pause button (touch) ----------
     if (touch) {
-      const sa = G.Touch.safeArea();
-      const pp = G.Touch.spot('pause');
-      const bx = pp ? G.U.clamp(pp[0] * w - 20, 4, w - 44) : w - 52 - Math.min(44, sa.right);
-      const by = pp ? G.U.clamp(pp[1] * h - 20, 10, h - 44) : 12 + Math.min(20, sa.top),
+      const sa = Touch.safeArea();
+      const pp = Touch.spot('pause');
+      const bx = pp ? U.clamp(pp[0] * w - 20, 4, w - 44) : w - 52 - Math.min(44, sa.right);
+      const by = pp ? U.clamp(pp[1] * h - 20, 10, h - 44) : 12 + Math.min(20, sa.top),
         bs = 40;
       roundRect(ctx, bx, by, bs, bs, 10);
       ctx.fillStyle = 'rgba(10,16,28,.7)';
@@ -503,7 +519,7 @@ G.HUD = (() => {
       ctx.fillStyle = '#f4f8ff';
       ctx.fillRect(bx + 13, by + 11, 5, 18);
       ctx.fillRect(bx + 22, by + 11, 5, 18);
-      G.Touch.addButton(bx, by, bs, bs, () => G.Game.togglePause(), 8);
+      Touch.addButton(bx, by, bs, bs, () => Game.togglePause(), 8);
     }
 
     // controls hint
@@ -530,11 +546,11 @@ G.HUD = (() => {
    * - If you are down: notice and a "being revived" bar.
    */
   function drawCoop(ctx, w, h, pl, px, top) {
-    const cam = G.Camera;
+    const cam = Camera;
     const t = performance.now() / 1000;
     let y = top;
     ctx.textAlign = 'left';
-    for (const m of G.Coop.mates) {
+    for (const m of Coop.mates) {
       if (!m.connected) continue;
       const o = m.pl;
       ctx.font = F(800, 10);
@@ -551,12 +567,12 @@ G.HUD = (() => {
     }
 
     // Arrows towards teammates out of view.
-    for (const m of G.Coop.mates) {
+    for (const m of Coop.mates) {
       if (!m.connected) continue;
       const o = m.pl;
       const sx = (o.x - cam.left()) * cam.scale,
         sy = (o.y - o.bodyH * 0.5 - cam.top()) * cam.scale;
-      const metres = Math.round(G.U.dist(pl.x, pl.y, o.x, o.y) / 32);
+      const metres = Math.round(U.dist(pl.x, pl.y, o.x, o.y) / 32);
       const col = o.dead ? (Math.sin(t * 8) > 0 ? '#ff5f6d' : '#ffd0d5') : m.color;
       edgeArrow(ctx, w, h, sx, sy, {
         margin: 42,
@@ -586,11 +602,11 @@ G.HUD = (() => {
       ctx.font = F(800, 20);
       ctx.lineWidth = 4;
       ctx.strokeStyle = 'rgba(0,0,0,.75)';
-      const msg = G.Coop.players().every(p => p.dead) ? 'Everyone is down…' : "You're down: a teammate can revive you";
+      const msg = Coop.players().every(p => p.dead) ? 'Everyone is down…' : "You're down: a teammate can revive you";
       ctx.strokeText(msg, w / 2, h * 0.62);
       ctx.fillStyle = '#ffb0b8';
       ctx.fillText(msg, w / 2, h * 0.62);
-      const f = (pl.reviveT || 0) / G.Player.REVIVE_TIME;
+      const f = (pl.reviveT || 0) / Player.REVIVE_TIME;
       if (f > 0) bar(ctx, w / 2 - 110, h * 0.62 + 12, 220, 10, f, '#5fe08a');
       ctx.restore();
     }

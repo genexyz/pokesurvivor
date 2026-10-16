@@ -3,18 +3,18 @@
  * its own co-op messages where its logic lives. net/coop.js only dispatches:
  * adding a mechanic never needs a new case there.
  *
- *   G.Sync.on('wx', ev => ...)                 guest: an event the host sent
- *   G.Sync.onGuest('re', (ev, from, mate) => ...)  host: an event a guest sent
- *   G.Sync.field('ja', { send: () => state|null, apply: state => ... })
+ *   Sync.on('wx', ev => ...)                 guest: an event the host sent
+ *   Sync.onGuest('re', (ev, from, mate) => ...)  host: an event a guest sent
+ *   Sync.field('ja', { send: () => state|null, apply: state => ... })
  *                                              state the host adds to every frame
- *   G.Sync.flag('burn', e => e.burn > 0)       enemy flag mirrored on guests' copies
+ *   Sync.flag('burn', e => e.burn > 0)       enemy flag mirrored on guests' copies
  *                                              (read there with e.netFlag('burn'))
  *
- * Sending stays in G.Coop: broadcast(ev) on the host, toHost(ev) on a guest,
- * fx(name, ...args) to play a G.FX effect here and on every guest.
+ * Sending stays in Coop: broadcast(ev) on the host, toHost(ev) on a guest,
+ * fx(name, ...args) to play a FX effect here and on every guest.
  * An event is an array whose first element is its code: ['wx', kind, dur].
  */
-G.Sync = (() => {
+export const Sync = (() => {
   const fromHost = new Map(),
     fromGuest = new Map(),
     fields = new Map(),

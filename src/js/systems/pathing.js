@@ -8,12 +8,15 @@
  *   - 8 neighbours, no corner cutting (it won't slip between two diagonal rocks).
  *   - Blocking: walls, solid objects and lava/poison/shock.
  *     Water can be crossed (it only slows).
- *   - Hovering ones (G.Sprites.hovers) don't need it: they go straight.
+ *   - Hovering ones (Sprites.hovers) don't need it: they go straight.
  *
  * Cost: R=28 tile radius → 57×57 = 3,249 tiles per player, every
  * 0.35 s. Enemies outside the field (very far away) go straight.
  */
-G.Path = (() => {
+import { U } from '../core/util.js';
+import { World } from '../world/world.js';
+
+export const Path = (() => {
   const R = 28,
     N = R * 2 + 1,
     EVERY = 0.35;
@@ -33,7 +36,7 @@ G.Path = (() => {
   let timer = 0;
 
   function build(pl) {
-    const TS = G.World.TS;
+    const TS = World.TS;
     const px = Math.floor(pl.x / TS),
       py = Math.floor(pl.y / TS);
     const ox = px - R,
@@ -49,7 +52,7 @@ G.Path = (() => {
     dist.fill(UNSEEN);
     // Walkable tiles in the area (queried once).
     const open = f.open || (f.open = new Uint8Array(N * N));
-    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) open[j * N + i] = G.World.walkable(ox + i, oy + j) ? 1 : 0;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) open[j * N + i] = World.walkable(ox + i, oy + j) ? 1 : 0;
 
     const start = R * N + R;
     open[start] = 1; // the player's own tile always counts
@@ -92,7 +95,7 @@ G.Path = (() => {
   function dirFor(e, pl) {
     const f = fields.get(pl);
     if (!f) return null;
-    const TS = G.World.TS;
+    const TS = World.TS;
     const tx = Math.floor(e.x / TS) - f.ox,
       ty = Math.floor(e.y / TS) - f.oy;
     if (tx < 0 || ty < 0 || tx >= N || ty >= N) return null;
@@ -130,12 +133,12 @@ G.Path = (() => {
       gx = (f.ox + tx + 0.5) * TS;
       gy = (f.oy + ty + 0.5) * TS;
     }
-    return G.U.norm(gx - e.x, gy - e.y);
+    return U.norm(gx - e.x, gy - e.y);
   }
 
   /** Does a body of radius r fit in a straight line from (ax,ay) to (bx,by)? */
   function clearLine(f, ax, ay, bx, by, r) {
-    const TS = G.World.TS;
+    const TS = World.TS;
     const len = Math.hypot(bx - ax, by - ay);
     if (len < 1) return true;
     const ux = (bx - ax) / len,

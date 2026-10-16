@@ -3,7 +3,7 @@
  * happens when you touch them. Everything is checked around YOUR Pokémon:
  *
  *   altar     grants a 25 s power (Fury, Thunderbolt, Magnet or Haste) and goes dark
- *             (times, radii, heal rates and trap damage: G.Balance.interact)
+ *             (times, radii, heal rates and trap damage: Balance.interact)
  *   spring    heals while you stand on it; it runs dry and refills on its own
  *   bigchest  stay next to it for CHEST_TIME seconds (while being attacked) and it
  *             opens: coins, tickets and enough experience for one level
@@ -14,11 +14,22 @@
  * chest and traps break like any other object and the host hands out
  * the loot and the damage to enemies (see world.destroyProp and coop.propBroken).
  */
-G.Interact = (() => {
-  const B = G.Balance.interact;
+import { U } from '../core/util.js';
+import { Balance } from '../data/balance.js';
+import { Audio } from '../core/audio.js';
+import { Camera } from '../core/camera.js';
+import { World } from '../world/world.js';
+import { FX } from '../entities/fx.js';
+import { EnemyMgr } from '../entities/enemy.js';
+import { Spawner } from './spawner.js';
+import { Coop } from '../net/coop.js';
+import { Game } from '../game.js';
+
+export const Interact = (() => {
+  const B = Balance.interact;
   const PW = B.powers;
-  const num = G.U.num,
-    pct = G.U.pct;
+  const num = U.num,
+    pct = U.pct;
   /** An altar power multiplies a stat by PW[id] for a while (text built from the value). */
   function power(id, name, color, stat, text) {
     return {
@@ -44,14 +55,14 @@ G.Interact = (() => {
     power('mag', 'Magnet', '#ff8ad8', 'magnet', () => 'you pull everything from afar'),
     power('cd', 'Haste', '#ffd23f', 'cdMul', k => `-${pct(1 - k)}% cooldown`)
   ];
-  const authority = () => !G.Coop.active || G.Coop.isHost;
+  const authority = () => !Coop.active || Coop.isHost;
   let healShown = 0,
     healAcc = 0;
 
   function update(dt, pl) {
     if (!pl) return;
-    for (const p of G.World.specialsNear(pl.x, pl.y, 720)) {
-      const d2 = G.U.dist2(pl.x, pl.y, p.x, p.type === 'spring' || p.type === 'trap' ? p.y - 8 : p.y);
+    for (const p of World.specialsNear(pl.x, pl.y, 720)) {
+      const d2 = U.dist2(pl.x, pl.y, p.x, p.type === 'spring' || p.type === 'trap' ? p.y - 8 : p.y);
       switch (p.type) {
         case 'spring':
           spring(dt, pl, p, d2);
@@ -63,18 +74,17 @@ G.Interact = (() => {
           break;
         case 'bigchest':
           if (!pl.dead && d2 < Math.max(B.chestR.min, p.r + pl.r + B.chestR.pad) ** 2) {
-            if (p.open === 0) G.Audio.sfx('select');
+            if (p.open === 0) Audio.sfx('select');
             p.open += dt;
             if (p.open >= B.chestTime) {
               p.open = 0;
-              G.World.breakProp(p);
+              World.breakProp(p);
             }
           } else if (p.open > 0) p.open = Math.max(0, p.open - dt * B.chestDecay);
           break;
         case 'trap':
-          if (!pl.dead && d2 < B.trap.stepR * B.trap.stepR) G.World.breakProp(p);
-          else if (authority() && G.EnemyMgr.queryCircle(p.x, p.y - 8, B.trap.enemyR).some(e => !e.flying && !e.remote))
-            G.World.breakProp(p);
+          if (!pl.dead && d2 < B.trap.stepR * B.trap.stepR) World.breakProp(p);
+          else if (authority() && EnemyMgr.queryCircle(p.x, p.y - 8, B.trap.enemyR).some(e => !e.flying && !e.remote)) World.breakProp(p);
           break;
       }
     }
@@ -88,25 +98,25 @@ G.Interact = (() => {
     pl.hp = Math.min(pl.maxHp, pl.hp + pl.maxHp * S.heal * dt);
     healAcc += pl.hp - before;
     p.charge = Math.max(0, p.charge - dt * S.drain);
-    if (Math.random() < dt * 14) G.FX.px(pl.x + G.U.rand(-pl.r, pl.r), pl.y - G.U.rand(0, pl.bodyH), '#7dffb0', { vy: -50, life: 0.5 });
+    if (Math.random() < dt * 14) FX.px(pl.x + U.rand(-pl.r, pl.r), pl.y - U.rand(0, pl.bodyH), '#7dffb0', { vy: -50, life: 0.5 });
     healShown -= dt;
     if (healShown <= 0 && healAcc >= 1) {
       healShown = 0.6;
-      G.FX.dmgText(pl.x, pl.y - pl.bodyH - 6, '+' + Math.round(healAcc), '#5fe08a');
+      FX.dmgText(pl.x, pl.y - pl.bodyH - 6, '+' + Math.round(healAcc), '#5fe08a');
       healAcc = 0;
-      G.Audio.sfx('xp');
+      Audio.sfx('xp');
     }
-    if (p.charge <= S.dryAt) G.Spawner.say('The spring has dried up (it refills on its own)', 2.2, true);
+    if (p.charge <= S.dryAt) Spawner.say('The spring has dried up (it refills on its own)', 2.2, true);
   }
 
   function usePower(pl, p) {
     p.used = true;
     const pw = POWERS[p.kind];
     pl.addPower(pw, B.powerTime);
-    G.FX.ring(p.x, p.y - 20, 8, 90, pw.color, 0.6, 5);
-    G.FX.burst(pl.x, pl.y - pl.bodyH * 0.5, pw.color, 24, 200);
-    G.Audio.sfx('legend');
-    G.Spawner.say(`${pw.name} power! ${pw.desc} for ${B.powerTime} s`, 3, true);
+    FX.ring(p.x, p.y - 20, 8, 90, pw.color, 0.6, 5);
+    FX.burst(pl.x, pl.y - pl.bodyH * 0.5, pw.color, 24, 200);
+    Audio.sfx('legend');
+    Spawner.say(`${pw.name} power! ${pw.desc} for ${B.powerTime} s`, 3, true);
   }
 
   /**
@@ -121,23 +131,23 @@ G.Interact = (() => {
       TRAP_R = T.r;
     const col = ['#c86bdc', '#8bd94a', '#ff7b3d'][k];
     const pal = ['poison', 'grass', 'fire'][k];
-    G.FX.ring(x, y, 6, TRAP_R, col, 0.5, k === 2 ? 7 : 4);
-    G.FX.burst(x, y - 6, col, k === 2 ? 40 : 22, k === 2 ? 260 : 140);
+    FX.ring(x, y, 6, TRAP_R, col, 0.5, k === 2 ? 7 : 4);
+    FX.burst(x, y - 6, col, k === 2 ? 40 : 22, k === 2 ? 260 : 140);
     for (let i = 0; i < (k === 2 ? 10 : 7); i++) {
       const a = Math.random() * 6.2832,
-        r = G.U.rand(8, TRAP_R * 0.8);
-      G.FX.sp(k === 2 ? 'impact' : 'blob', pal, x + Math.cos(a) * r, y + Math.sin(a) * r * 0.7 - 6, {
+        r = U.rand(8, TRAP_R * 0.8);
+      FX.sp(k === 2 ? 'impact' : 'blob', pal, x + Math.cos(a) * r, y + Math.sin(a) * r * 0.7 - 6, {
         vy: k === 2 ? -30 : -45,
-        life: G.U.rand(0.4, 0.8)
+        life: U.rand(0.4, 0.8)
       });
     }
-    G.Audio.sfx(k === 2 ? 'boss' : 'surge');
-    if (k === 2 && G.U.dist2(x, y, G.Camera.x, G.Camera.y) < 500 * 500) G.Camera.kick(0.7);
+    Audio.sfx(k === 2 ? 'boss' : 'surge');
+    if (k === 2 && U.dist2(x, y, Camera.x, Camera.y) < 500 * 500) Camera.kick(0.7);
 
-    const pl = G.Game.player;
+    const pl = Game.player;
     const lvl = pl ? pl.level : 1;
     if (authority()) {
-      for (const e of G.EnemyMgr.queryCircle(x, y, TRAP_R)) {
+      for (const e of EnemyMgr.queryCircle(x, y, TRAP_R)) {
         if (e.remote) continue;
         if (k === 0) {
           e.applyPoison(T.poison.secs);
@@ -148,12 +158,12 @@ G.Interact = (() => {
         } else e.hurt(T.blast.dmg + lvl * T.blast.perLevel, '#ff7b3d', e.x - x, e.y - y, T.blast.knock);
       }
     }
-    if (pl && !pl.dead && G.U.dist2(x, y, pl.x, pl.y) < (TRAP_R * T.playerR) ** 2) {
+    if (pl && !pl.dead && U.dist2(x, y, pl.x, pl.y) < (TRAP_R * T.playerR) ** 2) {
       pl.invuln = 0;
       if (k === 0) pl.hurt(pl.maxHp * T.poison.self);
       else if (k === 1) {
         pl.slowT = T.sticky.selfSecs;
-        G.FX.dmgText(pl.x, pl.y - pl.bodyH - 6, 'Sticky!', '#8bd94a');
+        FX.dmgText(pl.x, pl.y - pl.bodyH - 6, 'Sticky!', '#8bd94a');
       } else pl.hurt(pl.maxHp * T.blast.self);
     }
   }
@@ -162,7 +172,7 @@ G.Interact = (() => {
     update,
     trapEffect,
     POWERS,
-    /** Seconds to open a locked chest (G.Balance.interact.chestTime). */
+    /** Seconds to open a locked chest (Balance.interact.chestTime). */
     get CHEST_TIME() {
       return B.chestTime;
     }

@@ -2,7 +2,10 @@
  * The visible world width is constant (VIEW_W) whatever the window size,
  * so the game feels the same on any screen.
  */
-G.Camera = {
+import { U } from './util.js';
+import { Settings } from './settings.js';
+
+export const Camera = {
   x: 0,
   y: 0,
   scale: 1,
@@ -26,20 +29,20 @@ G.Camera = {
   },
 
   follow(tx, ty, dt) {
-    this.x = G.U.damp(this.x, tx, 9, dt);
-    this.y = G.U.damp(this.y, ty, 9, dt);
+    this.x = U.damp(this.x, tx, 9, dt);
+    this.y = U.damp(this.y, ty, 9, dt);
     if (this.shake > 0) {
       this.shake = Math.max(0, this.shake - dt * 2.4);
       const a = this.shake * 7;
-      this._sx = G.U.rand(-a, a);
-      this._sy = G.U.rand(-a, a);
+      this._sx = U.rand(-a, a);
+      this._sy = U.rand(-a, a);
     } else {
       this._sx = this._sy = 0;
     }
   },
 
   kick(amount) {
-    if (G.Settings.get('calm')) amount *= 0.25; // "less shaking"
+    if (Settings.get('calm')) amount *= 0.25; // "less shaking"
     this.shake = Math.min(1.2, this.shake + amount);
   },
 

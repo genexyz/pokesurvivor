@@ -30,10 +30,17 @@
  * random by power bands. Legendaries only appear in rifts
  * (systems/rift.js).
  */
-G.Enemies = (() => {
-  const B = G.Balance.enemies;
-  const RC = G.RNG.stream('cast');
-  const RE = G.RNG.stream('events');
+import { U } from '../core/util.js';
+import { RNG } from '../core/rng.js';
+import { Balance } from './balance.js';
+import { DEX } from './pokedex.js';
+import { SPRITE_META } from './sprites-meta.js';
+import { Events } from '../systems/events.js';
+
+export const Enemies = (() => {
+  const B = Balance.enemies;
+  const RC = RNG.stream('cast');
+  const RE = RNG.stream('events');
   const TIERS = [
     { from: 0, bst: [180, 330], hp: 17, spd: 56, dmg: 6, xp: 3.5, cast: 7 },
     { from: 70, bst: [300, 405], hp: 32, spd: 62, dmg: 8.5, xp: 5, cast: 7 },
@@ -56,7 +63,7 @@ G.Enemies = (() => {
   const baseHp = p => (p.hp - 70) / 0.45;
   const baseSpd = p => (p.spd - 78) / 0.42;
 
-  const H = (d, s) => G.U.hash(d, 7, s);
+  const H = (d, s) => U.hash(d, 7, s);
 
   // Fixed personalities of some Pokémon.
   const HEAL = new Set([35, 36, 113, 173, 183, 184, 242, 301, 440, 531, 594, 700, 764, 858]);
@@ -105,7 +112,7 @@ G.Enemies = (() => {
     if (HEAL.has(p.dex)) return 'healer';
     if (SHIELD.has(p.dex)) return 'shielder';
     if (BOMB.has(p.dex)) return 'bomber';
-    if (SUMMON[p.dex] && G.SPRITE_META[SUMMON[p.dex]]) return 'summoner';
+    if (SUMMON[p.dex] && SPRITE_META[SUMMON[p.dex]]) return 'summoner';
     // Swarms: some Bug types call more of their own (from the start).
     if (has('bug') && h >= 0.6 && h < 0.78) return 'summoner';
     if (has('electric', 'psychic', 'dragon', 'ice') && h < 0.18) return 'beamer';
@@ -122,8 +129,8 @@ G.Enemies = (() => {
   /** Builds the enemy definition of a Pokémon for a tier. */
   function defFor(p, tier, ti) {
     const D = B.def;
-    const hpK = G.U.clamp(baseHp(p) / D.hpK.div, D.hpK.min, D.hpK.max);
-    const spdK = G.U.clamp(D.spdK.base + baseSpd(p) / D.spdK.div, D.spdK.min, D.spdK.max);
+    const hpK = U.clamp(baseHp(p) / D.hpK.div, D.hpK.min, D.hpK.max);
+    const spdK = U.clamp(D.spdK.base + baseSpd(p) / D.spdK.div, D.spdK.min, D.spdK.max);
     const behavior = behaviorOf(p);
     const tank = behavior === 'tank';
     const d = {
@@ -156,7 +163,7 @@ G.Enemies = (() => {
 
   /** Every candidate of a tier (no legendaries or mythicals). */
   function candidates(tier) {
-    return G.DEX.filter(p => p.rarity < 5 && p.bst >= tier.bst[0] && p.bst <= tier.bst[1] && G.SPRITE_META[p.dex]);
+    return DEX.filter(p => p.rarity < 5 && p.bst >= tier.bst[0] && p.bst <= tier.bst[1] && SPRITE_META[p.dex]);
   }
 
   // ---------------- run cast ----------------
@@ -224,9 +231,9 @@ G.Enemies = (() => {
     const used = new Set();
     const BB = B.boss;
     bosses = BOSS_SLOTS.map(slot => {
-      const ok = p => !p.leg && G.SPRITE_META[p.dex] && !used.has(p.dex);
-      let pool = G.DEX.filter(p => ok(p) && p.bst >= slot.bst[0] && p.bst <= slot.bst[1]);
-      if (!pool.length) pool = G.DEX.filter(p => ok(p) && p.bst >= BB.fallbackBst);
+      const ok = p => !p.leg && SPRITE_META[p.dex] && !used.has(p.dex);
+      let pool = DEX.filter(p => ok(p) && p.bst >= slot.bst[0] && p.bst <= slot.bst[1]);
+      if (!pool.length) pool = DEX.filter(p => ok(p) && p.bst >= BB.fallbackBst);
       const p = RC.pick(pool);
       used.add(p.dex);
       return {
@@ -234,7 +241,7 @@ G.Enemies = (() => {
         dex: p.dex,
         name: p.name,
         hp: Math.round(slot.hp * BB.hp),
-        spd: Math.round(G.U.clamp(BB.spd.base + baseSpd(p) * BB.spd.k, BB.spd.min, BB.spd.max)),
+        spd: Math.round(U.clamp(BB.spd.base + baseSpd(p) * BB.spd.k, BB.spd.min, BB.spd.max)),
         dmg: Math.round(slot.dmg * BB.dmg),
         xp: slot.xp,
         behavior: behaviorOf(p) === 'ranged' ? 'ranged' : baseSpd(p) > BB.chargerSpd ? 'charger' : 'chase',
@@ -246,7 +253,7 @@ G.Enemies = (() => {
     return { cast, bosses };
   }
 
-  /** Difficulty multipliers at second `t` (curve in G.Balance.enemies.scale). */
+  /** Difficulty multipliers at second `t` (curve in Balance.enemies.scale). */
   function scale(t) {
     return B.scale(t);
   }
@@ -269,7 +276,7 @@ G.Enemies = (() => {
   /** Types with enough Pokémon in the current tier for a horde (events.js). */
   function hordeTypes(t) {
     const all = candidates(TIERS[tierAt(t)]).filter(p => !NO_HORDE.has(behaviorOf(p)));
-    return Object.keys(G.U.TYPE_COLOR).filter(ty => all.filter(p => p.types.includes(ty)).length >= B.horde.minPerType);
+    return Object.keys(U.TYPE_COLOR).filter(ty => all.filter(p => p.types.includes(ty)).length >= B.horde.minPerType);
   }
   /** Up to B.horde.size Pokémon of a type, with the current tier's stats. */
   function hordeDefs(type, t) {
@@ -281,7 +288,7 @@ G.Enemies = (() => {
   /** Bag of enemies available at second `t`. */
   function bagAt(t) {
     // During a single-type horde only that type appears (systems/events.js).
-    const horde = G.Events && G.Events.bag();
+    const horde = Events && Events.bag();
     if (horde) return horde;
     if (!cast) rollRun();
     const bag = [];

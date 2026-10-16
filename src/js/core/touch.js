@@ -10,22 +10,25 @@
  * Fixed joystick (Settings > Controls > Place the buttons): always in the
  * same place; it is only grabbed by touching near it.
  */
-G.Touch = (() => {
+import { Settings } from './settings.js';
+import { Game } from '../game.js';
+
+export const Touch = (() => {
   let cv = null,
     stick = null;
-  let active = G.Settings.touch; // is touch being used?
+  let active = Settings.touch; // is touch being used?
   let buttons = [];
 
-  const R = () => 56 * (G.Settings.get('stick') || 1);
+  const R = () => 56 * (Settings.get('stick') || 1);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
   /** Where the player placed something ('bar', 'pause', 'stick'): [x, y] in 0..1, or null. */
   function spot(k) {
-    const p = G.Settings.get('pad');
+    const p = Settings.get('pad');
     return p && Array.isArray(p[k]) ? p[k] : null;
   }
   const STICK_DEF = [0.14, 0.72];
-  const fixed = () => G.Settings.get('stickMode') === 'fixed';
+  const fixed = () => Settings.get('stickMode') === 'fixed';
   /** Centre of the fixed joystick, in screen px. */
   function stickBase(w = cv.clientWidth, h = cv.clientHeight) {
     const p = spot('stick') || STICK_DEF,
@@ -101,7 +104,7 @@ G.Touch = (() => {
       press(b);
       return;
     }
-    if (!touchy || stick || !G.Game || G.Game.state !== 'playing') return;
+    if (!touchy || stick || !Game || Game.state !== 'playing') return;
     if (fixed()) {
       // Fixed: only if the finger lands near the joystick (otherwise nothing happens).
       const b0 = stickBase();

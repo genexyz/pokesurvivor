@@ -2,9 +2,13 @@
  * Like in Mystery Dungeon: a few questions decide your personality, and your
  * personality decides your partner. You can turn it down and pick another.
  *
- * Stats come from G.DEX; only the traits and the starting move go here.
+ * Stats come from DEX; only the traits and the starting move go here.
  */
-G.STARTERS = [
+import { U } from '../core/util.js';
+import { DEX_BY } from './pokedex.js';
+import { Moves } from './moves.js';
+
+export const STARTERS = [
   { dex: 1, start: 'vine-whip', traits: ['loyal', 'patient'] },
   { dex: 4, start: 'ember', traits: ['brave', 'hasty'] },
   { dex: 7, start: 'water-gun', traits: ['careful', 'loyal'] },
@@ -36,17 +40,17 @@ G.STARTERS = [
   { dex: 79, start: 'confusion', traits: ['relaxed', 'patient'] }
 ];
 
-G.STARTER_BY = {};
-for (const s of G.STARTERS) G.STARTER_BY[s.dex] = s;
+export const STARTER_BY = {};
+for (const s of STARTERS) STARTER_BY[s.dex] = s;
 
 /** Starting move of any Pokémon (starter or from the gacha). */
-G.startMoveOf = dex => {
-  const s = G.STARTER_BY[dex];
-  return s ? s.start : G.Moves.startFor(G.DEX_BY[dex]);
+export const startMoveOf = dex => {
+  const s = STARTER_BY[dex];
+  return s ? s.start : Moves.startFor(DEX_BY[dex]);
 };
 
 /** Display name of each trait. */
-G.TRAIT_NAME = {
+export const TRAIT_NAME = {
   brave: 'Brave',
   timid: 'Timid',
   impish: 'Impish',
@@ -66,7 +70,7 @@ G.TRAIT_NAME = {
 };
 
 /** Short description of each trait, for the result screen. */
-G.TRAIT_TEXT = {
+export const TRAIT_TEXT = {
   brave: "You don't think twice when someone needs help.",
   hasty: 'You act first and think later. Sometimes it works!',
   careful: 'You measure every step before taking it.',
@@ -85,7 +89,7 @@ G.TRAIT_TEXT = {
   quirky: "Not even you know what you'll do next."
 };
 
-G.PERSONALITY_TEST = [
+export const PERSONALITY_TEST = [
   {
     q: "There's a fight in the middle of town! What do you do?",
     a: [
@@ -161,11 +165,11 @@ G.PERSONALITY_TEST = [
 ];
 
 /** Trait scores -> { trait, dex } with the best-matching partner. */
-G.personalityResult = scores => {
+export const personalityResult = scores => {
   const trait = Object.keys(scores).sort((a, b) => scores[b] - scores[a])[0];
   let best = [],
     bestScore = -1;
-  for (const s of G.STARTERS) {
+  for (const s of STARTERS) {
     // The main trait counts double.
     const v = (scores[s.traits[0]] || 0) * 2 + (scores[s.traits[1]] || 0);
     if (v > bestScore) {
@@ -173,5 +177,5 @@ G.personalityResult = scores => {
       best = [s];
     } else if (v === bestScore) best.push(s);
   }
-  return { trait, dex: G.U.pick(best).dex };
+  return { trait, dex: U.pick(best).dex };
 };

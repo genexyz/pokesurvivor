@@ -1,10 +1,20 @@
 /* ============ settings-ui.js — Settings screen (PC and mobile) ============
  * Opens on top of whatever is showing (menu or pause) and returns there on close.
  * Tabs: Sound · Graphics · Controls · Account · About.
- * Settings belong to this device (G.Settings / G.Audio in the browser).
+ * Settings belong to this device (Settings / Audio in the browser).
  */
-G.SettingsUI = (() => {
-  const $ = G.UI.$;
+import { I18n } from '../core/i18n.js';
+import { Settings } from '../core/settings.js';
+import { DB } from '../core/db.js';
+import { Audio } from '../core/audio.js';
+import { Social } from '../net/social.js';
+import { Icons } from './icons.js';
+import { UI } from './ui.js';
+import { LayoutUI } from './layout-ui.js';
+import { Flow, Game } from '../game.js';
+
+export const SettingsUI = (() => {
+  const $ = UI.$;
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const VERSION = '1.2 · 2026-10-09';
   let tab = 'sound';
@@ -17,13 +27,13 @@ G.SettingsUI = (() => {
       };
     });
     $('set-close').onclick = close;
-    $('btn-settings').innerHTML = G.Icons.html('gear', 20);
+    $('btn-settings').innerHTML = Icons.html('gear', 20);
     $('btn-settings').onclick = () => open();
     $('btn-pause-settings').onclick = () => open('sound');
     // Fullscreen (if the browser allows it; on iPhone, how to get it).
     if (canFull() || iosTip()) {
       $('btn-full').classList.remove('hidden');
-      $('btn-full').innerHTML = G.Icons.html('full', 20);
+      $('btn-full').innerHTML = Icons.html('full', 20);
       $('btn-full').onclick = toggleFull;
     }
   }
@@ -57,7 +67,7 @@ G.SettingsUI = (() => {
     'On iPhone, Safari does not let websites go fullscreen. Tap Share and then "Add to Home Screen": opening the game from that icon plays it fullscreen.';
   function toggleFull() {
     if (!canFull()) {
-      if (iosTip()) G.UI.toast(IOS_TIP, 9000);
+      if (iosTip()) UI.toast(IOS_TIP, 9000);
       return;
     }
     if (isFull()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
@@ -84,12 +94,12 @@ G.SettingsUI = (() => {
     return `<h3 class="set-h">${esc(title)}</h3>${sub ? `<p class="sub">${sub}</p>` : ''}`;
   }
   function toggle(key, label, desc) {
-    const on = !!G.Settings.get(key);
+    const on = !!Settings.get(key);
     return `<div class="set-row"><div class="grow"><b>${esc(label)}</b><small>${esc(desc)}</small></div>
       <button class="btn small switch ${on ? 'gold' : ''}" data-k="${key}">${on ? 'Yes' : 'No'}</button></div>`;
   }
   function choice(key, opts) {
-    const cur = G.Settings.get(key);
+    const cur = Settings.get(key);
     return `<div class="chips set-chips">${opts.map(([v, l]) => `<button class="chip ${v === cur ? 'on' : ''}" data-k="${key}" data-v="${v}">${esc(l)}</button>`).join('')}</div>`;
   }
 
@@ -99,16 +109,16 @@ G.SettingsUI = (() => {
     box.scrollTop = 0;
     if (tab === 'sound') {
       box.innerHTML = section('Sound') + '<div id="set-sound" class="sound-inline"></div>';
-      G.UI.soundControls($('set-sound'));
+      UI.soundControls($('set-sound'));
     } else if (tab === 'gfx') {
-      const auto = ['low', 'medium', 'high'][G.Settings.autoLevel];
+      const auto = ['low', 'medium', 'high'][Settings.autoLevel];
       box.innerHTML =
         section('Language', 'The game reloads when you change it.') +
         `<div class="chips set-chips" translate="no">${[
           ['en', 'English'],
           ['es', 'Español']
         ]
-          .map(([v, l]) => `<button class="chip ${G.I18n.lang === v ? 'on' : ''}" data-lang="${v}">${l}</button>`)
+          .map(([v, l]) => `<button class="chip ${I18n.lang === v ? 'on' : ''}" data-lang="${v}">${l}</button>`)
           .join('')}</div>` +
         section(
           'Quality',
@@ -166,8 +176,8 @@ G.SettingsUI = (() => {
         `<div class="row wrap" style="justify-content:center;gap:8px">
              ${
                window.PS_PAGES
-                 ? `<a class="btn small" href="${G.I18n.page('guide/')}" target="_blank">Guide &amp; FAQ</a>
-             <a class="btn small" href="${G.I18n.page('pokedex/')}" target="_blank">Pokédex</a>`
+                 ? `<a class="btn small" href="${I18n.page('guide/')}" target="_blank">Guide &amp; FAQ</a>
+             <a class="btn small" href="${I18n.page('pokedex/')}" target="_blank">Pokédex</a>`
                  : ''
              }
              <button class="btn small" data-legal>Legal notice &amp; privacy</button>
@@ -177,7 +187,7 @@ G.SettingsUI = (() => {
   }
 
   function renderAccount(box) {
-    const st = G.DB.guest ? 'guest' : G.DB.syncState;
+    const st = DB.guest ? 'guest' : DB.syncState;
     const SYNC = {
       ok: 'Saved in the cloud',
       syncing: 'Saving…',
@@ -186,14 +196,14 @@ G.SettingsUI = (() => {
       local: 'Saved only in this browser',
       guest: 'Guest: not saved'
     };
-    if (G.DB.guest) {
+    if (DB.guest) {
       box.innerHTML =
         section('Account', "You're playing as <b>guest</b>: your progress isn't saved when you leave.") +
         `<button class="btn gold" id="set-login">Sign up or log in</button>`;
       return;
     }
-    const nick = G.Social.me ? G.Social.me.name : G.DB.user || '';
-    const kind = G.DB.mode === 'local' ? "This browser's save" : 'Google';
+    const nick = Social.me ? Social.me.name : DB.user || '';
+    const kind = DB.mode === 'local' ? "This browser's save" : 'Google';
     box.innerHTML =
       section('Account') +
       `<div class="set-row"><div class="grow"><b>Nickname</b><small>It's unique and can't be changed.</small></div><span class="gold" translate="no">${esc(nick)}</span></div>` +
@@ -208,24 +218,24 @@ G.SettingsUI = (() => {
   function wire(box) {
     box.querySelectorAll('.switch[data-k]').forEach(b => {
       b.onclick = () => {
-        G.Settings.set(b.dataset.k, !G.Settings.get(b.dataset.k));
+        Settings.set(b.dataset.k, !Settings.get(b.dataset.k));
         render();
       };
     });
     box.querySelectorAll('.chip[data-k]').forEach(b => {
       b.onclick = () => {
         const v = b.dataset.v;
-        G.Settings.set(b.dataset.k, isNaN(+v) ? v : +v);
+        Settings.set(b.dataset.k, isNaN(+v) ? v : +v);
         render();
       };
     });
     const full = $('set-full');
     if (full) full.onclick = toggleFull;
     const lay = $('set-layout');
-    if (lay) lay.onclick = () => G.LayoutUI.open();
+    if (lay) lay.onclick = () => LayoutUI.open();
     box.querySelectorAll('[data-lang]').forEach(b => {
       b.onclick = () => {
-        if (b.dataset.lang !== G.I18n.lang) G.I18n.set(b.dataset.lang);
+        if (b.dataset.lang !== I18n.lang) I18n.set(b.dataset.lang);
       };
     });
     const lo = $('set-login');
@@ -243,28 +253,28 @@ G.SettingsUI = (() => {
     const del = $('set-delete');
     if (del)
       del.onclick = async () => {
-        const ok = await G.UI.confirmDelete();
+        const ok = await UI.confirmDelete();
         if (!ok) return;
         del.disabled = true;
-        const r = await G.DB.deleteAccount();
+        const r = await DB.deleteAccount();
         if (!r.ok) {
           $('set-msg').textContent = r.error;
           del.disabled = false;
           return;
         }
         close();
-        G.UI.toast('Account deleted');
-        G.Audio.music(null);
-        G.Flow.toLogin();
+        UI.toast('Account deleted');
+        Audio.music(null);
+        Flow.toLogin();
       };
   }
 
   /** Log out (if you're in a run, it is abandoned). */
   function leave() {
-    if (G.DB.guest && !confirm("You're a guest: all your progress will be lost. Log out?")) return;
-    if (G.Game.state !== 'ui') G.Game.quit && G.Game.quit();
-    G.Audio.music(null);
-    G.DB.logout().then(() => G.Flow.toLogin());
+    if (DB.guest && !confirm("You're a guest: all your progress will be lost. Log out?")) return;
+    if (Game.state !== 'ui') Game.quit && Game.quit();
+    Audio.music(null);
+    DB.logout().then(() => Flow.toLogin());
   }
 
   return {

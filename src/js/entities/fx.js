@@ -1,19 +1,25 @@
 /* ============ fx.js — particles, damage numbers and effects (pixel art) ============
  * Everything purely visual lives here. None of this affects gameplay.
  *
- * Everything is drawn on the game's pixel grid (G.Sprites.PX): particles
+ * Everything is drawn on the game's pixel grid (Sprites.PX): particles
  * are squares, rings are dots, and hits and beams are
- * built from blocks and G.VFX sprites, so the effects
+ * built from blocks and VFX sprites, so the effects
  * match the Mystery Dungeon sprites.
  */
-G.FX = (() => {
-  const PX = G.Sprites.PX;
+import { U } from '../core/util.js';
+import { Settings } from '../core/settings.js';
+import { Sprites } from '../core/sprites.js';
+import { VFX } from './vfx.js';
+import { Icons } from '../ui/icons.js';
+
+export const FX = (() => {
+  const PX = Sprites.PX;
   // Caps per quality (Settings → Graphics): low, medium, high.
   const CAP_PARTS = [350, 800, 1400],
     CAP_SPRITES = [110, 210, 320],
     CAP_TEXTS = [25, 45, 70],
     DENS = [0.35, 0.65, 1];
-  const q = () => G.Settings.fx;
+  const q = () => Settings.fx;
   let parts = [],
     sprites = [],
     texts = [],
@@ -55,8 +61,8 @@ G.FX = (() => {
     n = Math.max(1, Math.round(n * DENS[q()]));
     for (let i = 0; i < n; i++) {
       const a = Math.random() * 6.2832,
-        s = G.U.rand(power * 0.35, power);
-      px(x, y, color, { vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: G.U.rand(0.22, 0.5), size: Math.random() < 0.35 ? 2 : 1 });
+        s = U.rand(power * 0.35, power);
+      px(x, y, color, { vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: U.rand(0.22, 0.5), size: Math.random() < 0.35 ? 2 : 1 });
     }
   }
 
@@ -64,9 +70,9 @@ G.FX = (() => {
     n = Math.max(1, Math.round(n * DENS[q()]));
     const base = Math.atan2(dirY, dirX);
     for (let i = 0; i < n; i++) {
-      const a = base + G.U.rand(-0.9, 0.9),
-        s = G.U.rand(60, 170);
-      px(x, y, color, { vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: G.U.rand(0.14, 0.32) });
+      const a = base + U.rand(-0.9, 0.9),
+        s = U.rand(60, 170);
+      px(x, y, color, { vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: U.rand(0.14, 0.32) });
     }
   }
 
@@ -94,15 +100,15 @@ G.FX = (() => {
   /** Shiny twinkle (pixel cross that appears and fades out). */
   function twinkle(x, y) {
     if (sprites.length >= CAP_SPRITES[q()]) return;
-    sprites.push({ twinkle: true, x, y, vx: 0, vy: -8, t: 0, life: G.U.rand(0.45, 0.7) });
+    sprites.push({ twinkle: true, x, y, vx: 0, vy: -8, t: 0, life: U.rand(0.45, 0.7) });
   }
 
   /** Projectile trail particles, by material. */
   function trail(kind, pal, x, y, vx, vy) {
     if (Math.random() > DENS[q()]) return; // low quality: less trail
-    const P = G.VFX.PAL[pal] || G.VFX.PAL.normal;
+    const P = VFX.PAL[pal] || VFX.PAL.normal;
     const back = Math.atan2(-vy, -vx);
-    const j = () => G.U.rand(-3, 3);
+    const j = () => U.rand(-3, 3);
     switch (kind) {
       case 'ember':
         px(x + j(), y + j(), P[Math.random() < 0.5 ? 3 : 2], { vx: Math.cos(back) * 30, vy: -40, life: 0.35 });
@@ -111,7 +117,7 @@ G.FX = (() => {
         px(x + j(), y + j(), P[3], { vx: Math.cos(back) * 20, vy: 10, grav: 260, life: 0.35 });
         break;
       case 'spark':
-        px(x + j() * 2, y + j() * 2, Math.random() < 0.5 ? P[4] : P[3], { vx: G.U.rand(-60, 60), vy: G.U.rand(-60, 60), life: 0.16 });
+        px(x + j() * 2, y + j() * 2, Math.random() < 0.5 ? P[4] : P[3], { vx: U.rand(-60, 60), vy: U.rand(-60, 60), life: 0.16 });
         break;
       case 'bubbles':
         px(x + j(), y + j(), P[3], { vy: -35, life: 0.45, size: Math.random() < 0.3 ? 2 : 1 });
@@ -129,12 +135,12 @@ G.FX = (() => {
     // With hundreds of hits per second they can't be read anyway: cap of 70 (big
     // ones, like "Super effective!" or boss ones, always get in).
     // Settings → "Damage numbers": numbers get hidden; text notices don't.
-    if ((typeof value === 'number' || /^-\d/.test(value)) && !G.Settings.get('dmgNumbers')) return;
+    if ((typeof value === 'number' || /^-\d/.test(value)) && !Settings.get('dmgNumbers')) return;
     if (texts.length >= CAP_TEXTS[q()]) {
       if (!big) return;
       texts.shift();
     }
-    texts.push({ x: x + G.U.rand(-6, 6), y, vy: -46, t: 0, life: big ? 0.95 : 0.62, s: value, color, big });
+    texts.push({ x: x + U.rand(-6, 6), y, vy: -46, t: 0, life: big ? 0.95 : 0.62, s: value, color, big });
   }
 
   /** Shockwave ring (pixel dots). */
@@ -142,7 +148,7 @@ G.FX = (() => {
     rings.push({ x, y, r0, r1, color, life, t: 0, width });
   }
 
-  /** Melee hit. fx: { pal, melee } (see G.VFX.forMove). */
+  /** Melee hit. fx: { pal, melee } (see VFX.forMove). */
   function slash(x, y, angle, radius, arc, color, fx = {}) {
     const pal = fx.pal || 'normal';
     slashes.push({ x, y, angle, radius, arc, pal, t: 0, life: 0.22 });
@@ -161,13 +167,13 @@ G.FX = (() => {
       case 'vine':
       case 'feather':
         for (let i = 0; i < 4; i++) {
-          const a = angle + G.U.rand(-arc / 2, arc / 2),
-            r = radius * G.U.rand(0.5, 1);
+          const a = angle + U.rand(-arc / 2, arc / 2),
+            r = radius * U.rand(0.5, 1);
           sp('leaf', fx.melee === 'feather' ? 'flying' : pal, x + Math.cos(a) * r, y + Math.sin(a) * r, {
             vx: Math.cos(a) * 40,
             vy: Math.sin(a) * 40 + 20,
             life: 0.45,
-            spin: G.U.rand(-8, 8),
+            spin: U.rand(-8, 8),
             grav: 60
           });
         }
@@ -236,7 +242,7 @@ G.FX = (() => {
 
   function drawBeam(ctx, b) {
     const k = 1 - b.t / b.life;
-    const P = G.VFX.PAL[b.pal] || G.VFX.PAL.normal;
+    const P = VFX.PAL[b.pal] || VFX.PAL.normal;
     const a = Math.round(b.angle / (Math.PI / 16)) * (Math.PI / 16);
     ctx.save();
     ctx.translate(snap(b.x), snap(b.y));
@@ -249,7 +255,7 @@ G.FX = (() => {
       // Zigzag redrawn every frame.
       let py = 0;
       for (let d = 0; d < b.len; d += seg) {
-        const ny = d + seg >= b.len ? 0 : snap((G.U.hash(d | 0, (now * 30) | 0, b.seed | 0) - 0.5) * b.width);
+        const ny = d + seg >= b.len ? 0 : snap((U.hash(d | 0, (now * 30) | 0, b.seed | 0) - 0.5) * b.width);
         const lo = Math.min(py, ny),
           hi = Math.max(py, ny);
         ctx.fillStyle = P[3];
@@ -278,7 +284,7 @@ G.FX = (() => {
           off = (now * 420) % gap;
         for (let d = off; d < b.len - 6; d += gap) {
           const yo = Math.sin(d * 0.3 + b.seed) * b.width * 0.18;
-          G.VFX.draw(ctx, b.shape, b.pal, d, yo, { angle: 0.0001, scale: 1.5, frame: (d / gap + now * 12) | 0 });
+          VFX.draw(ctx, b.shape, b.pal, d, yo, { angle: 0.0001, scale: 1.5, frame: (d / gap + now * 12) | 0 });
         }
       }
     }
@@ -287,7 +293,7 @@ G.FX = (() => {
 
   function drawSlash(ctx, s) {
     const k = 1 - s.t / s.life;
-    const P = G.VFX.PAL[s.pal] || G.VFX.PAL.normal;
+    const P = VFX.PAL[s.pal] || VFX.PAL.normal;
     const half = Math.min(s.arc, 6.2832) / 2;
     const r = s.radius * (0.72 + 0.28 * (1 - k));
     const n = Math.max(8, Math.ceil((r * half * 2) / PX));
@@ -307,7 +313,7 @@ G.FX = (() => {
 
   function drawRing(ctx, r) {
     const k = r.t / r.life;
-    const rad = G.U.lerp(r.r0, r.r1, k);
+    const rad = U.lerp(r.r0, r.r1, k);
     const n = Math.max(10, Math.ceil((rad * 6.2832) / (PX * 2)));
     const size = r.width >= 4 ? PX * 2 : PX;
     ctx.globalAlpha = step(1 - k);
@@ -334,10 +340,10 @@ G.FX = (() => {
     for (const s of sprites) {
       const k = 1 - s.t / s.life;
       if (s.twinkle) {
-        G.Icons.twinkle(ctx, s.x, s.y, s.t / s.life, PX);
+        Icons.twinkle(ctx, s.x, s.y, s.t / s.life, PX);
         continue;
       }
-      G.VFX.draw(ctx, s.shape, s.pal, s.x, s.y, {
+      VFX.draw(ctx, s.shape, s.pal, s.x, s.y, {
         angle: s.angle,
         scale: s.scale,
         alpha: s.fade ? step(k) : 1,

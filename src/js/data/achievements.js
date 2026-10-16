@@ -6,8 +6,12 @@
  *
  * There is also one achievement for EACH legendary: defeating it in a rift.
  */
-G.AchDefs = (() => {
-  const own = s => Object.keys(s.owned || {}).filter(d => G.DEX_BY[d]).length;
+import { DEX, DEX_BY } from './pokedex.js';
+import { SPRITE_META } from './sprites-meta.js';
+import { Moves } from './moves.js';
+
+export const AchDefs = (() => {
+  const own = s => Object.keys(s.owned || {}).filter(d => DEX_BY[d]).length;
   const shinies = s => Object.keys(s.shiny || {}).length;
   const legends = s => Object.keys(s.legends || {}).length;
   const st = k => s => (s.stats && s.stats[k]) || 0;
@@ -473,7 +477,7 @@ G.AchDefs = (() => {
   ];
 
   // One achievement per legendary: "Defeat Mewtwo"...
-  for (const p of G.DEX.filter(p => p.leg && G.SPRITE_META[p.dex])) {
+  for (const p of DEX.filter(p => p.leg && SPRITE_META[p.dex])) {
     LIST.push({
       id: 'leg_' + p.dex,
       cat: 'legendaries',
@@ -495,10 +499,10 @@ G.AchDefs = (() => {
   // Goals that depend on the game data.
   for (const a of LIST)
     if (a.id === 'ownAll') {
-      a.goal = G.DEX.length;
-      a.desc = `Own all ${G.DEX.length} Pokémon in the game.`;
+      a.goal = DEX.length;
+      a.desc = `Own all ${DEX.length} Pokémon in the game.`;
     }
-  const evoTotal = Object.keys(G.Moves.EVO).length;
+  const evoTotal = Object.keys(Moves.EVO).length;
   for (const a of LIST)
     if (a.id === 'evoAll') {
       a.goal = evoTotal;

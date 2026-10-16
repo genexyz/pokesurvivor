@@ -6,7 +6,7 @@
  *       on(t, fn) (t: 'open' | 'close' | 'hello' | 'friends' | 'presence' | 'invites' | 'room' | 'sig')
  *       connected · now() (the server time)
  */
-G.Live = (() => {
+export const Live = (() => {
   let ws = null,
     want = false,
     tries = 0,

@@ -3,27 +3,42 @@
  * on its own and is switched with 1-4 / Q / E. Each shot plays the matching
  * Mystery Dungeon attack animation (Attack, Shoot or Charge).
  */
-G.Player = class Player {
+import { LIFT, U } from '../core/util.js';
+import { Balance } from '../data/balance.js';
+import { Audio } from '../core/audio.js';
+import { Input } from '../core/input.js';
+import { Sprites } from '../core/sprites.js';
+import { Camera } from '../core/camera.js';
+import { Moves } from '../data/moves.js';
+import { Types } from '../data/types.js';
+import { Items } from '../data/items.js';
+import { World } from '../world/world.js';
+import { FX } from './fx.js';
+import { Projectiles } from './projectile.js';
+import { EnemyMgr } from './enemy.js';
+import { Weather } from '../systems/weather.js';
+
+export class Player {
   /**
-   * @param mon   G.DEX entry
+   * @param mon   DEX entry
    * @param perks permanent upgrades, already resolved (see data/upgrades.js)
    */
   constructor(mon, perks = {}, shiny = false) {
     this.mon = mon;
     this.dex = mon.dex;
-    this.shiny = shiny && G.Sprites.hasShiny(mon.dex);
-    this.anim = new G.Sprites.Animator(mon.dex, 1, this.shiny);
+    this.shiny = shiny && Sprites.hasShiny(mon.dex);
+    this.anim = new Sprites.Animator(mon.dex, 1, this.shiny);
     this.x = 0;
     this.y = 0;
-    this.r = G.Sprites.bodyRadius(mon.dex);
-    this.bodyH = G.Sprites.bodyHeight(mon.dex);
+    this.r = Sprites.bodyRadius(mon.dex);
+    this.bodyH = Sprites.bodyHeight(mon.dex);
 
     this.atkMul = perks.atkMul || 1;
     this.spdMul = perks.spdMul || 1;
     this.cdMul = perks.cdMul || 1;
     this.dmgReduce = perks.dmgReduce || 0;
     this.regenFlat = perks.regen || 0;
-    this.magnet = G.Balance.player.magnet * (perks.magnetMul || 1);
+    this.magnet = Balance.player.magnet * (perks.magnetMul || 1);
     this.xpMul = perks.xpMul || 1;
     this.coinMul = perks.coinMul || 1;
 
@@ -78,17 +93,17 @@ G.Player = class Player {
 
   /** Seconds you must stand next to a downed teammate to revive them. */
   static get REVIVE_TIME() {
-    return G.Balance.player.revive.time;
+    return Balance.player.revive.time;
   }
 
-  /** Experience needed to go from `level` to the next one (curve in G.Balance.player). */
+  /** Experience needed to go from `level` to the next one (curve in Balance.player). */
   static xpFor(level) {
-    return G.Balance.player.xpFor(level);
+    return Balance.player.xpFor(level);
   }
 
   /** Move slots (a bond joins moves into one slot). */
   get maxMoves() {
-    return G.Balance.player.moveSlots;
+    return Balance.player.moveSlots;
   }
 
   cy() {
@@ -100,14 +115,13 @@ G.Player = class Player {
     return this.baseAtk * this.atkMul * (1 + this.buffs.atk.n * this.buffs.atk.amount);
   }
   get spd() {
-    const s =
-      this.baseSpd * this.spdMul * (1 + this.buffs.spd.n * this.buffs.spd.amount) * (this.slowT > 0 ? G.Balance.player.trapSlow : 1);
-    const w = G.Weather.speedFor(this.mon.types);
-    const slow = this.inLiquid ? G.World.liquidEffect(this.mon.types).slow || 1 : 1;
+    const s = this.baseSpd * this.spdMul * (1 + this.buffs.spd.n * this.buffs.spd.amount) * (this.slowT > 0 ? Balance.player.trapSlow : 1);
+    const w = Weather.speedFor(this.mon.types);
+    const slow = this.inLiquid ? World.liquidEffect(this.mon.types).slow || 1 : 1;
     return s * slow * w;
   }
   get reduction() {
-    return Math.min(G.Balance.player.reductionCap, this.dmgReduce + this.buffs.def.n * this.buffs.def.amount);
+    return Math.min(Balance.player.reductionCap, this.dmgReduce + this.buffs.def.n * this.buffs.def.amount);
   }
   get regen() {
     return this.regenFlat + this.buffs.regen.n * this.buffs.regen.amount;
@@ -116,7 +130,7 @@ G.Player = class Player {
   // ---------------- moves ----------------
   addMove(id) {
     if (this.slots.length >= this.maxMoves || this.hasMove(id)) return false;
-    const m = G.Moves.instance(id, 1);
+    const m = Moves.instance(id, 1);
     this.moves.push(m);
     const group = [m];
     this.slots.push(group);
@@ -165,15 +179,15 @@ G.Player = class Player {
     if (i < 0 || i >= this.slots.length || i === this.active) return;
     // Choice Band: the move can't be switched.
     if (this.hasItem('choiceband') && this.slots[this.active]) {
-      G.FX.dmgText(this.x, this.y - this.bodyH - 8, 'Choice Band', '#ff8ad8');
+      FX.dmgText(this.x, this.y - this.bodyH - 8, 'Choice Band', '#ff8ad8');
       return;
     }
     this.active = i;
-    G.Projectiles.clearOrbs(this);
-    G.Audio.sfx('select');
-    for (const m of this.slots[i]) m.t = Math.min(m.t, m.cd * G.Balance.player.switchCdFrac);
+    Projectiles.clearOrbs(this);
+    Audio.sfx('select');
+    for (const m of this.slots[i]) m.t = Math.min(m.t, m.cd * Balance.player.switchCdFrac);
     const m = this.slots[i][0];
-    G.FX.ring(this.x, this.y - G.LIFT * 0.5, 6, this.r * 3.4, G.U.TYPE_COLOR[m.type], 0.3, 3);
+    FX.ring(this.x, this.y - LIFT * 0.5, 6, this.r * 3.4, U.TYPE_COLOR[m.type], 0.3, 3);
   }
 
   cycle(dir) {
@@ -186,7 +200,7 @@ G.Player = class Player {
   // single slot and they are cast together. Only one group grows (up to BOND_MAX); if
   // none is in progress, the bond joins two loose moves.
   static get BOND_MAX() {
-    return G.Balance.player.bondMax;
+    return Balance.player.bondMax;
   }
 
   /** What a bond can do now: add to a group or join two loose moves. */
@@ -213,7 +227,7 @@ G.Player = class Player {
     const a = this.slots.indexOf(cur);
     this.active = this.hasItem('choiceband') && a >= 0 ? a : this.slots.indexOf(target);
     this.bonds = Math.max(0, this.bonds - 1);
-    G.Projectiles.clearOrbs(this);
+    Projectiles.clearOrbs(this);
     return target;
   }
 
@@ -233,7 +247,7 @@ G.Player = class Player {
   cast(m) {
     // Life Orb: each attack costs a little HP (never knocks you out).
     if (this.hasItem('lifeorb') && m.kind !== 'orbit' && m.kind !== 'trail' && !this.remote) {
-      const orb = G.Balance.items.lifeOrb;
+      const orb = Balance.items.lifeOrb;
       this.hp = Math.max(1, this.hp - Math.max(orb.min, this.maxHp * orb.cost));
     }
     const anim =
@@ -266,11 +280,11 @@ G.Player = class Player {
       cone: 'projectile'
     };
     // The trail doesn't play a sound per puddle (it would be a constant buzz).
-    if (m.kind !== 'trail') G.Audio.sfx('shot', { kind: SND[m.kind] || m.kind, type: m.type });
+    if (m.kind !== 'trail') Audio.sfx('shot', { kind: SND[m.kind] || m.kind, type: m.type });
     if (m.kind === 'trail') return;
     // Don't restart an animation halfway through: it would look jerky.
     if (this.anim.busy() && this.anim.progress() < 0.65) return;
-    const meta = G.Sprites.animMeta(this.dex, anim);
+    const meta = Sprites.animMeta(this.dex, anim);
     const len = meta ? meta.d.reduce((a, b) => a + b, 0) / 60 : 0.4;
     const cd = Math.max(0.12, m.cd * this.cdMul);
     this.anim.play(anim, { speed: Math.max(1, len / (cd * 0.9)) });
@@ -284,11 +298,11 @@ G.Player = class Player {
    */
   hurt(amount, type = null, pure = false) {
     if (this.invuln > 0 || this.dead || this.god) return; // (god: dev panel)
-    const B = G.Balance.player;
+    const B = Balance.player;
     let eff = null;
     if (type) {
-      eff = G.Types.label(G.Types.mult(type, this.mon.types));
-      amount *= G.Types.attackMult(type, this.mon.types);
+      eff = Types.label(Types.mult(type, this.mon.types));
+      amount *= Weather.attackMult(type, this.mon.types);
     }
     // With a melee attack active you take less (meleeGuard): you have to
     // be on top of enemies to hit (they lagged far behind).
@@ -297,30 +311,30 @@ G.Player = class Player {
     this.hp -= d;
     this.invuln = B.hurtInvuln;
     this.flash = 0.14;
-    G.Audio.sfx('hurt');
-    G.Camera.kick(0.28);
-    G.FX.dmgText(
+    Audio.sfx('hurt');
+    Camera.kick(0.28);
+    FX.dmgText(
       this.x,
       this.y - this.bodyH - 4,
       '-' + Math.round(d),
       eff === 'super' ? '#ff3048' : eff === 'weak' ? '#c9a0a8' : '#ff6b7a',
       eff === 'super'
     );
-    G.FX.burst(this.x, this.y - this.bodyH * 0.5, '#ff5f6d', 6, 90);
+    FX.burst(this.x, this.y - this.bodyH * 0.5, '#ff5f6d', 6, 90);
     // Focus Sash: survive the hit with 1 HP (once every `cooldown` s).
-    const sash = G.Balance.items.focusSash;
+    const sash = Balance.items.focusSash;
     if (this.hp <= 0 && this.hasItem('focussash') && performance.now() - this.sashT > sash.cooldown * 1000) {
       this.sashT = performance.now();
       this.hp = 1;
       this.invuln = sash.invuln;
-      G.FX.dmgText(this.x, this.y - this.bodyH - 16, 'Focus Sash!', '#ff9a3d', true);
-      G.FX.ring(this.x, this.y, 6, 70, '#ff9a3d', 0.5, 4);
+      FX.dmgText(this.x, this.y - this.bodyH - 16, 'Focus Sash!', '#ff9a3d', true);
+      FX.ring(this.x, this.y, 6, 70, '#ff9a3d', 0.5, 4);
     }
     if (this.hp <= 0) {
       this.hp = 0;
       this.dead = true;
       this.anim.play('Faint', { hold: true });
-      G.Projectiles.clearOrbs(this);
+      Projectiles.clearOrbs(this);
       this.reviveT = 0;
     }
   }
@@ -329,7 +343,7 @@ G.Player = class Player {
     const before = this.hp;
     this.hp = Math.min(this.maxHp, this.hp + amount);
     const got = Math.round(this.hp - before);
-    if (got >= 1) G.FX.dmgText(this.x, this.y - this.bodyH - 6, '+' + got, '#5fe08a');
+    if (got >= 1) FX.dmgText(this.x, this.y - this.bodyH - 6, '+' + got, '#5fe08a');
   }
 
   addMaxHp(amount) {
@@ -357,14 +371,14 @@ G.Player = class Player {
 
   /** Equips an item (and removes the previous one). */
   equip(id) {
-    if (this.item) G.Items.BY[this.item].off(this);
+    if (this.item) Items.BY[this.item].off(this);
     this.item = id;
-    if (id) G.Items.BY[id].on(this);
+    if (id) Items.BY[id].on(this);
   }
 
-  /** Shell Bell: a little HP for the damage you deal (capped, see G.Balance.items.shellBell). */
+  /** Shell Bell: a little HP for the damage you deal (capped, see Balance.items.shellBell). */
   onDealt(dmg) {
-    const bell = G.Balance.items.shellBell;
+    const bell = Balance.items.shellBell;
     if (this.item === 'shellbell') this.bellHeal = Math.min(bell.cap, this.bellHeal + dmg * bell.frac);
   }
 
@@ -400,7 +414,7 @@ G.Player = class Player {
     }
     if (this.slowT > 0) this.slowT -= dt;
     if (this.bellHeal > 0) {
-      const h = Math.min(this.bellHeal, G.Balance.items.shellBell.rate * dt);
+      const h = Math.min(this.bellHeal, Balance.items.shellBell.rate * dt);
       this.hp = Math.min(this.maxHp, this.hp + h);
       this.bellHeal -= h;
     }
@@ -412,33 +426,33 @@ G.Player = class Player {
 
     // --- movement with collisions ---
     // (In co-op pausing doesn't stop the game: you just stand still.)
-    const [ax, ay] = this.frozen ? [0, 0] : G.Input.axis();
+    const [ax, ay] = this.frozen ? [0, 0] : Input.axis();
     this.walking = ax !== 0 || ay !== 0;
     const s = this.spd;
     // Ice: you slide (velocity changes slowly).
-    const B = G.Balance.player;
-    const slide = this.inLiquid && G.World.liquidEffect(this.mon.types).slide;
-    this.svx = slide ? G.U.damp(this.svx || 0, ax * s * B.ice.speedMul, B.ice.damp, dt) : ax * s;
-    this.svy = slide ? G.U.damp(this.svy || 0, ay * s * B.ice.speedMul, B.ice.damp, dt) : ay * s;
+    const B = Balance.player;
+    const slide = this.inLiquid && World.liquidEffect(this.mon.types).slide;
+    this.svx = slide ? U.damp(this.svx || 0, ax * s * B.ice.speedMul, B.ice.damp, dt) : ax * s;
+    this.svy = slide ? U.damp(this.svy || 0, ay * s * B.ice.speedMul, B.ice.damp, dt) : ay * s;
     this.x += this.svx * dt;
     this.y += this.svy * dt;
-    G.World.collide(this);
+    World.collide(this);
     if (this.walking) this.moveAngle = Math.atan2(ay, ax);
 
     // --- liquid terrain ---
-    this.inLiquid = G.World.isLiquid(this.x, this.y);
+    this.inLiquid = World.isLiquid(this.x, this.y);
     if (this.inLiquid) {
-      const le = G.World.liquidEffect(this.mon.types);
+      const le = World.liquidEffect(this.mon.types);
       if (le.dmg) {
         this.lavaTick -= dt;
         if (this.lavaTick <= 0) {
           this.lavaTick = le.every;
           this.invuln = 0;
           this.hurt(Math.max(le.flat, this.maxHp * le.dmg * B.liquidDmgMul));
-          G.FX.burst(this.x, this.y - 4, le.color, 5, 70);
+          FX.burst(this.x, this.y - 4, le.color, 5, 70);
         }
       } else if (this.walking && Math.random() < dt * 8) {
-        G.FX.burst(this.x, this.y, le.slide ? '#ffffff' : '#b3defa', 2, 40);
+        FX.burst(this.x, this.y, le.slide ? '#ffffff' : '#b3defa', 2, 40);
       }
     }
 
@@ -449,36 +463,36 @@ G.Player = class Player {
     // With a horde on you something almost always touches you; if that always won,
     // ranged attacks would never hit the boss.
     // Without enemies, aim at the nearest rock or chest.
-    const all = G.EnemyMgr.all();
+    const all = EnemyMgr.all();
     const m = this.activeMove();
     const ranged = !!m && (m.kind === 'projectile' || m.kind === 'beam');
     const A = B.aim;
-    const threat = G.Projectiles.nearest(all, this.x, this.y, this.r + A.threatPad);
-    const boss = all.find(e => e.boss && !e.dead && G.U.dist(this.x, this.y, e.x, e.y) < A.bossRange);
+    const threat = Projectiles.nearest(all, this.x, this.y, this.r + A.threatPad);
+    const boss = all.find(e => e.boss && !e.dead && U.dist(this.x, this.y, e.x, e.y) < A.bossRange);
     const tg =
       (ranged ? boss || threat : threat || boss) ||
-      G.Projectiles.nearest(all, this.x, this.y, A.range) ||
-      G.World.nearestBreakable(this.x, this.y, A.breakableRange);
+      Projectiles.nearest(all, this.x, this.y, A.range) ||
+      World.nearestBreakable(this.x, this.y, A.breakableRange);
     this.target = tg;
     if (tg) this.aim = Math.atan2(tg.y - this.y, tg.x - this.x);
     else if (this.walking) this.aim = this.moveAngle;
 
     // --- animation: face the target when attacking, otherwise where it walks ---
     const face = this.attackFace > 0 || !this.walking ? this.aim : this.moveAngle;
-    this.anim.dir = G.Sprites.dirFromAngle(face);
+    this.anim.dir = Sprites.dirFromAngle(face);
     this.anim.loop(this.walking ? 'Walk' : 'Idle', this.walking ? s / 110 : 1);
   }
 
   /** Gets back up (revived by a teammate in co-op). */
-  revive(frac = G.Balance.player.revive.hpFrac) {
+  revive(frac = Balance.player.revive.hpFrac) {
     this.dead = false;
     this.hp = Math.max(1, this.maxHp * frac);
-    this.invuln = G.Balance.player.revive.invuln;
+    this.invuln = Balance.player.revive.invuln;
     this.reviveT = 0;
     this.anim._start('Idle', false);
-    G.FX.ring(this.x, this.y, 6, 70, '#5fe08a', 0.5, 4);
-    G.FX.burst(this.x, this.y - this.bodyH * 0.5, '#9dffb8', 18, 150);
-    G.Audio.sfx('heal');
+    FX.ring(this.x, this.y, 6, 70, '#5fe08a', 0.5, 4);
+    FX.burst(this.x, this.y - this.bodyH * 0.5, '#9dffb8', 18, 150);
+    Audio.sfx('heal');
   }
 
   // ---------------- teammate (co-op) ----------------
@@ -494,12 +508,12 @@ G.Player = class Player {
     if (!n) return;
     if (this.flash > 0) this.flash -= dt;
     if (this.attackFace > 0) this.attackFace -= dt;
-    if (G.U.dist2(this.x, this.y, n.x, n.y) > 300 * 300) {
+    if (U.dist2(this.x, this.y, n.x, n.y) > 300 * 300) {
       this.x = n.x;
       this.y = n.y;
     } else {
-      this.x = G.U.damp(this.x, n.x, 14, dt);
-      this.y = G.U.damp(this.y, n.y, 14, dt);
+      this.x = U.damp(this.x, n.x, 14, dt);
+      this.y = U.damp(this.y, n.y, 14, dt);
     }
     if (n.hp < this.hp - 0.5 && !n.dead) this.flash = 0.14;
     this.hp = n.hp;
@@ -509,21 +523,21 @@ G.Player = class Player {
     if (n.dead && !this.dead) {
       this.dead = true;
       this.anim.play('Faint', { hold: true });
-      G.Projectiles.clearOrbs(this);
+      Projectiles.clearOrbs(this);
     } else if (!n.dead && this.dead) this.revive(n.hp / (n.maxHp || 1));
     // Active move (for the halo, the HUD and the orbs).
-    if (n.mv && (!this.moves[0] || this.moves[0].id !== n.mv || this.moves[0].lvl !== n.ml) && G.Moves.BY_ID[n.mv]) {
-      this.moves = [G.Moves.instance(n.mv, n.ml || 1)];
+    if (n.mv && (!this.moves[0] || this.moves[0].id !== n.mv || this.moves[0].lvl !== n.ml) && Moves.BY_ID[n.mv]) {
+      this.moves = [Moves.instance(n.mv, n.ml || 1)];
       this.slots = [this.moves.slice()];
       this.active = 0;
-      G.Projectiles.clearOrbs(this);
+      Projectiles.clearOrbs(this);
     }
     if (this.dead) return;
     this.walking = !!n.walk;
     this.moveAngle = n.ang;
     this.aim = n.aim;
     const face = this.attackFace > 0 || !this.walking ? this.aim : this.moveAngle;
-    this.anim.dir = G.Sprites.dirFromAngle(face);
+    this.anim.dir = Sprites.dirFromAngle(face);
     this.anim.loop(this.walking ? 'Walk' : 'Idle', this.walking ? this.baseSpd / 110 : 1);
   }
 
@@ -533,14 +547,14 @@ G.Player = class Player {
     if (m && !this.dead) {
       ctx.save();
       ctx.globalAlpha = 0.22;
-      ctx.strokeStyle = G.U.TYPE_COLOR[m.type];
+      ctx.strokeStyle = U.TYPE_COLOR[m.type];
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.ellipse(this.x, this.y, this.r * 1.5, this.r * 0.6, 0, 0, 6.2832);
       ctx.stroke();
       ctx.restore();
     }
-    G.Sprites.drawShadow(ctx, this.dex, this.x, this.y);
+    Sprites.drawShadow(ctx, this.dex, this.x, this.y);
     // Altar power: pulsing ring of its colour under the feet.
     if (this.power && !this.dead) {
       ctx.save();
@@ -586,7 +600,7 @@ G.Player = class Player {
         this.r * 1.0,
         0,
         -Math.PI / 2,
-        -Math.PI / 2 + 6.2832 * Math.min(1, this.reviveT / G.Player.REVIVE_TIME)
+        -Math.PI / 2 + 6.2832 * Math.min(1, this.reviveT / Player.REVIVE_TIME)
       );
       ctx.stroke();
       ctx.restore();
@@ -609,4 +623,4 @@ G.Player = class Player {
       ctx.restore();
     }
   }
-};
+}

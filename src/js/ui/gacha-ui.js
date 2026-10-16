@@ -1,8 +1,17 @@
 /* ============ gacha-ui.js — per-generation banners and pull animation ============
  * The logic (odds, pity, shiny, duplicates) lives in systems/gacha.js.
  */
-G.GachaUI = (() => {
-  const $ = G.UI.$;
+import { DEX, DEX_BY } from '../data/pokedex.js';
+import { DB } from '../core/db.js';
+import { Audio } from '../core/audio.js';
+import { Gacha } from '../systems/gacha.js';
+import { Progress } from '../systems/progress.js';
+import { Icons } from './icons.js';
+import { UI } from './ui.js';
+import { Slots } from './slots.js';
+
+export const GachaUI = (() => {
+  const $ = UI.$;
   let busy = false;
   let gen = 1;
 
@@ -13,7 +22,7 @@ G.GachaUI = (() => {
     $('pull-close').onclick = close;
 
     const tabs = $('gacha-gens');
-    G.Gacha.BANNERS.forEach(b => {
+    Gacha.BANNERS.forEach(b => {
       const t = document.createElement('button');
       t.className = 'gen-tab';
       t.dataset.gen = b.gen;
@@ -27,16 +36,16 @@ G.GachaUI = (() => {
   }
 
   function open() {
-    G.UI.show('scr-gacha', true);
+    UI.show('scr-gacha', true);
     refresh();
   }
 
   function refresh() {
-    const s = G.DB.save;
-    const banner = G.Gacha.BANNERS[gen - 1];
+    const s = DB.save;
+    const banner = Gacha.BANNERS[gen - 1];
     document.querySelectorAll('#gacha-gens .gen-tab').forEach(t => t.classList.toggle('on', +t.dataset.gen === gen));
 
-    const all = G.DEX.filter(p => p.gen === gen);
+    const all = DEX.filter(p => p.gen === gen);
     const owned = all.filter(p => s.owned[p.dex]).length;
     const shinies = all.filter(p => s.shiny && s.shiny[p.dex]).length;
     const [c1, c2, c3] = banner.color;
@@ -45,58 +54,58 @@ G.GachaUI = (() => {
        linear-gradient(135deg, ${c1}, ${c2} 55%, ${c3})`;
     $('banner-title').textContent = banner.name + ' Mystery';
     $('banner-desc').textContent = `The ${all.length} Pokémon of generation ${gen}. The legendaries await!`;
-    $('gacha-owned').innerHTML = `You have ${owned} of ${all.length}` + (shinies ? ` · ${G.Icons.html('shiny', 12)} ${shinies} shiny` : '');
+    $('gacha-owned').innerHTML = `You have ${owned} of ${all.length}` + (shinies ? ` · ${Icons.html('shiny', 12)} ${shinies} shiny` : '');
 
     const feat = $('gacha-feat');
     feat.innerHTML = '';
-    for (const dex of G.Gacha.featured(gen)) {
-      feat.appendChild(G.UI.spriteCanvas(dex, 170, 190, { lively: true, scale: 2, dir: 1 }));
+    for (const dex of Gacha.featured(gen)) {
+      feat.appendChild(UI.spriteCanvas(dex, 170, 190, { lively: true, scale: 2, dir: 1 }));
     }
 
     const pity = (s.pity && s.pity[gen]) || 0;
-    $('gacha-pity').textContent = `Pulls without a legendary in ${banner.name}: ${pity} / ${G.Gacha.PITY_5}`;
+    $('gacha-pity').textContent = `Pulls without a legendary in ${banner.name}: ${pity} / ${Gacha.PITY_5}`;
 
     $('gacha-rates').innerHTML =
       '<h3>Odds</h3>' +
-      G.Gacha.RATES.slice()
+      Gacha.RATES.slice()
         .reverse()
         .map(
           ([r, w]) => `
-      <div><span style="color:${G.Gacha.RARITY_COLOR[r]}">${G.UI.stars(r, 10)} ${G.Gacha.RARITY_NAME[r]}</span>
-      <span>${w}% · ${G.Gacha.pool(r, gen).length}</span></div>`
+      <div><span style="color:${Gacha.RARITY_COLOR[r]}">${UI.stars(r, 10)} ${Gacha.RARITY_NAME[r]}</span>
+      <span>${w}% · ${Gacha.pool(r, gen).length}</span></div>`
         )
         .join('') +
-      `<div><span>${G.Icons.html('shiny', 12)} Shiny</span><span>1%</span></div>
+      `<div><span>${Icons.html('shiny', 12)} Shiny</span><span>1%</span></div>
        <p class="note">· The ×10 pull guarantees at least one Epic.<br>
-       · After ${G.Gacha.PITY_5} pulls without a Legendary on a banner, the next one is.<br>
+       · After ${Gacha.PITY_5} pulls without a Legendary on a banner, the next one is.<br>
        · Duplicates give PokéCoins. Shinies never repeat.<br>
        · Tickets are earned by playing: some Pokémon drop them when defeated, and
          bosses and rift legendaries sometimes give ×10 tickets.</p>`;
 
     const t = s.tickets;
-    $('cost-1').innerHTML = `${G.Icons.html('ticket', 18)} 1`;
-    $('cost-10').innerHTML = `${G.Icons.html('ticket', 18)} 10`;
-    $('cost-10b').innerHTML = `${G.Icons.html('ticket10', 18)} 1`;
+    $('cost-1').innerHTML = `${Icons.html('ticket', 18)} 1`;
+    $('cost-10').innerHTML = `${Icons.html('ticket', 18)} 10`;
+    $('cost-10b').innerHTML = `${Icons.html('ticket10', 18)} 1`;
     $('gacha-tickets').innerHTML =
-      `You have ${G.Icons.html('ticket', 18)} <b>${t.t1}</b> tickets and ${G.Icons.html('ticket10', 18)} <b>${t.t10}</b> ×10 tickets`;
-    $('pull-1').disabled = !G.Gacha.costOf(s, 1);
-    $('pull-10').disabled = !G.Gacha.costOf(s, 10, 't1');
-    $('pull-10b').disabled = !G.Gacha.costOf(s, 10, 't10');
-    G.UI.refreshCoins();
+      `You have ${Icons.html('ticket', 18)} <b>${t.t1}</b> tickets and ${Icons.html('ticket10', 18)} <b>${t.t10}</b> ×10 tickets`;
+    $('pull-1').disabled = !Gacha.costOf(s, 1);
+    $('pull-10').disabled = !Gacha.costOf(s, 10, 't1');
+    $('pull-10b').disabled = !Gacha.costOf(s, 10, 't10');
+    UI.refreshCoins();
   }
 
   const wait = ms => new Promise(r => setTimeout(r, ms));
 
   async function pull(n, use = 't1') {
     if (busy) return;
-    const res = G.Gacha.pull(G.DB.save, n, gen, use);
+    const res = Gacha.pull(DB.save, n, gen, use);
     if (!res) {
-      G.Audio.sfx('error');
-      G.UI.toast('Not enough tickets: earn them by playing');
+      Audio.sfx('error');
+      UI.toast('Not enough tickets: earn them by playing');
       return;
     }
-    G.Progress.checkAch();
-    G.DB.commit(true);
+    Progress.checkAch();
+    DB.commit(true);
     busy = true;
 
     const best = Math.max(...res.map(r => r.rarity));
@@ -109,23 +118,23 @@ G.GachaUI = (() => {
     fx.classList.remove('hidden');
 
     // The slot machine (ui/slots.js), then the cards.
-    await G.Slots.play(slot, res);
-    G.Audio.sfx('burst', { rarity: best });
+    await Slots.play(slot, res);
+    Audio.sfx('burst', { rarity: best });
     slot.style.display = 'none';
 
     for (const r of res) {
-      const mon = G.DEX_BY[r.dex];
+      const mon = DEX_BY[r.dex];
       const c = document.createElement('div');
       c.className = 'pcard r' + r.rarity + (r.shiny ? ' shiny' : '');
-      c.style.setProperty('--rc', r.shiny ? '#9ae6ff' : G.Gacha.RARITY_COLOR[r.rarity]);
-      c.innerHTML = `<div class="stars">${G.UI.stars(r.rarity, 24)}</div>`;
-      c.appendChild(G.UI.spriteCanvas(r.dex, 132, 120, { lively: r.rarity >= 4 || r.shiny, scale: 2, shiny: r.shiny }));
+      c.style.setProperty('--rc', r.shiny ? '#9ae6ff' : Gacha.RARITY_COLOR[r.rarity]);
+      c.innerHTML = `<div class="stars">${UI.stars(r.rarity, 24)}</div>`;
+      c.appendChild(UI.spriteCanvas(r.dex, 132, 120, { lively: r.rarity >= 4 || r.shiny, scale: 2, shiny: r.shiny }));
       const tag = r.isNew
         ? `<span class="new">${r.shiny ? 'NEW SHINY!' : 'NEW!'}</span>`
         : `Duplicate · <span class="coin"></span> +${r.refund}`;
-      c.insertAdjacentHTML('beforeend', `<b>${r.shiny ? G.Icons.html('shiny', 12) + ' ' : ''}${mon.name}</b><div class="tag">${tag}</div>`);
+      c.insertAdjacentHTML('beforeend', `<b>${r.shiny ? Icons.html('shiny', 12) + ' ' : ''}${mon.name}</b><div class="tag">${tag}</div>`);
       out.appendChild(c);
-      G.Audio.sfx('reveal', { rarity: r.rarity });
+      Audio.sfx('reveal', { rarity: r.rarity });
       await wait(n === 10 ? 150 : 0);
     }
     $('pull-close').classList.remove('hidden');
