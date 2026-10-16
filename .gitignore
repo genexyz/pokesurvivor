@@ -2,7 +2,10 @@
 videos/
 
 # Cachés de los scripts de descarga
-tools/cache/
+.cache/
+
+# Build (npm run build)
+dist/
 __pycache__/
 
 # Firebase / emulador / logs

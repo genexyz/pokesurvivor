@@ -1,5 +1,9 @@
 # Poner pokesurvivor.com en marcha
 
+> **Nota (16-10-2026):** histórico. El juego ya no se publica en GitHub Pages sino
+> con Docker en Coolify ([PUBLICAR.md](PUBLICAR.md)) y `tools/activar_dominio.sh` se
+> quitó. Para el dominio basta un registro `A` a la IP del servidor y ponerlo en Coolify.
+
 El dominio está comprado en **Cloudflare** y todavía no apunta a ningún sitio.
 Todo lo del código ya está preparado: sólo faltan los pasos marcados como **TÚ**
 (los que necesitan tu cuenta) y el paso final, que hago yo cuando me digas.

@@ -28,7 +28,7 @@ navegador.
 2. Ubicación: una de Europa (p. ej. `eur3` o `europe-southwest1`). No se puede cambiar después.
 3. Empieza en **modo de producción**.
 4. Pestaña **Reglas**: borra lo que haya, pega **todo** el contenido del fichero
-   [`firestore.rules`](../firestore.rules) de este proyecto y pulsa **Publicar**.
+   [`firebase/firestore.rules`](../firebase/firestore.rules) de este proyecto y pulsa **Publicar**.
 
    Estas reglas hacen que cada jugador sólo pueda leer, escribir y borrar **su**
    partida. Sin ellas, cualquiera podría tocar las de los demás.
@@ -37,7 +37,7 @@ navegador.
 
 1. **Compilación → Realtime Database** → **Crear base de datos** → ubicación
    **Bélgica (europe-west1)** → modo bloqueado.
-2. Pestaña **Reglas**: pega el contenido de [`database.rules.json`](../database.rules.json).
+2. Pestaña **Reglas**: pega el contenido de [`firebase/database.rules.json`](../firebase/database.rules.json).
 3. Copia la URL que sale arriba (`https://...firebasedatabase.app`) y añádela a
    `firebase-config.js` como `databaseURL: '...'`.
 

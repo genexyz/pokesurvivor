@@ -7,16 +7,16 @@ Todo lo técnico ya está preparado en el código. Falta lo que sólo puedes hac
 
 | Archivo | Para qué |
 |---|---|
-| `index.html` | Título y descripción pensados para búsquedas ("juego Pokémon gratis online", "estilo Survivor.io"), dirección canónica, tarjetas para redes (Open Graph / Twitter), datos estructurados `VideoGame` (gratis, 1-4 jugadores, navegador/Android/iOS) y un texto real mientras carga (con `<h1>`). |
+| `src/index.html` (→ `dist/index.html`) | Título y descripción pensados para búsquedas ("juego Pokémon gratis online", "estilo Survivor.io"), dirección canónica, tarjetas para redes (Open Graph / Twitter), datos estructurados `VideoGame` (gratis, 1-4 jugadores, navegador/Android/iOS) y un texto real mientras carga (con `<h1>`). |
 | `guia/` | Guía con cómo se juega, características, consejos y **preguntas frecuentes** (con datos `FAQPage`, que Google puede enseñar desplegables en los resultados). |
 | `pokedex/` | Los 966 Pokémon jugables con sus tipos y sprites: atrae búsquedas tipo "juego con Pikachu gratis". |
-| `404.html` | Página de "no existe" con enlaces al juego (GitHub Pages la usa sola). |
-| `robots.txt` | Permite rastrear todo menos `tools/` y `docs/`, e indica el sitemap. |
+| `404.html` | Página de "no existe" con enlaces al juego (nginx la usa con `error_page`). |
+| `robots.txt` | Permite rastrear todo e indica el sitemap. |
 | `sitemap.xml` | Las páginas que hay que indexar. |
-| `assets/og-image.jpg` | La imagen que sale al compartir el enlace (1200×630). |
+| `public/assets/og-image.jpg` | La imagen que sale al compartir el enlace (1200×630). |
 | `manifest.webmanifest`, iconos | App instalable, icono en el navegador y en el móvil. |
 
-Las páginas se regeneran con `python tools/make_seo_pages.py` (por ejemplo, si
+Las páginas (en `dist/`) se regeneran con `npm run build` (por ejemplo, si
 cambian los Pokémon o las características).
 
 > **Importante:** las direcciones canónicas ya apuntan a `https://pokesurvivor.com/`.
@@ -25,7 +25,7 @@ cambian los Pokémon o las características).
 
 ## 1. Dominio
 
-Los pasos para poner en marcha pokesurvivor.com (DNS en Cloudflare, GitHub Pages,
+Los pasos para poner en marcha pokesurvivor.com (DNS en Cloudflare, servidor,
 Firebase y el paso final) están en [DOMINIO.md](DOMINIO.md).
 
 ## 2. Google Search Console (lo más importante)
@@ -69,15 +69,14 @@ sin ánimo de lucro ayudan, pero no eliminan ese riesgo.
 
 ## Cómo se trabaja ahora (importante)
 
-- **Se edita `dev.html`** (y los `js/`), no `index.html`. `dev.html` carga cada script
-  por separado para programar; `index.html` es la versión para publicar, con todo en
+- **Se edita `src/`** (`src/index.html` y `src/js/`), nunca `dist/`. `src/index.html` carga cada script
+  por separado para programar (`npm run dev`); `dist/index.html` es la versión para publicar, con todo en
   un solo `js/app.min.js` (la portada carga mucho más rápido).
 - Antes de probar la versión final o de publicar:
 
 ```
-node tools/build.js            # dev.html -> index.html + js/app.min.js
-node tools/export_data.js      # datos del juego para las páginas
-python tools/make_seo_pages.py # páginas en español e inglés, en/index.html, sitemap
+npm run build    # src/ + public/ -> dist/ (index.html, js/app.min.js, páginas, sitemap)
+npm start        # verlo en http://localhost:3000
 ```
 
 ## Idiomas

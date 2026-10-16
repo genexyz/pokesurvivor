@@ -23,8 +23,16 @@ HTML + CSS + JavaScript vanilla sobre Canvas 2D. Sin build, sin dependencias y
 
 ## Jugar
 
-Doble clic en `index.html`. Crea una cuenta o entra como invitado, haz el test
-de personalidad y a la mazmorra.
+Necesitas [Node.js](https://nodejs.org) 20 o más:
+
+```
+npm install
+npm run dev        # http://localhost:3000 (y /en/ en inglés)
+```
+
+Crea una cuenta o entra como invitado, haz el test de personalidad y a la
+mazmorra. Con `npm run dev` la partida se guarda sólo en el navegador (no toca la
+nube); ver [Desarrollo](#desarrollo).
 
 | Tecla | Acción |
 |---|---|
@@ -87,7 +95,7 @@ jefe, la captura de un shiny salvaje y un shiny en el gacha.
 - **Jugar con amigos (hasta 4) y ranking:** con cuenta en la nube, menú
   **Amigos** (añadir por apodo, invitar a tu sala) y **Ranking** (tiempo
   aguantado: solo o grupo, de hoy a histórico, amigos, por Pokémon).
-- **Publicar gratis en GitHub Pages:** [docs/PUBLICAR.md](docs/PUBLICAR.md).
+- **Publicar (Docker / Coolify):** [docs/PUBLICAR.md](docs/PUBLICAR.md).
 - Si se juega en dos ordenadores a la vez o sin conexión, las partidas se
   **fusionan**: las colecciones se unen (nunca se pierde un Pokémon ni un
   shiny), mejoras y estadísticas se quedan con el máximo, y monedas y
@@ -107,37 +115,59 @@ lucro.
 **La única web oficial es [pokesurvivor.com](https://pokesurvivor.com).** El
 juego es y será gratis: si alguien te pide pagar, no somos nosotros.
 
+## Desarrollo
+
+| Comando | Qué hace |
+|---|---|
+| `npm run dev` | Servidor local en http://localhost:3000 con `src/` + `public/`. Sin nube (guardado en el navegador) y se recarga al guardar un archivo. |
+| `npm run dev:emulator` | Igual, pero con el emulador local de Firebase (cuentas, amigos, cooperativo). Necesita Java. |
+| `npm run build` | Genera `dist/`: el juego empaquetado (`js/app.min.js`), `version.json` y las páginas web. Necesita Python 3. |
+| `npm run build:force` | Igual, pero es una actualización obligatoria para los jugadores. |
+| `npm run build:debug` | Igual, sin ofuscar (`G` accesible en la consola). |
+| `npm start` | Sirve `dist/` como en producción (antes, `npm run build`). |
+| `npm run clean` | Borra `dist/` y `.cache/`. |
+| `npm run docker:build` / `docker:run` | Imagen de producción (nginx) en http://localhost:8080. |
+| `npm run data:*` | Regenera datos: `pokedex`, `sprites`, `credits`, `hover`, `icons`, `font` (Python). |
+
+Puerto: `PORT=4000 npm run dev`. Python: si no está en el PATH, `PYTHON=/ruta/a/python`.
+
 ## Estructura
 
 ```
-index.html              pantallas + orden de carga
-css/style.css           interfaz estilo Mundo Misterioso
-assets/pokemon/{dex}/   hojas de sprites PMD (Idle, Walk, Attack, Shoot, Charge, Hurt, Faint)
-assets/pokemon/{dex}/s/ las mismas en versión shiny
-assets/fonts/           Pixelify Sans (OFL) y su versión con números redibujados (tools/make_font.py)
-js/
-  net/      social (apodo, amigos, salas), net (WebRTC + relé),
-            coop (partida en grupo), ranking
-  core/     util, db (guardado), audio (sintetizador + efectos), input,
-            sprites (animador PMD), camera
-  data/     pokedex*, sprites-meta*, moves, starters (+ test), enemies,
-            upgrades, music (partituras)
-  world/    tiles (pixel art en código), world (terreno, objetos, colisiones)
-  entities/ player, enemy, projectile, pickup, fx
-  systems/  combat, spawner, levelup, gacha
-  ui/       icons (pixel art), ui, hud, login, test, menu, gacha-ui, run-ui,
-            social-ui, ranking-ui
-  game.js   flujo y bucle principal
-tools/      scripts que regeneran los ficheros marcados con *
+src/
+  index.html            la página: pantallas + orden de carga de los scripts (se edita aquí)
+  css/                  style.css (juego, estilo Mundo Misterioso) y pages.css (páginas web)
+  js/
+    core/     util, db (guardado), audio (sintetizador + efectos), input,
+              sprites (animador PMD), camera, updater (actualización automática)
+    data/     pokedex*, sprites-meta*, moves, starters (+ test), enemies,
+              upgrades, music (partituras), changelog, lang-en
+    world/    tiles (pixel art en código), world (terreno, objetos, colisiones)
+    entities/ player, enemy, projectile, pickup, fx
+    systems/  combat, spawner, levelup, gacha...
+    net/      social (apodo, amigos, salas), net (WebRTC), coop, ranking
+    ui/       icons (pixel art), ui, hud, login, test, menu, gacha-ui, run-ui...
+    game.js   flujo y bucle principal
+    main.js   arranque
+public/                 se copia tal cual a dist/
+  assets/pokemon/{dex}/ hojas de sprites PMD* (Idle, Walk, Attack, Shoot, Charge, Hurt, Faint); s/ = shiny
+  assets/icons/         iconos de la app*
+  assets/fonts/         Pixelify Sans (OFL) y su versión con números redibujados*
+  contacto/  favicon.ico  manifest.webmanifest  sw.js
+scripts/                build, servidor local y scripts que regeneran los ficheros marcados con *
+firebase/               reglas de Firestore y Realtime Database (firebase.json en la raíz)
+deploy/nginx.conf       servidor de la imagen Docker
+docs/                   Firebase, publicar, SEO, dominio, GDD
+dist/                   generado por npm run build (no se sube)
 ```
 
 `*` = generado. Para rehacerlos (necesita Python 3 + Pillow e internet, sólo esa vez):
 
 ```
-python tools/fetch_sprites.py    # sprites normal y shiny + js/data/sprites-meta.js
-                                 # (~20 min; se puede cortar y relanzar: usa tools/cache/)
-python tools/fetch_pokedex.py    # js/data/pokedex.js
-python tools/fetch_credits.py    # CREDITS.md
+npm run data:sprites    # sprites normal y shiny + src/js/data/sprites-meta.js
+                        # (~20 min; se puede cortar y relanzar: usa .cache/)
+npm run data:pokedex    # src/js/data/pokedex.js
+npm run data:credits    # CREDITS.md
 ```
 
 ## Notas de implementación
