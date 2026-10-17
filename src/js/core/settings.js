@@ -12,6 +12,7 @@
  *                                                 (drawback: only Choice Band, Life Orb...)
  *   gachaSkip   true/false                        open the gacha without the slot machine
  *   recount     true/false                        damage meter in the run (key R)
+ *   autoFast    true/false                        solo runs start at x2 speed
  *   res         'auto' | 'high' | 'low'            internal resolution (game.js computeDpr)
  *   fpsCap      0 | 30 | 60 | 120                 frame cap (0 = the screen's rate)
  *   pad         { bar, pause, stick } | null      where the buttons go on mobile (centre, relative
@@ -32,6 +33,7 @@ export const Settings = (() => {
     itemConfirm: 'drawback',
     gachaSkip: false,
     recount: false,
+    autoFast: false,
     res: 'auto',
     fpsCap: 0,
     pad: null

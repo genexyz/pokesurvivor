@@ -246,7 +246,9 @@ export const UI = (() => {
    *                   view gets the same pixel size, even if the giant ones
    *                   don't fit whole
    *         hero      single-Pokémon view: may reduce the scale so it fits,
-   *                   since there's nothing to compare it with }
+   *                   since there's nothing to compare it with
+   *         padBottom px of extra canvas below the box the Pokémon is placed in:
+   *                   room for animations that reach below its feet }
    */
   function sprite(cv, dex, opts = {}) {
     for (const s of live) if (s.cv === cv) live.delete(s);
@@ -294,12 +296,13 @@ export const UI = (() => {
       const m = Sprites.animMeta(s.dex, 'Idle');
       const ay = m ? m.ay : 24;
       let k = s.opts.scale || 2;
-      if (s.opts.hero) k = Math.max(1, Math.min(k, Math.floor((cv.height * 0.8) / ay)));
+      const H = cv.height - (s.opts.padBottom || 0); // the box it is placed in
+      if (s.opts.hero) k = Math.max(1, Math.min(k, Math.floor((H * 0.8) / ay)));
       s.a.scale = k / Sprites.PX;
       // If it doesn't fit standing, the body is centered in the box.
-      const big = ay * k > cv.height * 0.8;
+      const big = ay * k > H * 0.8;
       const fx = cv.width / 2,
-        fy = big ? cv.height / 2 + ay * k * 0.45 : cv.height * 0.88;
+        fy = big ? H / 2 + ay * k * 0.45 : H * 0.88;
 
       if (s.opts.shadow !== false && !s.opts.silhouette) {
         ctx.fillStyle = 'rgba(0,0,0,.35)';

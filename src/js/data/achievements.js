@@ -28,6 +28,7 @@ export const AchDefs = (() => {
     ['story', 'Story'],
     ['rifts', 'Rifts'],
     ['legendaries', 'Legendaries'],
+    ['style', 'Playstyle'],
     ['other', 'Missions & more']
   ];
 
@@ -174,6 +175,7 @@ export const AchDefs = (() => {
       reward: { t10: 2 },
       title: 'Survivor'
     },
+    // (The ids say 20/40 but the goals are 15/30: ids are saved, so they stay.)
     {
       id: 'lvl20',
       cat: 'survival',
@@ -407,12 +409,12 @@ export const AchDefs = (() => {
       id: 'badgesAll',
       cat: 'story',
       tier: 3,
-      name: 'Pokémon Master',
+      name: 'Grand Champion',
       desc: 'Earn every badge of every region.',
       value: count('story'),
       goal: ALL_BADGES,
       reward: { t10: 10 },
-      title: 'Pokémon Master'
+      title: 'Grand Champion'
     },
 
     // ---------- rifts ----------
@@ -481,6 +483,143 @@ export const AchDefs = (() => {
       goal: 87,
       reward: { t10: 5 },
       title: 'Legend'
+    },
+
+    // ---------- playstyle: how you play, not how long (tracked in game.js playstyleStats and the systems) ----------
+    {
+      id: 'types5',
+      cat: 'style',
+      tier: 2,
+      name: 'Type explorer',
+      desc: 'Survive 10 minutes with Pokémon of 5 different types.',
+      value: count('typesMastered'),
+      goal: 5,
+      reward: { t10: 1 }
+    },
+    {
+      id: 'typesAll',
+      cat: 'style',
+      tier: 3,
+      name: 'Type master',
+      desc: 'Survive 10 minutes with Pokémon of all 18 types.',
+      value: count('typesMastered'),
+      goal: 18,
+      reward: { t10: 2 },
+      title: 'Type master'
+    },
+    {
+      id: 'nohit',
+      cat: 'style',
+      tier: 2,
+      name: 'Untouchable',
+      desc: 'Survive 3 minutes without taking any damage.',
+      value: s => Math.floor(st('noHitTime')(s) / 60),
+      goal: 3,
+      reward: { t10: 1 }
+    },
+    {
+      id: 'glass',
+      cat: 'style',
+      tier: 2,
+      name: 'Glass cannon',
+      desc: 'Reach level 20 with a Pokémon that has no Vitality or Armor upgrades.',
+      value: st('glassLevel'),
+      goal: 20,
+      reward: { t10: 1 }
+    },
+    {
+      id: 'mono',
+      cat: 'style',
+      tier: 2,
+      name: 'Specialist',
+      desc: "Reach level 20 knowing only moves of your Pokémon's types.",
+      value: st('monoLevel'),
+      goal: 20,
+      reward: { t10: 1 },
+      title: 'Specialist'
+    },
+    {
+      id: 'bond4',
+      cat: 'style',
+      tier: 2,
+      name: 'Perfect bond',
+      desc: 'Bond 4 moves into a single slot.',
+      value: st('bestBond'),
+      goal: 4,
+      reward: { t10: 1 }
+    },
+    {
+      id: 'gold10',
+      cat: 'style',
+      tier: 1,
+      name: 'Golden touch',
+      desc: 'Live through 10 golden hours.',
+      value: st('goldHours'),
+      goal: 10,
+      reward: { t1: 3 }
+    },
+    {
+      id: 'rescue10',
+      cat: 'style',
+      tier: 2,
+      name: 'Rescuer',
+      desc: 'Bring 10 lost Pokémon home.',
+      value: st('rescues'),
+      goal: 10,
+      reward: { t10: 1 },
+      title: 'Rescuer'
+    },
+    {
+      id: 'goblin25',
+      cat: 'style',
+      tier: 2,
+      name: 'Goblin hunter',
+      desc: 'Defeat 25 treasure-laden Meowth or Gholdengo.',
+      value: st('goblins'),
+      goal: 25,
+      reward: { t10: 1 }
+    },
+    {
+      id: 'weathers',
+      cat: 'style',
+      tier: 2,
+      name: 'Storm chaser',
+      desc: 'Live through every kind of weather to its end.',
+      value: count('weathers'),
+      goal: 5,
+      reward: { t10: 1 }
+    },
+    {
+      id: 'flawless1',
+      cat: 'style',
+      tier: 2,
+      name: 'Flawless',
+      desc: 'Beat a gym leader without dropping below half health.',
+      value: st('flawless'),
+      goal: 1,
+      reward: { t10: 1 }
+    },
+    {
+      id: 'flawless10',
+      cat: 'style',
+      tier: 3,
+      name: 'Gym master',
+      desc: 'Beat 10 gym leaders without dropping below half health.',
+      value: st('flawless'),
+      goal: 10,
+      reward: { t10: 2 },
+      title: 'Gym master'
+    },
+    {
+      id: 'onemove',
+      cat: 'style',
+      tier: 3,
+      name: 'One-trick',
+      desc: 'Beat a gym leader knowing a single move.',
+      value: st('oneMove'),
+      goal: 1,
+      reward: { t10: 2 },
+      title: 'One-trick'
     },
 
     // ---------- missions & more ----------

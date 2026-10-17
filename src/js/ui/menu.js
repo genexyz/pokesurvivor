@@ -6,6 +6,7 @@ import { DB } from '../core/db.js';
 import { Audio } from '../core/audio.js';
 import { Moves } from '../data/moves.js';
 import { startMoveOf } from '../data/starters.js';
+import { Balance } from '../data/balance.js';
 import { Upgrades } from '../data/upgrades.js';
 import { Gacha } from '../systems/gacha.js';
 import { Progress } from '../systems/progress.js';
@@ -91,11 +92,13 @@ export const MenuUI = (() => {
     const seg = $('menu-shiny');
     seg.classList.toggle('hidden', !DB.ownsShiny(mon.dex));
     seg.lastChild.innerHTML = Icons.html('shiny', 12) + ' Shiny';
+    $('menu-shiny-tip').innerHTML = shinyTip();
     seg.querySelectorAll('button').forEach(b => {
       b.classList.toggle('on', (b.dataset.v === '1') === shiny);
       b.onclick = () => {
         if ((b.dataset.v === '1') === shiny) return;
         s.partnerShiny = b.dataset.v === '1';
+        if (s.partnerShiny) shinyNotice();
         DB.commit();
         Audio.sfx('confirm');
         open();
@@ -329,9 +332,10 @@ export const MenuUI = (() => {
       <canvas id="dex-big" class="stage" width="220" height="190"></canvas>
       ${
         hasSh
-          ? `<div class="seg">
+          ? `<div class="shiny-pick"><div class="seg">
           <button class="${viewShiny ? '' : 'on'}" data-v="0">Normal</button>
-          <button class="${viewShiny ? 'on' : ''}" data-v="1">${Icons.html('shiny', 12)} Shiny</button></div>`
+          <button class="${viewShiny ? 'on' : ''}" data-v="1">${Icons.html('shiny', 12)} Shiny</button></div>
+          <div class="tip-box">${shinyTip()}</div></div>`
           : ''
       }
       <div class="center">
@@ -346,6 +350,11 @@ export const MenuUI = (() => {
         ${bar('HP', p.hp, max.hp, p.hp)}
         ${bar('Attack', p.atk, max.atk, '×' + p.atk.toFixed(2))}
         ${bar('Speed', p.spd, max.spd, p.spd)}
+        ${
+          viewShiny
+            ? `<p style="font-size:13px;margin:8px 0 0;color:#9ae6ff">${Icons.html('shiny', 12)} Shiny bonus: wild shinies are ×${Balance.spawn.shinyCharm} more common, and once per run a knockout leaves you at 1 HP.</p>`
+            : ''
+        }
         <p style="font-size:14px;margin:10px 0 4px">Starts with <b class="gold">${Moves.BY_ID[startMoveOf(dex)].name}</b></p>
         <p class="move-icons" title="Moves it can learn">
           ${Moves.poolFor(p)
@@ -367,6 +376,7 @@ export const MenuUI = (() => {
     box.querySelectorAll('.seg button').forEach(b => {
       b.onclick = () => {
         viewShiny = b.dataset.v === '1';
+        if (viewShiny) shinyNotice();
         showDetail(dex);
       };
     });
@@ -382,6 +392,20 @@ export const MenuUI = (() => {
       };
   }
 
+  // ---------------- shiny bonuses ----------------
+
+  /** What a shiny partner gives (hover box over the Normal / Shiny toggles). */
+  function shinyTip() {
+    return `<b>${Icons.html('shiny', 12)} Shiny bonuses</b>
+      <small><b>Shiny Charm:</b> <span>wild shinies (and shiny rift legendaries) are ×${Balance.spawn.shinyCharm} more common. In co-op, the whole team gets it.</span></small>
+      <small><b>Shiny Sash:</b> <span>once per run, a knockout leaves you at 1 HP and pushes nearby enemies back.</span></small>`;
+  }
+  /** On touch there is no hover: the bonus comes as a notice when you pick the shiny. */
+  function shinyNotice() {
+    if (matchMedia('(hover: none)').matches)
+      UI.toast(`Shiny bonus: wild shinies are ×${Balance.spawn.shinyCharm} more common, and once per run a knockout leaves you at 1 HP.`);
+  }
+
   // ---------------- upgrades ----------------
 
   let upgDex = null;
@@ -392,19 +416,12 @@ export const MenuUI = (() => {
     if (!upgDex || !s.owned[upgDex]) upgDex = s.partner;
     // Picker with your Pokémon: the partner first, then the ones that already have upgrades.
     const sel = $('upg-mon');
-    const lv = d => Object.values(s.pupg[d] || {}).reduce((a, b) => a + b, 0);
     const mons = Object.keys(s.owned)
       .map(Number)
       .filter(d => DEX_BY[d])
-      .sort((a, b) => (b === s.partner) - (a === s.partner) || lv(b) - lv(a) || a - b);
-    sel.innerHTML = mons
-      .map(
-        d =>
-          `<option value="${d}">${DEX_BY[d].name}${d === s.partner ? ' (partner)' : ''}${lv(d) ? ' · ' + lv(d) + ' levels' : ''}</option>`
-      )
-      .join('');
+      .sort((a, b) => (b === s.partner) - (a === s.partner) || upgLevels(b) - upgLevels(a) || a - b);
+    sel.innerHTML = mons.map(d => `<option value="${d}">${upgLabel(d)}</option>`).join('');
     sel.value = upgDex;
-    SearchSelect.enhance(sel, { placeholder: 'Search Pokémon' });
     sel.onchange = () => {
       upgDex = +sel.value;
       Audio.sfx('select');
@@ -413,13 +430,26 @@ export const MenuUI = (() => {
     renderUpgrades();
   }
 
+  const upgLevels = d => Object.values((DB.save.pupg || {})[d] || {}).reduce((a, b) => a + b, 0);
+  /** The picker's text for a Pokémon: name, partner, levels bought. */
+  function upgLabel(d) {
+    const n = upgLevels(d);
+    return `${DEX_BY[d].name}${d === DB.save.partner ? ' (partner)' : ''}${n ? ' · ' + n + ' levels' : ''}`;
+  }
+
   function renderUpgrades() {
     const s = DB.save;
     const levels = DB.upgradesOf(upgDex);
     const mon = DEX_BY[upgDex];
+    // The picker's level count, kept up to date after each purchase.
+    const sel = $('upg-mon'),
+      opt = sel.querySelector(`option[value="${upgDex}"]`);
+    if (opt) opt.textContent = upgLabel(upgDex);
+    SearchSelect.enhance(sel, { placeholder: 'Search Pokémon' });
     const shiny = upgDex === s.partner && !!s.partnerShiny && DB.ownsShiny(upgDex);
     UI.sprite($('upg-stage'), upgDex, { lively: true, scale: 2, hero: true, shiny });
     $('upg-stage').style.setProperty('--stage-c', shiny ? '#9ae6ff' : U.TYPE_COLOR[mon.types[0]]);
+    allButton(mon);
     const box = $('upg-list');
     box.innerHTML = '';
     for (const u of Upgrades.LIST) {
@@ -427,7 +457,7 @@ export const MenuUI = (() => {
       const maxed = lvl >= u.max;
       const cost = maxed ? 0 : Upgrades.cost(u.id, lvl);
       const el = document.createElement('div');
-      el.className = 'panel upg-item';
+      el.className = 'panel upg-item' + (u.id === 'ban' ? ' full' : '');
       el.innerHTML = `
         <div class="ic">${Icons.html(u.icon, 32)}</div>
         <div>
@@ -469,6 +499,70 @@ export const MenuUI = (() => {
       if (u.id === 'ban' && lvl > 0 && banOpen) box.appendChild(banPicker(lvl));
     }
     box.appendChild(bindPanel());
+  }
+
+  /**
+   * What "Upgrade all" buys with `coins`: the cheapest next level each time, while
+   * it can be paid. { buys: { id: levels }, n, cost, total (cost of maxing everything), left }
+   */
+  function allPlan(levels, coins) {
+    const lv = {},
+      buys = {};
+    let n = 0,
+      cost = 0,
+      total = 0,
+      left = 0;
+    for (const u of Upgrades.LIST) {
+      lv[u.id] = levels[u.id] || 0;
+      for (let l = lv[u.id]; l < u.max; l++) {
+        total += Upgrades.cost(u.id, l);
+        left++;
+      }
+    }
+    for (;;) {
+      let best = null,
+        price = Infinity;
+      for (const u of Upgrades.LIST) {
+        if (lv[u.id] >= u.max) continue;
+        const c = Upgrades.cost(u.id, lv[u.id]);
+        if (c < price) (best = u), (price = c);
+      }
+      if (!best || cost + price > coins) break;
+      cost += price;
+      lv[best.id]++;
+      buys[best.id] = (buys[best.id] || 0) + 1;
+      n++;
+    }
+    return { buys, n, cost, total, left };
+  }
+
+  // Buys every level it can for this Pokémon at once. Shows what it will cost:
+  // everything if the coins are enough, otherwise the levels that can be paid.
+  function allButton(mon) {
+    const btn = $('upg-all');
+    const p = allPlan(DB.upgradesOf(upgDex), DB.save.coins);
+    btn.classList.toggle('hidden', !p.left);
+    if (!p.left) return;
+    const full = p.n === p.left;
+    btn.disabled = !p.n;
+    btn.innerHTML = `<span>${full || !p.n ? 'Upgrade all' : `Upgrade ${p.n} levels`}</span> · <span class="coin"></span> ${p.n ? p.cost : p.total}`;
+    btn.onclick = () => {
+      // Re-planned on click (the save may have changed since it was drawn).
+      const sv = DB.save,
+        lv = DB.upgradesOf(upgDex),
+        plan = allPlan(lv, sv.coins);
+      if (!plan.n) {
+        renderUpgrades();
+        return;
+      }
+      sv.coins -= plan.cost;
+      for (const id in plan.buys) lv[id] = (lv[id] || 0) + plan.buys[id];
+      DB.commit(true);
+      Audio.sfx('buy');
+      UI.refreshCoins();
+      UI.toast(`${mon.name}: ${plan.n} levels bought`);
+      renderUpgrades();
+    };
   }
 
   // ---------------- shortcuts: a fixed slot for each move ----------------

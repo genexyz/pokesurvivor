@@ -16,12 +16,14 @@ export const GachaUI = (() => {
   let busy = false;
   let skipped = false; // this pull shows the cards without (the rest of) the slot machine
   let gen = 1;
+  let again = null; // { n, use }: what "Open again" pulls
 
   function init() {
     $('pull-1').onclick = () => pull(1);
     $('pull-10').onclick = () => pull(10, 't1');
     $('pull-10b').onclick = () => pull(10, 't10');
     $('pull-close').onclick = close;
+    $('pull-again').onclick = () => again && pull(again.n, again.use);
     $('pull-skip').onclick = skip;
     $('gacha-skip').onclick = () => {
       Settings.set('gachaSkip', !Settings.get('gachaSkip'));
@@ -66,7 +68,8 @@ export const GachaUI = (() => {
     const feat = $('gacha-feat');
     feat.innerHTML = '';
     for (const dex of Gacha.featured(gen)) {
-      feat.appendChild(UI.spriteCanvas(dex, 170, 190, { lively: true, scale: 2, dir: 1 }));
+      // 24 px of canvas under the 190 px box, so attacks are not cut at its bottom edge (style.css .feat).
+      feat.appendChild(UI.spriteCanvas(dex, 170, 214, { lively: true, scale: 2, dir: 1, padBottom: 24 }));
     }
 
     const pity = (s.pity && s.pity[gen]) || 0;
@@ -125,6 +128,7 @@ export const GachaUI = (() => {
     out.innerHTML = '';
     $('pull-summary').innerHTML = '';
     $('pull-close').classList.add('hidden');
+    $('pull-again').classList.add('hidden');
     // The slot machine (ui/slots.js), then the cards. With "Open without animation"
     // (or Skip / Space / Enter halfway) the cards come out at once.
     skipped = !!Settings.get('gachaSkip');
@@ -163,6 +167,16 @@ export const GachaUI = (() => {
       }
     }
     $('pull-close').classList.remove('hidden');
+    // The same pull again, right here, if you can still pay for it (after a ×10 ticket
+    // with none left, a ×10 with normal tickets).
+    again = null;
+    if (Gacha.costOf(DB.save, n, use)) again = { n, use };
+    else if (n === 10 && use === 't10' && Gacha.costOf(DB.save, 10, 't1')) again = { n: 10, use: 't1' };
+    if (again) {
+      $('cost-again').innerHTML =
+        again.use === 't10' ? `${Icons.html('ticket10', 18)} 1` : `${Icons.html('ticket', 18)} ${again.n}`;
+      $('pull-again').classList.remove('hidden');
+    }
     busy = false;
   }
 

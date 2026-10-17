@@ -48,6 +48,41 @@ export const HUD = (() => {
     }
   }
 
+  /** The x2 speed pill: a fast-forward icon and "×2"; gold and glowing while on. */
+  function drawSpeed(ctx, x, y, w, h, on) {
+    ctx.save();
+    roundRect(ctx, x, y, w, h, h / 2);
+    if (on) {
+      const g = ctx.createLinearGradient(x, y, x, y + h);
+      g.addColorStop(0, '#ffe27a');
+      g.addColorStop(1, '#ff9a3d');
+      ctx.fillStyle = g;
+      ctx.shadowColor = 'rgba(255,190,60,.7)';
+      ctx.shadowBlur = 10;
+    } else ctx.fillStyle = 'rgba(10,16,28,.7)';
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = on ? '#fff3c4' : 'rgba(255,210,63,.6)';
+    ctx.stroke();
+    // Two triangles (fast-forward), then the label.
+    const ink = on ? '#3a2200' : '#ffd23f',
+      cy = y + h / 2;
+    ctx.fillStyle = ink;
+    for (const ox of [12, 19]) {
+      ctx.beginPath();
+      ctx.moveTo(x + ox, cy - 6);
+      ctx.lineTo(x + ox + 8, cy);
+      ctx.lineTo(x + ox, cy + 6);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.font = F(800, 14);
+    ctx.textAlign = 'left';
+    ctx.fillText('×2', x + 32, cy + 5);
+    ctx.restore();
+  }
+
   /**
    * Arrow on the screen edge toward a spot that is off screen (sx, sy in screen
    * pixels). Draws nothing and returns false while the spot is visible.
@@ -175,8 +210,8 @@ export const HUD = (() => {
     const narrow = w < 1000 || touch;
     const open = rOpen == null ? !narrow : rOpen;
     const x = w - RW - 16 - (touch && !Touch.spot('pause') ? 56 : 0);
-    // Under the weather pill; on narrow screens, also under the boss bar.
-    const y = narrow ? 92 : Weather.current ? 46 : 14;
+    // Under the weather and x2 speed pills; on narrow screens, also under the boss bar.
+    const y = narrow ? 92 : Weather.current || !Coop.active ? 46 : 14;
     const now = performance.now(),
       dpr = Camera.dpr || 1;
     const key = (open ? 1 : 0) + ':' + dpr;
@@ -276,8 +311,13 @@ export const HUD = (() => {
     ctx.fillText(xpTxt, w / 2, 9);
 
     // ---------- health + level ----------
+    // On desktop the whole panel (name, level, health, effects) is drawn bigger.
+    const desk = !touch && w >= 1000,
+      K = desk ? 1.3 : 1;
     const px = 16,
       py = 20;
+    ctx.save();
+    ctx.scale(K, K);
     ctx.font = F(800, 13);
     ctx.fillStyle = '#eaf2ff';
     ctx.textAlign = 'left';
@@ -312,6 +352,7 @@ export const HUD = (() => {
       ex += ER * 2 + 12;
     }
     const effects = ex > px + ER;
+    ctx.restore();
 
     // ---------- clock / biome / kills ----------
     // Story: the clock counts down to the gym, with the route's name and a progress line
@@ -320,17 +361,32 @@ export const HUD = (() => {
     ctx.textAlign = 'center';
     ctx.font = F(800, story && story.gym ? 20 : 26);
     ctx.fillStyle = story && story.gym ? '#ffd23f' : 'rgba(255,255,255,.95)';
-    ctx.fillText(!story ? U.mmss(st.time) : story.gym ? story.battle.toUpperCase() : U.mmss(story.clock), w / 2, 42);
+    const clock = !story ? U.mmss(st.time) : story.gym ? story.battle.toUpperCase() : U.mmss(story.clock);
+    ctx.fillText(clock, w / 2, 42);
     ctx.font = F(600, 10);
     ctx.fillStyle = '#8fa3c4';
     const place = story ? story.place : World.biomeName();
     ctx.fillText(place.toUpperCase() + '  ·  ' + pl.kills + ' DEFEATED  ·  ' + pl.coins + ' COINS', w / 2, 58);
     if (story && !story.gym) {
-      const sw = 150,
+      const sw = desk ? 230 : 150,
+        sh = desk ? 6 : 4,
         sx = (w - sw) / 2;
-      bar(ctx, sx, 62, sw, 4, story.progress, '#ffd23f');
+      bar(ctx, sx, 62, sw, sh, story.progress, '#ffd23f');
       ctx.fillStyle = '#ff8ad8';
-      for (const m of story.marks) ctx.fillRect(Math.round(sx + sw * m) - 1, 61, 2, 6);
+      for (const m of story.marks) ctx.fillRect(Math.round(sx + sw * m) - 1, 61, 2, sh + 2);
+    }
+
+    // ---------- x2 speed (top right, left of the touch pause button; solo only) ----------
+    let topR = w - 16 - (touch ? 56 : 0); // right edge free for the weather box
+    if (!Coop.active) {
+      const sa = touch ? Touch.safeArea() : { right: 0, top: 0 },
+        sw = 64,
+        sh = 30;
+      const sx = (touch && !Touch.spot('pause') ? w - 60 - Math.min(44, sa.right) : w - 16 - Math.min(44, sa.right)) - sw,
+        sy = touch ? 17 + Math.min(20, sa.top) : 12;
+      drawSpeed(ctx, sx, sy, sw, sh, Game.fast);
+      Touch.addButton(sx, sy, sw, sh, () => Game.toggleFast(), 8);
+      topR = sx - 8;
     }
 
     // ---------- weather (top right) ----------
@@ -340,7 +396,7 @@ export const HUD = (() => {
       ctx.textAlign = 'left';
       const txt = wx.name.toUpperCase() + ' · ' + Math.ceil(wx.left) + 's';
       const tw = ctx.measureText(txt).width + 40;
-      const x0 = w - tw - 16 - (touch ? 56 : 0),
+      const x0 = topR - tw,
         y0 = 14;
       roundRect(ctx, x0, y0, tw, 26, 9);
       ctx.fillStyle = 'rgba(0,0,0,.55)';
@@ -389,7 +445,7 @@ export const HUD = (() => {
       ctx.restore();
     }
 
-    if (Coop.active) drawCoop(ctx, w, h, pl, px, py + (effects ? 36 + ER * 2 + 20 : 40));
+    if (Coop.active) drawCoop(ctx, w, h, pl, px * K, (py + (effects ? 36 + ER * 2 + 20 : 40)) * K);
 
     if (Settings.get('recount')) drawRecount(ctx, w, st, touch);
 

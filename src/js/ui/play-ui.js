@@ -7,9 +7,12 @@
  * The last tab you opened is remembered on this device.
  */
 import { U } from '../core/util.js';
+import { I18n } from '../core/i18n.js';
 import { Balance } from '../data/balance.js';
 import { DEX_BY } from '../data/pokedex.js';
 import { Stages } from '../data/stages.js';
+import { Perks } from '../data/perks.js';
+import { AchDefs } from '../data/achievements.js';
 import { DB } from '../core/db.js';
 import { Audio } from '../core/audio.js';
 import { Social } from '../net/social.js';
@@ -67,6 +70,61 @@ export const PlayUI = (() => {
     const body = $('play-body');
     body.innerHTML = '';
     MODES.find(m => m.id === tab).render(body);
+    body.appendChild(perksPanel());
+  }
+
+  // ---------------- Trainer perks (data/perks.js) ----------------
+  // Every perk as a chip: tap an unlocked one to equip or unequip it (up to the slots you have).
+
+  /** "12 / 25": how far an achievement is. */
+  const achProgress = (a, s) =>
+    Math.min(a.goal, a.value(s)).toLocaleString(I18n.locale) + ' / ' + a.goal.toLocaleString(I18n.locale);
+
+  function perksPanel() {
+    const s = DB.save;
+    const slots = Perks.slots(s),
+      on = Perks.equipped(s);
+    const next = Perks.B.slots[slots];
+    const el = document.createElement('div');
+    el.className = 'panel perks-panel';
+    el.innerHTML = `<div class="row between"><b>Trainer perks</b><span class="sub">${on.length} / ${slots} equipped</span></div>
+      <p class="sub" style="margin:2px 0 8px">Earn achievements to unlock perks, then equip them for your runs.${
+        next != null ? ` <span>One more slot at ${next} achievements.</span>` : ''
+      }</p>
+      <div class="perk-list">${Perks.LIST.map(p => {
+        const ok = Perks.unlocked(s, p.id),
+          eq = on.includes(p.id);
+        const ach = AchDefs.BY[p.ach];
+        return `<button class="perk${eq ? ' on' : ''}${ok ? '' : ' locked'}" data-perk="${p.id}" data-sfx="none">
+          ${Icons.html(p.icon, 28)}<span><b>${p.name}</b><small>${p.desc}</small>
+          ${ok ? '' : `<small class="perk-need">Earn «${ach ? ach.name : p.ach}»</small>`}</span>
+          ${ok || !ach ? '' : `<span class="perk-tip"><b>${ach.name}</b><small>${ach.desc}</small><small class="perk-need">${achProgress(ach, s)}</small></span>`}</button>`;
+      }).join('')}</div>`;
+    el.querySelectorAll('[data-perk]').forEach(b => {
+      b.onclick = () => {
+        const id = b.dataset.perk;
+        if (!Perks.unlocked(s, id)) {
+          // (On touch there is no hover: the requirement comes as a notice.)
+          const ach = AchDefs.BY[Perks.BY[id].ach];
+          Audio.sfx('error');
+          UI.toast(ach ? `${I18n.t(ach.desc)} · ${achProgress(ach, s)}` : 'Earn its achievement to unlock this perk');
+          return;
+        }
+        const list = Perks.equipped(s);
+        const i = list.indexOf(id);
+        if (i >= 0) list.splice(i, 1);
+        else if (list.length >= slots) {
+          Audio.sfx('error');
+          UI.toast('All your perk slots are in use: unequip one first');
+          return;
+        } else list.push(id);
+        s.perks = list;
+        DB.commit();
+        Audio.sfx('select');
+        render();
+      };
+    });
+    return el;
   }
 
   // ---------------- Endless ----------------

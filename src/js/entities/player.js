@@ -85,9 +85,23 @@ export class Player {
     this.power = null; // active altar power: { def, t, dur }
     this.slowT = 0; // stuck by a trap
     this.item = null; // held item (data/items.js), one per run
-    this.sashT = -999; // last time the Focus Sash saved you
+    this.sashCd = 0; // Focus Sash cooldown left (game seconds, so it holds at x2 speed)
+    this.shinySash = this.shiny; // shiny partner: one free save per run (Balance.items.shinySash)
     this.bellHeal = 0; // pending Shell Bell healing
     this.statsTaken = {}; // stat upgrades taken (evolution condition)
+
+    // Trainer perks (data/perks.js, set by Perks.apply) and Playstyle achievement tracking.
+    this.perks = [];
+    this.cardOffer = 0; // level-up cards (0 = Balance.levelup.offer)
+    this.bossBond = false; // bosses give a bond
+    this.lastStand = false; // the next knockout leaves you standing (once)
+    this.age = 0; // seconds alive this run
+    this.firstHit = null; // `age` when you first took damage
+  }
+
+  /** Damage taken, for the "Untouchable" achievement (also weather chip damage). */
+  noteHit() {
+    if (this.firstHit == null) this.firstHit = this.age;
   }
 
   /** Seconds you must stand next to a downed teammate to revive them. */
@@ -326,6 +340,7 @@ export class Player {
     const close = this.activeGroup().some(m => m.kind === 'melee') ? B.meleeGuard : 1;
     const d = pure ? Math.max(1, amount) : Math.max(1, amount * (1 - this.reduction) * close);
     this.hp -= d;
+    this.noteHit();
     this.invuln = B.hurtInvuln;
     this.flash = 0.14;
     Audio.sfx('hurt');
@@ -340,12 +355,36 @@ export class Player {
     FX.burst(this.x, this.y - this.bodyH * 0.5, '#ff5f6d', 6, 90);
     // Focus Sash: survive the hit with 1 HP (once every `cooldown` s).
     const sash = Balance.items.focusSash;
-    if (this.hp <= 0 && this.hasItem('focussash') && performance.now() - this.sashT > sash.cooldown * 1000) {
-      this.sashT = performance.now();
+    if (this.hp <= 0 && this.hasItem('focussash') && this.sashCd <= 0) {
+      this.sashCd = sash.cooldown;
       this.hp = 1;
       this.invuln = sash.invuln;
       FX.dmgText(this.x, this.y - this.bodyH - 16, 'Focus Sash!', '#ff9a3d', true);
       FX.ring(this.x, this.y, 6, 70, '#ff9a3d', 0.5, 4);
+    }
+    // Shiny partner: the first knockout of the run leaves you at 1 HP with a sparkle that pushes enemies back.
+    const ss = Balance.items.shinySash;
+    if (this.hp <= 0 && this.shinySash) {
+      this.shinySash = false;
+      this.hp = 1;
+      this.invuln = ss.invuln;
+      for (const e of EnemyMgr.queryCircle(this.x, this.y, ss.radius)) {
+        if (!e.dead) e.hurt(ss.dmg + this.level * ss.perLevel, '#9ae6ff', e.x - this.x, e.y - this.y, ss.knock);
+      }
+      FX.dmgText(this.x, this.y - this.bodyH - 16, 'Shiny Sash!', '#9ae6ff', true);
+      FX.ring(this.x, this.y, 8, ss.radius, '#9ae6ff', 0.6, 5);
+      FX.burst(this.x, this.y - this.bodyH * 0.5, '#fff4a8', 24, 220);
+      Camera.kick(0.8);
+      Audio.sfx('shiny');
+    }
+    // Last stand perk: once per run, back up with part of your HP.
+    if (this.hp <= 0 && this.lastStand) {
+      const L = Balance.perks.lastStand;
+      this.lastStand = false;
+      this.hp = Math.max(1, this.maxHp * L.hp);
+      this.invuln = L.invuln;
+      FX.dmgText(this.x, this.y - this.bodyH - 16, 'Last stand!', '#ffd23f', true);
+      FX.ring(this.x, this.y, 6, 110, '#ffd23f', 0.7, 5);
     }
     if (this.hp <= 0) {
       this.hp = 0;
@@ -420,7 +459,9 @@ export class Player {
   update(dt) {
     this.anim.update(dt);
     if (this.dead) return;
+    this.age += dt;
     if (this.invuln > 0) this.invuln -= dt;
+    if (this.sashCd > 0) this.sashCd -= dt;
     if (this.flash > 0) this.flash -= dt;
     if (this.attackFace > 0) this.attackFace -= dt;
 

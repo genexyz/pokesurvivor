@@ -111,7 +111,7 @@ export const StatsUI = (() => {
     return `<div class="card move-card${m.evolved ? ' evo' : ''}">
       <div class="ico" style="background:${col}33">${Icons.html('move:' + m.id, 32)}</div>
       <div class="txt"><div class="nm">${m.name} <span class="tag-chip" style="background:${col}">${U.TYPE_NAME[m.type] || m.type}</span>
-        <span class="tag-chip">Lv.${m.lvl}</span></div>
+        <span class="tag-chip lv">Lv.${m.lvl}</span></div>
         <div class="ds">${m.desc || ''}</div>
         <div class="mt-st">${facts}</div>
         ${next ? `<div class="ds"><small>Next: ${next}</small></div>` : ''}

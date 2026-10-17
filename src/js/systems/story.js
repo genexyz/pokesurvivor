@@ -46,6 +46,7 @@ export const Story = (() => {
   let center = null;
   let warned = false,
     pulled = false;
+  let minHp = 1; // lowest health fraction during the gym fight
 
   // The gym leader's sprite (data/stages.js leaderArt), standing at the back of the arena,
   // and how long the camera still looks at them after arriving.
@@ -67,6 +68,7 @@ export const Story = (() => {
     phaseT = 0;
     center = null;
     warned = pulled = false;
+    minHp = 1;
   }
   function end() {
     begin(null);
@@ -120,6 +122,8 @@ export const Story = (() => {
       return;
     }
     if (!center) return;
+    // Lowest health during the gym fight ("Flawless" achievement).
+    if (phase !== 'won' && phase !== 'done' && pl.maxHp > 0) minHp = Math.min(minHp, pl.hp / pl.maxHp);
     for (const p of Game.everyone()) Rift.keepIn(p, center.x, center.y, B.gym.arenaR);
     for (const e of EnemyMgr.all()) if (!e.remote) Rift.keepIn(e, center.x, center.y, B.gym.arenaR);
     phaseT -= dt;
@@ -262,7 +266,8 @@ export const Story = (() => {
       first: won && !prev,
       reward: null,
       best: false,
-      reached: won ? null : phase === 'route' ? stage.legs[Math.max(0, leg)].name : stage.gym.name
+      reached: won ? null : phase === 'route' ? stage.legs[Math.max(0, leg)].name : stage.gym.name,
+      flawless: won && minHp >= B.flawless // never under half health in the gym
     };
     if (won) {
       r.reward = B.reward(stage.pace, r.first);

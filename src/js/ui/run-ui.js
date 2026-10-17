@@ -1,6 +1,5 @@
 /* ============ run-ui.js — level-up cards, pause and end of run ============ */
 import { U } from '../core/util.js';
-import { RNG } from '../core/rng.js';
 import { Balance } from '../data/balance.js';
 import { I18n } from '../core/i18n.js';
 import { DEX_BY } from '../data/pokedex.js';
@@ -152,7 +151,6 @@ export const RunUI = (() => {
       }
       ${r.record ? '<div style="grid-column:1/-1;text-align:center" class="gold">New time record!</div>' : ''}
       ${sr && sr.best && !sr.first ? '<div style="grid-column:1/-1;text-align:center" class="gold">New best clear time!</div>' : ''}
-      <div style="grid-column:1/-1"><span>Seed</span><b translate="no">${RNG.code()}</b></div>
       ${r.damage && r.damage.total ? `<details class="over-more" style="grid-column:1/-1"><summary>Damage</summary>${StatsUI.damageHtml(r.damage)}</details>` : ''}
       ${r.player ? `<details class="over-more" style="grid-column:1/-1"><summary>Stats</summary>${StatsUI.statsHtml(r.player)}</details>` : ''}`;
     $('btn-again').onclick = onBack;
@@ -323,14 +321,21 @@ export const RunUI = (() => {
     UI.soundControls($('pause-sound'));
     $('pause-coop').classList.toggle('hidden', !coop);
     $('btn-quit').textContent = coop ? 'Leave the game' : 'Quit run';
-    $('pause-seed').textContent = RNG.custom
-      ? `Chosen seed ${RNG.code()}: this run doesn't count for the leaderboard`
-      : `Seed ${RNG.code()}`;
+    $('pause-speed').classList.toggle('hidden', coop);
+    syncSpeed();
     UI.show('scr-pause');
+  }
+
+  /** The pause menu's speed switch shows the current speed. */
+  function syncSpeed() {
+    document.querySelectorAll('#pause-speed button').forEach(b => b.classList.toggle('on', (b.dataset.v === '2') === Game.fast));
   }
 
   function wirePause(onResume, onQuit) {
     $('btn-resume').onclick = onResume;
+    document.querySelectorAll('#pause-speed button').forEach(
+      b => (b.onclick = () => (b.dataset.v === '2') !== Game.fast && Game.toggleFast())
+    );
     $('btn-quit').onclick = onQuit;
     document.querySelectorAll('#pause-tabs .gen-tab').forEach(b => (b.onclick = () => pauseShowTab(b.dataset.t)));
   }
@@ -348,6 +353,7 @@ export const RunUI = (() => {
     closeLevelUp,
     showOver,
     wirePause,
-    showPause
+    showPause,
+    syncSpeed
   };
 })();

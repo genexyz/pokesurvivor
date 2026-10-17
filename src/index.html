@@ -118,7 +118,10 @@
       <canvas id="menu-partner" class="stage" width="260" height="200"></canvas>
       <div class="nm" id="menu-partner-name"></div>
       <div class="lv" id="menu-partner-info"></div>
-      <div class="seg hidden" id="menu-shiny"><button data-v="0">Normal</button><button data-v="1"></button></div>
+      <div class="shiny-pick">
+        <div class="seg hidden" id="menu-shiny"><button data-v="0">Normal</button><button data-v="1"></button></div>
+        <div class="tip-box" id="menu-shiny-tip"></div>
+      </div>
     </div>
   </div>
   <div class="menu-right">
@@ -392,6 +395,7 @@
         <div class="row" style="margin-top:8px">
           <label for="upg-mon" style="margin:0">Pokémon</label>
           <select id="upg-mon" class="field" style="width:auto;min-width:220px"></select>
+          <button id="upg-all" class="btn small gold" data-sfx="none" style="margin-left:auto"></button>
         </div>
       </div>
     </div>
@@ -435,7 +439,10 @@
   <button id="pull-skip" class="btn small hidden">Skip <kbd>Space</kbd></button>
   <p class="pull-summary" id="pull-summary"></p>
   <div class="pull-results" id="pull-results"></div>
-  <button id="pull-close" class="btn gold hidden">Continue</button>
+  <div class="pull-actions">
+    <button id="pull-again" class="btn hidden" data-sfx="none">Open again · <span id="cost-again"></span></button>
+    <button id="pull-close" class="btn gold hidden">Continue</button>
+  </div>
 </div>
 
 <!-- ====== During the run ====== -->
@@ -478,10 +485,13 @@
     <div id="pause-stats" class="pause-pane hidden"></div>
     <div id="pause-dmg" class="pause-pane hidden"></div>
     <div id="pause-run" class="pause-pane">
-      <p class="sub kbd-hint"><kbd>WASD</kbd> move · <kbd>1</kbd>–<kbd>4</kbd> attack · <kbd>Q</kbd>/<kbd>E</kbd> cycle · <kbd>R</kbd> damage · <kbd>Esc</kbd> pause</p>
+      <p class="sub kbd-hint"><kbd>WASD</kbd> move · <kbd>1</kbd>–<kbd>4</kbd> attack · <kbd>Q</kbd>/<kbd>E</kbd> cycle · <kbd>R</kbd> damage · <kbd>F</kbd> speed · <kbd>Esc</kbd> pause</p>
       <p class="sub touch-hint">Drag your finger to move · tap a move to switch</p>
       <p id="pause-coop" class="note hidden">Group game: the game keeps running while you're here.</p>
-      <p id="pause-seed" class="sub" translate="no"></p>
+      <div id="pause-speed" class="speed-row">
+        <span class="speed-lbl">Game speed</span>
+        <div class="seg speed-seg"><button data-v="1">×1</button><button data-v="2">×2</button></div>
+      </div>
       <div id="pause-sound" class="sound-inline"></div>
       <div class="row" style="justify-content:center">
         <button id="btn-resume" class="btn gold">Continue</button>

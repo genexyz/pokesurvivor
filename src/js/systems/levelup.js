@@ -223,8 +223,8 @@ export const LevelUp = (() => {
     return out;
   }
 
-  /** Returns `n` (Balance.levelup.offer) different cards, picked by weight. */
-  function offer(pl, n = B.offer) {
+  /** Returns `n` (Balance.levelup.offer, or the Keen eye perk's) different cards, picked by weight. */
+  function offer(pl, n = pl.cardOffer || B.offer) {
     const pool = candidates(pl);
     const picked = [];
     const used = new Set();

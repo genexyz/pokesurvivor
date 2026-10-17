@@ -8,7 +8,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "node server/index.mjs --dev",
+    "dev": "node --use-system-ca server/index.mjs --dev",
     "build": "node scripts/check_stages.js && node scripts/build.js && npm run build:pages",
     "build:force": "node scripts/check_stages.js && node scripts/build.js --force && npm run build:pages",
     "build:debug": "node scripts/build.js --expose && npm run build:pages",

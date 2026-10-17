@@ -108,6 +108,9 @@ export const DB = (() => {
       itemsFound: {}, // id -> date: equippable items found
       evoMoves: {}, // id -> date: moves evolved at some point
       ach: {}, // id -> date: achievements earned
+      typesMastered: {}, // type -> date: survived 10 minutes with a Pokémon of that type
+      weathers: {}, // kind -> date: weathers lived through to the end
+      perks: [], // equipped Trainer perks (data/perks.js)
       gifts: {}, // id -> date: one-time gifts claimed (server/api.mjs, claimGift)
       missions: {}, // daily / weekly missions (systems/progress.js)
       profile: { favs: [], title: '' }, // public profile: 3 favourites and title

@@ -28,6 +28,9 @@ import { DB } from '../core/db.js';
 import { Audio } from '../core/audio.js';
 import { MissionDefs } from '../data/missions.js';
 import { AchDefs } from '../data/achievements.js';
+import { Perks } from '../data/perks.js';
+import { FX } from '../entities/fx.js';
+import { Game } from '../game.js';
 import { Rift } from './rift.js';
 import { Story } from './story.js';
 import { Judgment } from './judgment.js';
@@ -222,8 +225,34 @@ export const Progress = (() => {
       return;
     }
     if (e.boss) Story.onKill(e); // a story mini-boss grants a bond
+    // Bond hunter perk: any other boss grants one too (not gym leaders or the rift legendary, already a bond).
+    const pl = Game.player;
+    if (e.boss && !e.gym && !e.legend && !Rift.inArena && pl && pl.bossBond && !pl.dead) {
+      pl.bonds++;
+      FX.dmgText(pl.x, pl.y - pl.bodyH - 10, 'Bond!', '#ff8ad8', true);
+    }
+    if (e.behavior === 'thief') stat('goblins');
     const legend = e.legend || (Rift.inArena && e.boss) ? e.dex : 0;
     event('kill', { types: e.types || [], boss: !!e.boss, legend });
+  }
+
+  /** Adds to a counter in save.stats (events during a run; committed with the run). */
+  function stat(key, n = 1) {
+    const s = DB.save;
+    if (!s) return;
+    s.stats = s.stats || {};
+    s.stats[key] = (s.stats[key] || 0) + n;
+    checkAch();
+  }
+
+  /** A weather lived through to the end ("Storm chaser"). */
+  function weatherSeen(kind) {
+    const s = DB.save;
+    if (!s || !kind) return;
+    s.weathers = s.weathers || {};
+    if (s.weathers[kind]) return;
+    s.weathers[kind] = Date.now();
+    checkAch();
   }
 
   // ---------------- achievements ----------------
@@ -238,7 +267,8 @@ export const Progress = (() => {
       if (a.value(s) < a.goal) continue;
       s.ach[a.id] = Date.now();
       grant(a.reward);
-      notify('Achievement: ' + a.name + '!', a.title ? 'New title: ' + a.title : '', a);
+      const perk = Perks.byAch[a.id];
+      notify('Achievement: ' + a.name + '!', perk ? 'New perk: ' + perk.name : a.title ? 'New title: ' + a.title : '', a);
     }
   }
 
@@ -293,5 +323,5 @@ export const Progress = (() => {
     }, 2800);
   }
 
-  return { ensure, event, kill, claim, reroll, checkAch, titles, titleText, pending, text, done, rewardText, grant };
+  return { ensure, event, kill, stat, weatherSeen, claim, reroll, checkAch, titles, titleText, pending, text, done, rewardText, grant };
 })();

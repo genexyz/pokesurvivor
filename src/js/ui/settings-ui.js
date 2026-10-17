@@ -16,7 +16,6 @@ import { Flow, Game } from '../game.js';
 export const SettingsUI = (() => {
   const $ = UI.$;
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-  const VERSION = '1.2 · 2026-10-09';
   let tab = 'sound';
 
   function init() {
@@ -169,6 +168,7 @@ export const SettingsUI = (() => {
           ['always', 'Always'],
           ['never', 'Never']
         ]) +
+        toggle('autoFast', 'Start at ×2 speed', 'Solo runs start at double speed. You can still switch it during the run (the ×2 button or F).') +
         section('On mobile or tablet') +
         `<p class="sub">Put your finger anywhere and drag to move: the joystick appears where you touch. Tap a move at the bottom to switch to it and the top-right button to pause. Play in landscape.</p>` +
         `<div class="set-row"><div class="grow"><b>Joystick size</b><small>How far you need to drag your finger.</small></div></div>` +
@@ -193,7 +193,7 @@ export const SettingsUI = (() => {
       renderAccount(box);
     } else {
       box.innerHTML =
-        `<div class="about-logo">PokéSurvivor</div><p class="sub center">Version ${esc(VERSION)}</p>` +
+        `<div class="about-logo">PokéSurvivor</div>` +
         `<p class="sub">Fan game <b>free and non-profit</b>: no ads or purchases. Pokémon and its characters are owned by Nintendo, Creatures and GAME FREAK; this project is not affiliated with them.</p>` +
         section('Credits') +
         `<ul class="credits">

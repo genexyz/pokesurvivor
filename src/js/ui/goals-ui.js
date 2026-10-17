@@ -12,6 +12,7 @@ import { DB } from '../core/db.js';
 import { Audio } from '../core/audio.js';
 import { MissionDefs } from '../data/missions.js';
 import { AchDefs } from '../data/achievements.js';
+import { Perks } from '../data/perks.js';
 import { Progress } from '../systems/progress.js';
 import { Social } from '../net/social.js';
 import { Ranking } from '../net/ranking.js';
@@ -178,7 +179,8 @@ export const GoalsUI = (() => {
       <div class="a-txt"><b>${esc(a.name)}</b><small>${esc(a.desc)}</small>
         ${ok ? '' : `<div class="bar"><i style="width:${(v / a.goal) * 100}%"></i></div>`}
         <div class="a-rw">${ok ? 'Unlocked!' : v.toLocaleString(I18n.locale) + ' / ' + a.goal.toLocaleString(I18n.locale)} · ${Progress.rewardText(a.reward)}
-        ${a.title ? ` · <span class="gold">Title: ${esc(a.title)}</span>` : ''}</div></div>`;
+        ${a.title ? ` · <span class="gold">Title: ${esc(a.title)}</span>` : ''}
+        ${Perks.byAch[a.id] ? ` · <span class="perk-tag">Unlocks perk: ${esc(Perks.byAch[a.id].name)}</span>` : ''}</div></div>`;
     return el;
   }
 
@@ -231,10 +233,13 @@ export const GoalsUI = (() => {
 
     const prev = document.createElement('button');
     prev.className = 'btn gold';
-    prev.style.marginTop = '16px';
     prev.textContent = 'View my public profile';
     prev.onclick = () => ProfileUI.showData(Social.profileData());
-    box.appendChild(prev);
+    // Its own line under the title picker (whose trigger is inline).
+    const row = document.createElement('div');
+    row.style.marginTop = '16px';
+    row.appendChild(prev);
+    box.appendChild(row);
   }
 
   function pickFav(i) {

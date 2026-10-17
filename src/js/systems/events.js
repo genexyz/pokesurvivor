@@ -36,6 +36,7 @@ import { Spawner } from './spawner.js';
 import { Rift } from './rift.js';
 import { Judgment } from './judgment.js';
 import { Coop } from '../net/coop.js';
+import { Progress } from './progress.js';
 import { Icons } from '../ui/icons.js';
 import { HUD } from '../ui/hud.js';
 import { Game } from '../game.js';
@@ -66,6 +67,11 @@ export const Events = (() => {
   function update(dt, players, time) {
     if (cur) {
       cur.t += dt;
+      // A golden hour lived to the end (on every computer): "Golden touch" achievement.
+      if (cur.id === 'gold' && !cur.counted && cur.t >= cur.dur) {
+        cur.counted = true;
+        if (Game.player && !Game.player.dead) Progress.stat('goldHours');
+      }
       if (cur.id !== 'lost' && cur.t >= cur.dur && authority()) end();
     }
     if (lost) lostTick(dt, players);
@@ -318,6 +324,7 @@ export const Events = (() => {
     const name = (DEX_BY[dex] || {}).name || '';
     FX.burst(lost ? lost.tx : pl.x, lost ? lost.ty - 10 : pl.y, '#7dffb0', 24, 180);
     Audio.sfx('legend');
+    Progress.stat('rescues');
     if (grant) Game.onRescue(dex, name);
     else say(`You brought ${name} home! It thanks you`, 3.2, '#7dffb0');
   }

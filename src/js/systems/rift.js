@@ -24,6 +24,7 @@ import { Balance } from '../data/balance.js';
 import { DEX, DEX_BY } from '../data/pokedex.js';
 import { SPRITE_META } from '../data/sprites-meta.js';
 import { DB } from '../core/db.js';
+import { Perks } from '../data/perks.js';
 import { Audio } from '../core/audio.js';
 import { Sprites } from '../core/sprites.js';
 import { Camera } from '../core/camera.js';
@@ -99,8 +100,9 @@ export const Rift = (() => {
       const x = near.x + Math.cos(a) * d,
         y = near.y + Math.sin(a) * d * 0.85;
       if (!World.isFree(x, y, 22)) continue;
-      show(x, y, B.ttl);
-      if (Coop.isHost) Coop.broadcast(['rift', Math.round(x), Math.round(y), B.ttl]);
+      const ttl = B.ttl + (Perks.on('rift') ? Perks.B.riftTtl : 0); // Rift sense perk
+      show(x, y, ttl);
+      if (Coop.isHost) Coop.broadcast(['rift', Math.round(x), Math.round(y), ttl]);
       return;
     }
   }
@@ -140,7 +142,7 @@ export const Rift = (() => {
       ty: 5000 + Math.floor(R.next() * 3000),
       r: B.arenaR,
       dex: mon.dex,
-      shiny: Sprites.hasShiny(mon.dex) && R.chance(B.shinyChance),
+      shiny: Sprites.hasShiny(mon.dex) && R.chance(B.shinyChance * Spawner.shinyCharmK),
       // The arena matches one of its types, at random.
       type: forceType || R.pick(mon.types)
     };

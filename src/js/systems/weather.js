@@ -27,6 +27,7 @@ import { Spawner } from './spawner.js';
 import { Rift } from './rift.js';
 import { Judgment } from './judgment.js';
 import { Coop } from '../net/coop.js';
+import { Progress } from './progress.js';
 
 export const Weather = (() => {
   const KINDS = {
@@ -151,7 +152,11 @@ export const Weather = (() => {
   function update(dt, time, pl) {
     if (cur) {
       cur.t += dt;
-      if (cur.t >= cur.dur) cur = null;
+      if (cur.t >= cur.dur) {
+        // Lived through it to the end: counts for "Storm chaser" (data/achievements.js).
+        if (pl && !pl.dead) Progress.weatherSeen(cur.kind);
+        cur = null;
+      }
     } else if (authority() && time > B.from && !Rift.inArena && !Judgment.active) {
       checkT -= dt;
       if (checkT <= 0) {
@@ -172,6 +177,7 @@ export const Weather = (() => {
         const d = Math.max(1, pl.maxHp * B.chipPlayer);
         if (pl.hp > d + 1) {
           pl.hp -= d;
+          pl.noteHit();
           FX.dmgText(pl.x, pl.y - pl.bodyH - 4, '-' + Math.round(d), def().color);
         }
       }

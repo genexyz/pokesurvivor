@@ -37,6 +37,7 @@ Balance.spawn = {
   rate: t => (1.6 + t * 0.028 + Math.pow(t / 60, 1.6) * 0.5) * Balance.spawn.density,
   bossFightRate: 0.25, // trickle multiplier while a boss is alive (and no swarms)
   shinyRate: 1 / 4096, // chance that a wild enemy or boss is shiny
+  shinyCharm: 4, // Shiny Charm: × wild shiny rate (also the rift legendary) with a shiny partner (anyone's, in co-op)
   ring: { min: 10, max: 70 }, // spawn distance beyond the view's outer radius (px)
   ringJitter: 0.9, // angle jitter (radians, ±) when looking for a free spot / spawning ahead
   swarm: {
@@ -122,6 +123,7 @@ Balance.run = {
  */
 Balance.story = {
   duration: 600, // seconds of routes before the gym
+  flawless: 0.5, // "Flawless" achievement: lowest health fraction allowed in the gym
   cap: 48, // simultaneous enemies (endless: Balance.spawn.cap)
   density: 1, // × endless spawn rate (a stage can add its own `density`)
   xpK: 1, // × experience of every enemy
@@ -461,12 +463,26 @@ Balance.levelup = {
   statSample: 5, // stat candidates drawn (plus any an evolution waits for)
   // Card weights (higher = more likely).
   weight: { new: 10, evo: 40, up: 8, statEvo: 14, statFreeSlots: 4, stat: 7 },
-  armorCap: 0.7 // the Armor card never takes damage reduction above this
+  armorCap: 0.7, // the Armor card never takes damage reduction above this
+  perkOffer: 4 // cards per level-up with the Keen eye perk
+};
+
+// Trainer perks (data/perks.js): unlocked by achievements, equipped before a run.
+Balance.perks = {
+  slots: [0, 25, 60], // achievements needed for the 1st, 2nd and 3rd slot
+  shiny: 2, // Lucky star: wild shiny chance ×
+  rerolls: 1, // Second chance: extra card rerolls per run
+  riftTtl: 20, // Rift sense: extra seconds a rift stays open
+  magnet: 1.4, // Magnetic: pickup range ×
+  lastStand: { hp: 0.3, invuln: 2 } // Last stand: HP fraction left and invulnerable seconds
 };
 
 Balance.items = {
   lifeOrb: { cost: 0.01, min: 1 }, // HP lost per attack: fraction of max HP, at least `min`
   focusSash: { cooldown: 60, invuln: 1.2 }, // s between saves; i-frames after a save, s
+  // Shiny partner, once per run: a knockout leaves you at 1 HP and pushes back enemies within `radius` px.
+  // damage = dmg + perLevel × your level (only so the push reaches the host in co-op); i-frames, s
+  shinySash: { invuln: 2.5, radius: 170, dmg: 10, perLevel: 2, knock: 280 },
   shellBell: { frac: 0.04, cap: 4, rate: 4 }, // heal = damage × frac, pending heal capped at `cap`, paid at `rate` HP/s
   rockyHelmet: { dmg: 15, perLevel: 4, knock: 80 } // damage to an enemy touching you = dmg + perLevel × level
 };

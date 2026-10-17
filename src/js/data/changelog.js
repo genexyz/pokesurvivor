@@ -11,15 +11,57 @@ export const CHANGELOG = [
     title: ['Story mode in every region', 'Modo Historia en todas las regiones'],
     new: [
       [
+        'Game speed ×2: in solo runs (story and the other modes), the ×2 button at the top right of the screen, "Game speed" in the pause menu or the F key make the whole game go twice as fast. Runs start at ×1, or at ×2 with Settings > Controls > "Start at ×2 speed". ×2 runs still count for the leaderboard. Not available in co-op.',
+        'Velocidad ×2: en las partidas en solitario (Historia y los demás modos), el botón ×2 arriba a la derecha de la pantalla, «Velocidad del juego» en el menú de pausa o la tecla F hacen que todo el juego vaya el doble de rápido. Las partidas empiezan a ×1, o a ×2 con Ajustes > Controles > «Empezar a velocidad ×2». Las partidas a ×2 siguen contando para la clasificación. No disponible en cooperativo.'
+      ],
+      [
+        'Trainer perks: some achievements now unlock a perk you can equip on the Play screen before a run, such as 4 level-up cards, a bond from every boss, starting with a held item, or getting back up once with 30% HP. You start with 1 slot and get more at 25 and 60 achievements.',
+        'Ventajas de entrenador: algunos logros ahora desbloquean una ventaja que puedes equipar en la pantalla Jugar antes de una partida, como ver 4 cartas al subir de nivel, un vínculo por cada jefe, empezar con un objeto equipado o levantarte una vez con el 30% de vida. Empiezas con 1 casilla y consigues más con 25 y 60 logros.'
+      ],
+      [
+        'New Playstyle achievements that reward how you play: survive with every type, go 3 minutes without being hit, win a gym without dropping below half health or with a single move, bond 4 moves, live through every weather, and more.',
+        'Nuevos logros de Estilo de juego que premian cómo juegas: aguanta con todos los tipos, pasa 3 minutos sin que te golpeen, gana un gimnasio sin bajar de la mitad de vida o con un solo movimiento, vincula 4 movimientos, aguanta todos los climas y más.'
+      ],
+      [
+        'Shiny partners now have a bonus. Shiny Charm: while you play a shiny, wild shinies (and shiny rift legendaries) are 4 times more common, and in co-op the whole team gets it. Shiny Sash: once per run, a hit that would knock you out leaves you at 1 HP, with a sparkle that pushes nearby enemies back.',
+        'Los compañeros shiny ahora tienen un bonus. Amuleto Iris: mientras juegas con un shiny, los shiny salvajes (y los legendarios shiny de la grieta) salen 4 veces más a menudo, y en cooperativo lo tiene todo el equipo. Banda Shiny: una vez por partida, un golpe que te dejaría KO te deja con 1 de vida, con un destello que aparta a los enemigos cercanos.'
+      ],
+      [
+        'Upgrades: an "Upgrade all" button buys every upgrade level of that Pokémon at once and shows what it will cost. If your coins are not enough for everything, it buys as many levels as you can afford, cheapest first.',
+        'Mejoras: un botón «Mejorar todo» compra de una vez todos los niveles de mejora de ese Pokémon y muestra cuánto costará. Si tus monedas no llegan para todo, compra todos los niveles que puedas pagar, los más baratos primero.'
+      ],
+      [
+        'Gacha: after a pull, an "Open again" button lets you do the same pull (×1 or ×10) right away if you still have the tickets for it.',
+        'Gacha: tras una tirada, un botón «Abrir otra vez» te deja hacer la misma tirada (×1 o ×10) al momento si aún tienes los tickets.'
+      ],
+      [
         "Story mode now covers all nine regions: 72 stages, from Brock to Grusha, each with its own routes, wild Pokémon and the leader's real team. In Alola you face the island trials, against Captains and Kahunas, for Z-Crystals. Every region is open from the start; later regions are a bit harder and give more.",
         'El modo Historia ya recorre las nueve regiones: 72 etapas, de Brock a Grusha, cada una con sus rutas, sus Pokémon salvajes y el equipo de verdad del líder. En Alola te enfrentas a las pruebas de las islas, contra capitanes y kahunas, por cristales Z. Todas las regiones están abiertas desde el principio; las últimas son algo más difíciles y dan más.'
       ],
       [
-        'Gym leaders appear next to their best Pokémon, stand at the back of their arena and send out their team when you arrive. Every badge has its own icon, and each region has a champion title to earn, plus "Pokémon Master" for all 72 badges.',
-        'Los líderes de gimnasio aparecen junto a su mejor Pokémon, esperan al fondo de su arena y sacan a su equipo cuando llegas. Cada medalla tiene su icono, y cada región tiene un título de campeón, además de «Maestro Pokémon» por las 72 medallas.'
+        'Gym leaders appear next to their best Pokémon, stand at the back of their arena and send out their team when you arrive. Every badge has its own icon, and each region has a champion title to earn, plus "Grand Champion" for all 72 badges.',
+        'Los líderes de gimnasio aparecen junto a su mejor Pokémon, esperan al fondo de su arena y sacan a su equipo cuando llegas. Cada medalla tiene su icono, y cada región tiene un título de campeón, además de «Gran Campeón» por las 72 medallas.'
+      ]
+    ],
+    chg: [
+      [
+        'The run seed is no longer shown in the pause menu or on the end-of-run screen, and Settings > About no longer shows a version number and date.',
+        'La semilla de la partida ya no se muestra en el menú de pausa ni en la pantalla final, y Ajustes > Acerca de ya no muestra número de versión ni fecha.'
+      ],
+      [
+        "Computer: during a run, your Pokémon's name, level, health and active effects are bigger, and so is Story mode's progress bar.",
+        'Ordenador: durante la partida, el nombre, nivel, vida y efectos activos de tu Pokémon se ven más grandes, igual que la barra de progreso del modo Historia.'
+      ],
+      [
+        "The move tooltip is wider, so the move's level stays on the same line as its name, and the level is now easy to read.",
+        'La ficha de un movimiento es más ancha, así que el nivel del movimiento queda en la misma línea que su nombre, y ahora el nivel se lee bien.'
       ]
     ],
     fix: [
+      [
+        'Profile: the "View my public profile" button no longer sits right against the title picker; it is now on its own line below it.',
+        'Perfil: el botón «Ver mi perfil público» ya no aparece pegado al selector de título; ahora está en su propia línea debajo.'
+      ],
       [
         'Phones: starting a run no longer freezes for a few seconds, and the game no longer stutters every so often while you walk into new ground. The ground is now drawn a little at a time, ahead of where you are going.',
         'Móvil: empezar una partida ya no congela el juego unos segundos, y ya no se traba cada tanto al caminar hacia terreno nuevo. El suelo ahora se dibuja poco a poco, por delante de hacia donde vas.'

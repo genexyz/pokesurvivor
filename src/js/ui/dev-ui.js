@@ -15,6 +15,9 @@ import { Rift } from '../systems/rift.js';
 import { Judgment } from '../systems/judgment.js';
 import { Events } from '../systems/events.js';
 import { Weather } from '../systems/weather.js';
+import { DB } from '../core/db.js';
+import { Perks } from '../data/perks.js';
+import { AchDefs } from '../data/achievements.js';
 import { UI } from './ui.js';
 import { Game } from '../game.js';
 
@@ -95,10 +98,25 @@ export const DevUI = (() => {
   }
 
   function runTools() {
-    const wx = ['sun', 'rain', 'sand', 'snow'];
+    const wx = ['sun', 'rain', 'sand', 'snow', 'fog'];
     return el('div', {}, [
       el('h4', { text: 'Seed' }),
       seedRow(),
+      el('h4', { text: 'Perks' }),
+      row(
+        btn('Unlock all perks', () => {
+          // Earns every achievement that unlocks a perk (and enough for 3 slots), without rewards.
+          const s = DB.save;
+          s.ach = s.ach || {};
+          for (const p of Perks.LIST) s.ach[p.ach] = s.ach[p.ach] || Date.now();
+          for (const a of AchDefs.LIST) {
+            if (Object.keys(s.ach).length >= Perks.B.slots[Perks.B.slots.length - 1]) break;
+            s.ach[a.id] = s.ach[a.id] || Date.now();
+          }
+          DB.commit();
+          UI.toast('Perks unlocked');
+        })
+      ),
       el('h4', { text: 'Run' }),
       row(
         btn(

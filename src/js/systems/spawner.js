@@ -18,6 +18,7 @@ import { Audio } from '../core/audio.js';
 import { Sprites } from '../core/sprites.js';
 import { Camera } from '../core/camera.js';
 import { Enemies } from '../data/enemies.js';
+import { Perks } from '../data/perks.js';
 import { World } from '../world/world.js';
 import { Enemy, EnemyMgr } from '../entities/enemy.js';
 import { Rift } from './rift.js';
@@ -55,8 +56,10 @@ export const Spawner = (() => {
       }
     };
   }
+  /** Shiny Charm: a shiny partner (anyone's, in co-op) multiplies the wild shiny rate. */
+  const charmK = () => (players.some(p => p.shiny) ? B.shinyCharm : 1);
   const shinies = shinyRoller(
-    () => B.shinyRate,
+    () => B.shinyRate * charmK() * (Perks.on('shiny') ? Perks.B.shiny : 1),
     () => R.next()
   );
 
@@ -271,6 +274,10 @@ export const Spawner = (() => {
     shinyRoller,
     get SHINY_RATE() {
       return B.shinyRate;
+    },
+    /** Shiny Charm multiplier right now (1 without a shiny partner). */
+    get shinyCharmK() {
+      return charmK();
     },
     get CAP() {
       return cap();

@@ -31,6 +31,7 @@ import { Moves } from './data/moves.js';
 import { startMoveOf } from './data/starters.js';
 import { Upgrades } from './data/upgrades.js';
 import { Items } from './data/items.js';
+import { Perks } from './data/perks.js';
 import { World } from './world/world.js';
 import { FX } from './entities/fx.js';
 import { Projectiles } from './entities/projectile.js';
@@ -203,6 +204,13 @@ export const Game = (() => {
     }
   }
 
+  /** x2 game speed (the HUD button, the pause menu or F). Solo only: a group shares one clock. */
+  function toggleFast() {
+    if (Coop.active || !pl || state === 'ui' || state === 'over') return;
+    fast = !fast;
+    RunUI.syncSpeed();
+  }
+
   // ---------------- run ----------------
 
   // Seed for the next solo runs (?seed=CODE in the URL or the dev panel); null = random.
@@ -243,7 +251,8 @@ export const Game = (() => {
     biome = 0;
     time = 0;
     pendingLevels = 0;
-    runReal = performance.now();
+    runAllow = 0;
+    fast = !coop && !!Settings.get('autoFast');
     tampered = false;
 
     pl = new Player(mon, perks, !!save.partnerShiny && DB.ownsShiny(mon.dex));
@@ -269,6 +278,8 @@ export const Game = (() => {
       Coop.begin(coop, pl, coopApi);
       Social.setPlaying(true);
     }
+    // Trainer perks (data/perks.js); the world ones (shiny rate, rifts) only from whoever runs the world.
+    Perks.apply(pl, Perks.equipped(save), !Coop.active || Coop.isHost);
     Camera.x = pl.x;
     Camera.y = pl.y;
     Camera.shake = 0;
@@ -479,6 +490,26 @@ export const Game = (() => {
     Audio.sfx('shinyGet');
   };
 
+  /** Run-end records for the Playstyle achievements (data/achievements.js). */
+  function playstyleStats(save, story) {
+    const S = save.stats,
+      mon = pl.mon,
+      max = (k, v) => (S[k] = Math.max(S[k] || 0, Math.floor(v)));
+    // Survived 10 minutes: every type of this Pokémon counts as mastered.
+    if (time >= 600) {
+      save.typesMastered = save.typesMastered || {};
+      for (const t of mon.types) save.typesMastered[t] = save.typesMastered[t] || Date.now();
+    }
+    max('noHitTime', pl.firstHit == null ? pl.age : pl.firstHit);
+    const up = DB.upgradesOf(mon.dex);
+    if (!up.hp && !up.def) max('glassLevel', pl.level);
+    if (pl.moves.length && pl.moves.every(m => mon.types.includes(m.type))) max('monoLevel', pl.level);
+    if (story && story.won) {
+      if (story.flawless) S.flawless = (S.flawless || 0) + 1;
+      if (pl.slots.length === 1 && pl.slots[0].length === 1) S.oneMove = (S.oneMove || 0) + 1;
+    }
+  }
+
   /** @param won  a story stage was cleared (its gym beaten) */
   function endRun(dead = true, won = false) {
     if (state === 'over' || !pl) return;
@@ -515,6 +546,7 @@ export const Game = (() => {
     if (coop) save.stats.bestGroupTime = Math.max(save.stats.bestGroupTime || 0, Math.floor(time));
     save.stats.bestLevel = Math.max(save.stats.bestLevel, pl.level);
     save.stats.coinsEarned += coins;
+    playstyleStats(save, story);
     const judge = Judgment.summary();
     if (judge) Progress.event('judgeEnd', judge);
     Judgment.reset();
@@ -593,11 +625,11 @@ export const Game = (() => {
    *   - the testing functions were used (skipping the clock...)
    * If anything trips, that run isn't submitted to the leaderboard (silently), nothing more.
    */
-  let runReal = 0,
+  let runAllow = 0, // seconds the run clock may have advanced (real time, doubled while at x2)
     tampered = false;
   function clean() {
     if (tampered) return false;
-    if (time > (performance.now() - runReal) / 1000 + 10) return false;
+    if (time > runAllow + 10) return false;
     for (const k of ['hurt', 'update', 'heal', 'gainXp']) if (Object.prototype.hasOwnProperty.call(pl, k)) return false;
     if (!isFinite(pl.hp) || !isFinite(pl.maxHp) || pl.hp > pl.maxHp + 1 || pl.maxHp > 50000) return false;
     if (pl.atkMul > 2000 || pl.spdMul > 25 || pl.cdMul < 0.03 || pl.level > 20 + time / 3) return false;
@@ -650,6 +682,7 @@ export const Game = (() => {
     Audio.sfx('levelup');
     RunUI.showBond(opt, picked => {
       const group = pl.fuse(picked, opt.group);
+      DB.save.stats.bestBond = Math.max(DB.save.stats.bestBond || 0, group.length);
       Audio.sfx('legend');
       FX.ring(pl.x, pl.y, 8, 130, '#ff8ad8', 0.8, 6);
       FX.burst(pl.x, pl.y - pl.bodyH * 0.5, '#ffb3e6', 40, 240);
@@ -874,6 +907,7 @@ export const Game = (() => {
     if (Input.tap('keyq')) pl.cycle(-1);
     if (Input.tap('keye') || Input.tap('tab')) pl.cycle(1);
     if (Input.tap('keyr')) Settings.set('recount', !Settings.get('recount')); // damage meter
+    if (Input.tap('keyf')) toggleFast();
   }
 
   // ---------------- loop ----------------
@@ -881,7 +915,8 @@ export const Game = (() => {
   let deathT = 0;
 
   let frameDt = 0,
-    speedK = 1;
+    speedK = 1, // dev knob (Game.debug.speed)
+    fast = false; // the player's x2 button (solo only)
   let fpsShown = 60,
     fpsAcc = 0,
     fpsN = 0,
@@ -939,8 +974,10 @@ export const Game = (() => {
     const real = (ts - last) / 1000 || 0;
     // With a 30 cap a frame can be a bit longer than 1/30 s: a lower limit there
     // would turn the game into slow motion.
-    const dt = Math.min(fps && fps <= 30 ? 1 / 20 : 1 / 30, real) * speedK;
+    const x2 = fast && !Coop.active && state === 'playing';
+    const dt = Math.min(fps && fps <= 30 ? 1 / 20 : 1 / 30, real) * speedK * (x2 ? 2 : 1);
     last = ts;
+    runAllow += real * (x2 ? 2 : 1);
     if (state === 'playing') Settings.sample(real, fps);
     fpsAcc += real;
     fpsN++;
@@ -1323,6 +1360,11 @@ export const Game = (() => {
     flash,
     offerBond,
     togglePause,
+    toggleFast,
+    /** Whether the run is going at x2 right now. */
+    get fast() {
+      return fast && !Coop.active;
+    },
     /** The story gym was beaten (systems/story.js). */
     winStory() {
       endRun(false, true);

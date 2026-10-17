@@ -845,8 +845,8 @@ label {
   align-items: flex-end;
   justify-content: center;
   gap: 6px;
-  margin: 8px -10px -18px;
-  height: 190px;
+  margin: -40px 0px -20px;
+  height: 214px;
   overflow: hidden;
 }
 .banner .feat canvas {
@@ -884,11 +884,17 @@ label {
   content: '';
   margin: auto;
 }
-#pull-close {
+.pull-actions {
   position: sticky;
   bottom: 8px;
   z-index: 2;
   flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.pull-actions .btn {
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6);
 }
 #pull-skip {
@@ -1107,6 +1113,11 @@ label {
   color: #10131a;
   text-shadow: none;
   font-weight: 700;
+  white-space: nowrap;
+}
+/* Move level: no type color behind it, so a light chip of its own. */
+.tag-chip.lv {
+  background: rgba(244, 248, 255, 0.88);
 }
 
 .stats {
@@ -1296,13 +1307,13 @@ label {
 .move-tip {
   position: fixed;
   z-index: 15; /* over the game, under every screen (.scr is 20) */
-  width: min(340px, 86vw);
+  width: min(420px, 90vw);
   padding: 8px;
   pointer-events: none;
   animation: tip-pop 0.12s ease-out both;
 }
 .move-tip.multi {
-  width: min(680px, 94vw);
+  width: min(820px, 96vw);
 }
 .move-tip.multi .cards {
   display: grid;
@@ -1532,6 +1543,33 @@ img.pix {
 .seg button.on {
   background: rgba(154, 230, 255, 0.22);
   color: #c9f3ff;
+}
+/* Pause menu: game speed switch (x1 / x2), on its own row. */
+.speed-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 4px auto 12px;
+}
+.speed-lbl {
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #8fa3c4;
+}
+.speed-seg {
+  margin: 0;
+  border-color: rgba(255, 210, 63, 0.55);
+}
+.speed-seg button {
+  padding: 5px 16px;
+  font-weight: 800;
+}
+.speed-seg button.on {
+  background: #ffd23f;
+  color: #10182a;
+  text-shadow: none;
 }
 .pcard.shiny {
   animation:
@@ -2782,7 +2820,8 @@ a.btn {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
-.ban-picker {
+.ban-picker,
+.upg-item.full {
   grid-column: 1 / -1;
 }
 .bind-panel {
@@ -3203,5 +3242,148 @@ a.btn {
   }
   .play-hero .play-ico {
     display: none;
+  }
+}
+
+/* ============ Trainer perks (ui/play-ui.js) ============ */
+.perks-panel {
+  margin-top: 14px;
+}
+.perk-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+}
+.perk {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 2px solid rgba(244, 248, 255, 0.14);
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--ink);
+  font-family: var(--font);
+  cursor: pointer;
+}
+.perk:hover {
+  border-color: rgba(244, 248, 255, 0.4);
+}
+.perk.on {
+  border-color: var(--gold);
+  background: rgba(255, 210, 63, 0.14);
+}
+.perk.locked {
+  position: relative;
+  cursor: default;
+}
+.perk.locked > :not(.perk-tip) {
+  opacity: 0.5;
+}
+/* Locked perk: hovering shows its achievement and how far you are. */
+.perk-tip {
+  display: none;
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: calc(100% + 6px);
+  z-index: 5;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 2px solid var(--gold);
+  background: var(--box2);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .perk.locked:hover .perk-tip {
+    display: block;
+  }
+}
+.perk.locked img,
+.perk.locked canvas {
+  filter: grayscale(1);
+}
+.perk b,
+.perk small {
+  display: block;
+}
+.perk small {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.perk .perk-need {
+  color: var(--gold);
+}
+.perk-tag {
+  color: #ff8ad8;
+}
+/* Keen eye perk: 4 level-up cards; on short screens, two columns so they fit. */
+@media (max-height: 520px) {
+  #cards:has(> :nth-child(4)) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: min(820px, 100%);
+  }
+}
+/* Gacha banner on short screens (phones in landscape): the featured Pokémon go to the
+ * right of the text instead of below it (same size), so the banner is much shorter. */
+@media (max-height: 520px) {
+  .banner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-content: start;
+    column-gap: 10px;
+    padding: 12px 14px;
+  }
+  .banner > * {
+    grid-column: 1;
+  }
+  .banner .feat {
+    grid-column: 2;
+    grid-row: 1 / span 4;
+    align-self: end;
+    margin: -30px -10px 0px 0; /* up a little: room under their feet (4 px, minus the 24 px pad) */
+  }
+}
+/* Normal / Shiny toggle: hovering "Shiny" shows the shiny bonuses (ui/menu.js shinyTip). */
+.shiny-pick {
+  position: relative;
+  width: max-content;
+  margin: 0 auto;
+}
+.tip-box {
+  display: none;
+  position: absolute;
+  top: calc(100% - 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(300px, 86vw);
+  z-index: 6;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 2px solid #9ae6ff;
+  background: var(--box2);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+  text-align: left;
+  pointer-events: none;
+}
+.tip-box > b,
+.tip-box small {
+  display: block;
+}
+.tip-box small {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+.tip-box small b {
+  color: #9ae6ff;
+}
+@media (hover: hover) {
+  .shiny-pick:has(button[data-v='1']:hover) .tip-box {
+    display: block;
   }
 }
