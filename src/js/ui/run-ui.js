@@ -6,6 +6,8 @@ import { I18n } from '../core/i18n.js';
 import { DEX_BY } from '../data/pokedex.js';
 import { Audio } from '../core/audio.js';
 import { Items } from '../data/items.js';
+import { Stages } from '../data/stages.js';
+import { DB } from '../core/db.js';
 import { LevelUp } from '../systems/levelup.js';
 import { Social } from '../net/social.js';
 import { Icons } from './icons.js';
@@ -118,9 +120,14 @@ export const RunUI = (() => {
     UI.hide('scr-levelup');
   }
 
-  function showOver(r, onBack) {
-    $('over-title').textContent = r.dead ? 'You fell…' : 'Run over';
+  /**
+   * @param onReplay  story only: (stage id) => play it right away (again, or the next one)
+   */
+  function showOver(r, onBack, onReplay = null) {
+    const sr = r.story;
+    $('over-title').textContent = sr && sr.won ? 'Gym cleared!' : r.dead ? 'You fell…' : 'Run over';
     $('over-stats').innerHTML = `
+      ${sr ? storyResult(sr) : ''}
       <div><span>Time</span><b>${U.mmss(r.time)}</b></div>
       <div><span>Level</span><b>${r.level}</b></div>
       <div><span>Defeated</span><b>${r.kills}</b></div>
@@ -144,10 +151,21 @@ export const RunUI = (() => {
           : ''
       }
       ${r.record ? '<div style="grid-column:1/-1;text-align:center" class="gold">New time record!</div>' : ''}
+      ${sr && sr.best && !sr.first ? '<div style="grid-column:1/-1;text-align:center" class="gold">New best clear time!</div>' : ''}
       <div style="grid-column:1/-1"><span>Seed</span><b translate="no">${RNG.code()}</b></div>
       ${r.damage && r.damage.total ? `<details class="over-more" style="grid-column:1/-1"><summary>Damage</summary>${StatsUI.damageHtml(r.damage)}</details>` : ''}
       ${r.player ? `<details class="over-more" style="grid-column:1/-1"><summary>Stats</summary>${StatsUI.statsHtml(r.player)}</details>` : ''}`;
     $('btn-again').onclick = onBack;
+    // Story: the next stage after a win (if there is one), otherwise the same one again.
+    const rp = $('btn-replay');
+    const next = sr && sr.won && sr.stage.next && Stages.unlocked(DB.save, sr.stage.next) ? sr.stage.next : null;
+    rp.classList.toggle('hidden', !onReplay);
+    $('btn-again').classList.toggle('gold', !onReplay);
+    $('btn-again').classList.toggle('ghost', !!onReplay);
+    if (onReplay) {
+      rp.textContent = next ? 'Next: ' + Stages.BY_ID[next].name : 'Try again';
+      rp.onclick = () => onReplay(next || sr.stage.id);
+    }
     if (r.caught && r.caught.length) {
       const row = $('over-caught');
       for (const c of r.caught) {
@@ -158,6 +176,21 @@ export const RunUI = (() => {
       }
     }
     UI.show('scr-over');
+  }
+
+  /** The story banner on the summary: the badge won (and the reward), or how far you got. */
+  function storyResult(sr) {
+    const g = sr.stage.gym;
+    const badge =
+      Icons.html('badge:' + sr.stage.id, 48) +
+      (Stages.leaderArt(sr.stage) ? `<img class="leader-art" src="${Stages.leaderArt(sr.stage)}" alt="" draggable="false">` : '');
+    if (!sr.won)
+      return `<div class="over-story lost" style="grid-column:1/-1">${badge}<div>
+        <b><span>${g.name}</span> · <span>${g.leader}</span></b><div class="sub">Reached: ${sr.reached}</div></div></div>`;
+    const rw = sr.reward;
+    return `<div class="over-story" style="grid-column:1/-1">${badge}<div>
+      <b class="gold">${sr.first ? g.badge + ' obtained!' : 'You beat ' + g.leader + ' again'}</b>
+      <div class="sub"><span>${g.name}</span> · <span class="coin"></span> +${rw.coins} · ${Icons.html('ticket', 12)} +${rw.t1}</div></div></div>`;
   }
 
   /*

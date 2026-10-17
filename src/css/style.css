@@ -3011,3 +3011,197 @@ a.btn {
     box-shadow: 0 -6px 10px rgba(5, 10, 25, 0.6);
   }
 }
+
+/* ============ Play: game mode tabs (ui/play-ui.js) ============ */
+.play-box {
+  width: min(860px, 96vw);
+}
+.play-tabs .tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 17px;
+}
+.play-tabs .tab.on {
+  border-color: var(--gold);
+  background: rgba(255, 210, 63, 0.14);
+  color: var(--gold);
+}
+.play-body {
+  max-height: 64vh;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+.play-hero {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.play-hero b.gold {
+  font-size: 20px;
+}
+.play-hero p {
+  margin: 6px 0 0;
+}
+.play-go {
+  margin-top: 14px;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.play-soon {
+  text-align: center;
+  padding: 26px 14px;
+}
+.play-note {
+  color: #ffb0b8;
+  margin: 4px 0 8px;
+}
+.gen-tab.soon {
+  opacity: 0.6;
+}
+.badge-case {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 4px 0 10px;
+}
+.badge-row {
+  display: flex;
+  gap: 4px;
+  padding: 5px 8px;
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.3);
+}
+.badge-row span {
+  display: flex;
+  filter: grayscale(1) brightness(0.45);
+}
+.badge-row span.on {
+  filter: drop-shadow(0 0 4px rgba(255, 210, 63, 0.7));
+}
+.stage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.stage-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+}
+.stage-card.cleared {
+  border-color: var(--gold);
+  background: linear-gradient(90deg, rgba(255, 210, 63, 0.1), rgba(0, 0, 0, 0.2) 40%);
+}
+.stage-card.locked {
+  opacity: 0.6;
+}
+.stage-card.locked .stage-badge {
+  filter: grayscale(1) brightness(0.5);
+}
+.stage-badge {
+  display: flex;
+  flex-shrink: 0;
+}
+.stage-info {
+  flex: 1;
+  min-width: 0;
+}
+.stage-head b {
+  font-size: 16px;
+}
+.stage-head small {
+  color: var(--muted);
+}
+.pill-done {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--gold);
+  color: #20160a;
+  text-shadow: none;
+}
+.stage-route,
+.stage-rwd {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.stage-rwd img {
+  vertical-align: -2px;
+}
+.stage-leader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  line-height: 1.1;
+  font-size: 12px;
+}
+.stage-leader small {
+  color: var(--muted);
+}
+.stage-duo {
+  display: flex;
+  align-items: flex-end;
+  height: 82px;
+}
+/* Leader sprite (54–80 px tall depending on the game): at its own size, so it stays crisp. */
+.leader-art {
+  max-height: 80px;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+}
+.stage-duo .stage-ace {
+  margin-left: -14px;
+}
+.stage-card.locked .leader-art {
+  filter: brightness(0) opacity(0.45);
+}
+.stage-card > .btn {
+  flex-shrink: 0;
+  min-width: 82px;
+}
+/* The story result on the summary */
+.over-story {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 9px;
+  border: 1px solid var(--gold);
+  background: rgba(255, 210, 63, 0.12);
+}
+.over-story.lost {
+  border-color: var(--edge-in);
+  background: rgba(0, 0, 0, 0.2);
+}
+.over-btns {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .stage-card {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .stage-leader {
+    display: none;
+  }
+  .stage-info {
+    flex-basis: calc(100% - 60px);
+  }
+  .stage-card > .btn {
+    width: 100%;
+  }
+  .play-hero .play-ico {
+    display: none;
+  }
+}

@@ -49,6 +49,7 @@ import { Path } from './systems/pathing.js';
 import { Progress } from './systems/progress.js';
 import { Hazards } from './systems/hazards.js';
 import { Recount } from './systems/recount.js';
+import { Story } from './systems/story.js';
 import { Social } from './net/social.js';
 import { Coop } from './net/coop.js';
 import { Ranking } from './net/ranking.js';
@@ -58,6 +59,7 @@ import { HUD } from './ui/hud.js';
 import { LoginUI } from './ui/login.js';
 import { TestUI } from './ui/test.js';
 import { MenuUI } from './ui/menu.js';
+import { PlayUI } from './ui/play-ui.js';
 import { GachaUI } from './ui/gacha-ui.js';
 import { MoveTip } from './ui/move-tip.js';
 import { RunUI } from './ui/run-ui.js';
@@ -206,14 +208,18 @@ export const Game = (() => {
   // Seed for the next solo runs (?seed=CODE in the URL or the dev panel); null = random.
   let fixedSeed = RNG.parse(new URLSearchParams(location.search).get('seed'));
 
-  /** @param coop  { seed, host, members } for a group run */
-  function startRun(coop = null) {
+  /**
+   * @param coop     { seed, host, members } for a group run
+   * @param stageId  a story stage (data/stages.js); solo only, a group run is always endless
+   */
+  function startRun(coop = null, stageId = null) {
     // First of all: every system rolls its run from these streams (core/rng.js).
     if (coop) RNG.start(coop.seed);
     else if (fixedSeed != null) RNG.start(fixedSeed, true);
     else RNG.start();
     holdBy = [];
     awayBy = null;
+    Story.begin(coop ? null : stageId); // before Spawner.reset: it rolls the stage's cast
     const save = DB.save;
     const mon = DEX_BY[save.partner];
     const perks = Upgrades.perks(DB.upgradesOf(mon.dex));
@@ -269,8 +275,8 @@ export const Game = (() => {
     // Local sprite sheets: the partner and the first enemies.
     Sprites.preload([mon.dex], 8000, pl.shiny);
     Audio.music(BIOME_MUSIC[0]);
-    // For the leaderboard: the server records when the run starts (anti-cheat).
-    if (!coop || Coop.isHost) Ranking.runStarted(coop ? 'g' : 's');
+    // For the leaderboard: the server records when the run starts (anti-cheat). Story runs aren't ranked.
+    if (!Story.active && (!coop || Coop.isHost)) Ranking.runStarted(coop ? 'g' : 's');
     deathT = 0;
 
     state = 'playing';
@@ -473,7 +479,8 @@ export const Game = (() => {
     Audio.sfx('shinyGet');
   };
 
-  function endRun(dead = true) {
+  /** @param won  a story stage was cleared (its gym beaten) */
+  function endRun(dead = true, won = false) {
     if (state === 'over' || !pl) return;
     const coop = !!pl.uid; // only group runs give it a uid
     const wasHost = !!pl.coopHost;
@@ -483,9 +490,12 @@ export const Game = (() => {
     if (coop) Social.setPlaying(false);
     state = 'over';
     Audio.music(null);
-    Audio.sfx(dead ? 'gameover' : 'back');
+    Audio.sfx(won ? 'legend' : dead ? 'gameover' : 'back');
     const save = DB.save;
     const mul = pl.coinMul;
+    // Story: the clear is saved and its reward added (it doesn't touch the endless records).
+    const story = Story.finish(won, time);
+    if (story && story.reward) pl.t1 += story.reward.t1;
     const C = BR.coins;
     const parts = {
       time: Math.floor(time / C.perSeconds),
@@ -493,21 +503,22 @@ export const Game = (() => {
       bosses: pl.bosses * C.perBoss,
       collected: pl.coins
     };
-    const coins = Math.round((parts.time + parts.defeated + parts.bosses + parts.collected) * mul);
-    const record = time > save.stats.bestTime;
+    let coins = Math.round((parts.time + parts.defeated + parts.bosses + parts.collected) * mul);
+    if (story && story.reward) coins += story.reward.coins;
+    const record = !story && time > save.stats.bestTime;
 
     save.coins += coins;
     bankTickets(false);
     save.stats.runs++;
     save.stats.totalKills += pl.kills;
-    save.stats.bestTime = Math.max(save.stats.bestTime, Math.floor(time));
+    if (!story) save.stats.bestTime = Math.max(save.stats.bestTime, Math.floor(time));
     if (coop) save.stats.bestGroupTime = Math.max(save.stats.bestGroupTime || 0, Math.floor(time));
     save.stats.bestLevel = Math.max(save.stats.bestLevel, pl.level);
     save.stats.coinsEarned += coins;
     const judge = Judgment.summary();
     if (judge) Progress.event('judgeEnd', judge);
     Judgment.reset();
-    Progress.event('runEnd', { time, level: pl.level, coins: pl.coins, types: pl.mon.types, group: coop });
+    Progress.event('runEnd', { time, level: pl.level, coins: pl.coins, types: pl.mon.types, group: coop, story: !!story });
     Progress.checkAch();
     // To the cloud when the run ends (at most every 30 min); if the score makes
     // a top list (today, week or month), right away (below, after submitting it to the leaderboard).
@@ -518,7 +529,7 @@ export const Game = (() => {
     const mark = { t: Math.floor(time), lv: pl.level, kills: pl.kills };
     // If the run was tampered with (see clean()), it isn't submitted to the leaderboard (silently); everything else is.
     // (Nor is a run with a chosen seed: you could pick an easy one.)
-    const ok = clean() && !RNG.custom;
+    const ok = clean() && !RNG.custom && !story;
     const sent =
       ok && !coop
         ? Ranking.submitSolo(Object.assign(mark, { dex: pl.dex, shiny: pl.shiny }))
@@ -548,16 +559,28 @@ export const Game = (() => {
         player: pl,
         damage,
         caught,
+        story,
         breakdown:
           Object.entries(parts)
             .filter(([, v]) => v)
             .map(([k, v]) => I18n.f(k + ' {x}', v))
-            .join(' · ') + (mul > 1 ? ' ' + I18n.f('· ×{x} Fortune', mul.toFixed(2)) : '')
+            .join(' · ') +
+          (mul > 1 ? ' ' + I18n.f('· ×{x} Fortune', mul.toFixed(2)) : '') +
+          (story && story.reward ? ' ' + I18n.f('· gym +{x}', story.reward.coins) : '')
       },
       () => {
         pl = null;
+        Story.end();
         Flow.afterRun();
-      }
+      },
+      // Story: play a stage again (or the next one) straight from the summary.
+      story
+        ? id => {
+            pl = null;
+            Story.end();
+            Flow.replay(id);
+          }
+        : null
     );
   }
 
@@ -834,7 +857,7 @@ export const Game = (() => {
       if (
         Input.tap('escape') &&
         !UI.isOpen('scr-profile') &&
-        ['scr-dex', 'scr-upgrades', 'scr-gacha', 'scr-friends', 'scr-rank', 'scr-goals'].some(UI.isOpen) &&
+        ['scr-play', 'scr-dex', 'scr-upgrades', 'scr-gacha', 'scr-friends', 'scr-rank', 'scr-goals'].some(UI.isOpen) &&
         document.getElementById('pull-fx').classList.contains('hidden')
       )
         MenuUI.open();
@@ -976,8 +999,9 @@ export const Game = (() => {
     }
     time += dt;
 
+    // (A story stage picks its own biomes, one per route: systems/story.js.)
     const b = Math.floor(time / BR.biomeLength);
-    if (b !== biome && !Rift.inArena && !Judgment.active) {
+    if (!Story.active && b !== biome && !Rift.inArena && !Judgment.active) {
       biome = b;
       World.setBiome(b);
       Audio.sfx('biome');
@@ -994,7 +1018,9 @@ export const Game = (() => {
       }
       if (pl.dead) reviveTick(dt);
     }
-    Camera.follow(pl.x, pl.y, dt);
+    // (Arriving at a story gym, the camera shows the leader for a moment.)
+    const focus = Story.focus;
+    Camera.follow(focus ? focus.x : pl.x, focus ? focus.y : pl.y, dt);
     World.update(dt, Camera);
 
     const all = everyone();
@@ -1011,14 +1037,26 @@ export const Game = (() => {
     Pickups.update(dt, all, onCollect);
     Hazards.update(dt);
     Interact.update(dt, pl);
-    Rift.update(dt, pl, time);
-    Judgment.update(dt, pl, time);
-    Events.update(dt, all, time);
+    // Story stages have no rifts, events or Judgment: the routes and the gym instead.
+    if (Story.active) Story.update(dt, pl, time);
+    else {
+      Rift.update(dt, pl, time);
+      Judgment.update(dt, pl, time);
+      Events.update(dt, all, time);
+    }
     Weather.update(dt, time, pl);
     FX.update(dt);
 
     Audio.music(
-      Judgment.active ? Judgment.music : Rift.inArena ? 'rift' : EnemyMgr.bossAlive() ? 'boss' : BIOME_MUSIC[biome % BIOME_MUSIC.length]
+      Judgment.active
+        ? Judgment.music
+        : Rift.inArena
+          ? 'rift'
+          : EnemyMgr.bossAlive()
+            ? 'boss'
+            : Story.active
+              ? Story.music
+              : BIOME_MUSIC[biome % BIOME_MUSIC.length]
     );
     if (!coop || Coop.isHost) maybeLevelUp();
     if (pl.bonds > 0) offerBond(true);
@@ -1069,6 +1107,8 @@ export const Game = (() => {
     if (rift) sceneAdd(rift.y, null, rift);
     const arceus = pl && state !== 'ui' ? Judgment.drawable() : null;
     if (arceus) sceneAdd(arceus.y, null, arceus);
+    const leader = pl && state !== 'ui' ? Story.drawable() : null;
+    if (leader) sceneAdd(leader.y, null, leader);
     if (pl && state !== 'ui') for (const d of Events.drawables()) sceneAdd(d.y, null, d);
     sceneItems.sort(byY);
     for (const it of sceneItems) {
@@ -1283,6 +1323,10 @@ export const Game = (() => {
     flash,
     offerBond,
     togglePause,
+    /** The story gym was beaten (systems/story.js). */
+    winStory() {
+      endRun(false, true);
+    },
     /** Abandons the current run (e.g. when logging out from Settings). */
     quit() {
       if (state !== 'ui' && state !== 'over') quitRun();
@@ -1369,6 +1413,7 @@ export const Flow = {
     LoginUI.init();
     TestUI.init();
     MenuUI.init();
+    PlayUI.init();
     GachaUI.init();
     MoveTip.init();
     SocialUI.init();
@@ -1446,8 +1491,14 @@ export const Flow = {
       LobbyUI.open();
     } else this.goMenu();
   },
-  play() {
-    Game.startRun();
+  /** Solo run: endless, or a story stage (data/stages.js). */
+  play(stageId = null) {
+    Game.startRun(null, stageId);
+  },
+  /** From the summary: another story stage right away (back to the menu if an update is waiting). */
+  replay(stageId) {
+    if (Updater.pending || Social.room) this.afterRun();
+    else this.play(stageId);
   },
   /** Starts the group run (the host sends it to everyone). */
   startCoop(cfg) {

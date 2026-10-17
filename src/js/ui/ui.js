@@ -21,6 +21,7 @@ export const UI = (() => {
     'scr-result',
     'scr-starters',
     'scr-menu',
+    'scr-play',
     'scr-dex',
     'scr-upgrades',
     'scr-gacha',

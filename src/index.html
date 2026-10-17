@@ -124,7 +124,7 @@
   <div class="menu-right">
     <div class="box">
       <div class="menu-list">
-        <button class="menu-item play" data-go="play">Play<small>Enter the dungeon</small></button>
+        <button class="menu-item play" data-go="play">Play<small>Endless · Story</small></button>
         <button class="menu-item gift hidden" id="menu-gift">Welcome gift<small>From the original game? 300 tickets and 50,000 coins</small></button>
         <button class="menu-item" data-go="dex">Pokémon<small id="menu-dex-count">Your collection</small></button>
         <button class="menu-item" data-go="upgrades">Upgrades<small>Make every run stronger</small></button>
@@ -357,6 +357,15 @@
 </div>
 
 <!-- ====== Collection ====== -->
+<!-- ====== Play: one tab per game mode (ui/play-ui.js) ====== -->
+<section id="scr-play" class="scr dim hidden">
+  <div class="box wide play-box">
+    <div class="row between"><h2>Play</h2><button class="btn small ghost" data-back>Back</button></div>
+    <div class="tabs play-tabs" id="play-tabs"></div>
+    <div id="play-body" class="play-body"></div>
+  </div>
+</section>
+
 <section id="scr-dex" class="scr dim hidden">
   <div class="box wide">
     <div class="row between"><h2>Pokémon <span id="dex-total" class="sub" style="font-size:15px"></span></h2><button class="btn small ghost" data-back>Back</button></div>
@@ -487,7 +496,10 @@
   <div class="box center" id="over-box">
     <h2 id="over-title">You fell…</h2>
     <div id="over-stats" class="stats"></div>
-    <button id="btn-again" class="btn gold">Back to menu</button>
+    <div class="over-btns">
+      <button id="btn-replay" class="btn gold hidden" data-sfx="confirm"></button>
+      <button id="btn-again" class="btn gold">Back to menu</button>
+    </div>
   </div>
 </section>
 

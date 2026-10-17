@@ -29,6 +29,7 @@ import { Audio } from '../core/audio.js';
 import { MissionDefs } from '../data/missions.js';
 import { AchDefs } from '../data/achievements.js';
 import { Rift } from './rift.js';
+import { Story } from './story.js';
 import { Judgment } from './judgment.js';
 import { Ranking } from '../net/ranking.js';
 import { Icons } from '../ui/icons.js';
@@ -212,6 +213,7 @@ export const Progress = (() => {
       event('kill', { types: e.types || [], boss: false, legend: 0 });
       return;
     }
+    if (e.boss) Story.onKill(e); // a story mini-boss grants a bond
     const legend = e.legend || (Rift.inArena && e.boss) ? e.dex : 0;
     event('kill', { types: e.types || [], boss: !!e.boss, legend });
   }

@@ -9,6 +9,7 @@
 import { DEX, DEX_BY } from './pokedex.js';
 import { SPRITE_META } from './sprites-meta.js';
 import { Moves } from './moves.js';
+import { Stages } from './stages.js';
 
 export const AchDefs = (() => {
   const own = s => Object.keys(s.owned || {}).filter(d => DEX_BY[d]).length;
@@ -16,11 +17,15 @@ export const AchDefs = (() => {
   const legends = s => Object.keys(s.legends || {}).length;
   const st = k => s => (s.stats && s.stats[k]) || 0;
   const count = k => s => Object.keys(s[k] || {}).length;
+  const inRegion = r => s => Object.keys(s.story || {}).filter(id => id.startsWith(r + '_')).length;
+  const kanto = inRegion('kanto');
+  const ALL_BADGES = Stages.REGIONS.reduce((n, r) => n + r.stages.length, 0);
 
   const CATS = [
     ['collection', 'Collection'],
     ['survival', 'Survival'],
     ['combat', 'Combat'],
+    ['story', 'Story'],
     ['rifts', 'Rifts'],
     ['legendaries', 'Legendaries'],
     ['other', 'Missions & more']
@@ -351,6 +356,63 @@ export const AchDefs = (() => {
       goal: 11,
       reward: { t10: 1 },
       title: 'Antiquarian'
+    },
+
+    // ---------- story (badges: data/stages.js) ----------
+    {
+      id: 'badge1',
+      cat: 'story',
+      tier: 1,
+      name: 'First badge',
+      desc: 'Beat a gym leader in Story mode.',
+      value: count('story'),
+      goal: 1,
+      reward: { t1: 3 },
+      title: 'Trainer'
+    },
+    {
+      id: 'kanto4',
+      cat: 'story',
+      tier: 2,
+      name: 'Halfway there',
+      desc: 'Earn 4 Kanto badges.',
+      value: kanto,
+      goal: 4,
+      reward: { t10: 1 }
+    },
+    {
+      id: 'kanto8',
+      cat: 'story',
+      tier: 3,
+      name: 'Kanto champion',
+      desc: 'Earn all 8 Kanto badges.',
+      value: kanto,
+      goal: 8,
+      reward: { t10: 2 },
+      title: 'Kanto champion'
+    },
+    // One per region after Kanto (data/stages.js), and every badge of every region.
+    ...Stages.REGIONS.filter(r => r.id !== 'kanto').map(r => ({
+      id: r.id + '8',
+      cat: 'story',
+      tier: 3,
+      name: r.name + ' champion',
+      desc: 'Earn all 8 ' + r.name + ' badges.',
+      value: inRegion(r.id),
+      goal: r.stages.length,
+      reward: { t10: 2 },
+      title: r.name + ' champion'
+    })),
+    {
+      id: 'badgesAll',
+      cat: 'story',
+      tier: 3,
+      name: 'Pokémon Master',
+      desc: 'Earn every badge of every region.',
+      value: count('story'),
+      goal: ALL_BADGES,
+      reward: { t10: 10 },
+      title: 'Pokémon Master'
     },
 
     // ---------- rifts ----------

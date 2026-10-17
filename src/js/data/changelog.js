@@ -7,9 +7,31 @@
  */
 export const CHANGELOG = [
   {
-    d: '2026-10-16',
-    title: ['Damage meter, your stats and search', 'Medidor de daño, tus estadísticas y buscador'],
+    d: '2026-10-17',
+    title: ['Story mode in every region', 'Modo Historia en todas las regiones'],
     new: [
+      [
+        "Story mode now covers all nine regions: 72 stages, from Brock to Grusha, each with its own routes, wild Pokémon and the leader's real team. In Alola you face the island trials, against Captains and Kahunas, for Z-Crystals. Every region is open from the start; later regions are a bit harder and give more.",
+        'El modo Historia ya recorre las nueve regiones: 72 etapas, de Brock a Grusha, cada una con sus rutas, sus Pokémon salvajes y el equipo de verdad del líder. En Alola te enfrentas a las pruebas de las islas, contra capitanes y kahunas, por cristales Z. Todas las regiones están abiertas desde el principio; las últimas son algo más difíciles y dan más.'
+      ],
+      [
+        'Gym leaders appear next to their best Pokémon, stand at the back of their arena and send out their team when you arrive. Every badge has its own icon, and each region has a champion title to earn, plus "Pokémon Master" for all 72 badges.',
+        'Los líderes de gimnasio aparecen junto a su mejor Pokémon, esperan al fondo de su arena y sacan a su equipo cuando llegas. Cada medalla tiene su icono, y cada región tiene un título de campeón, además de «Maestro Pokémon» por las 72 medallas.'
+      ]
+    ]
+  },
+  {
+    d: '2026-10-16',
+    title: ['Story mode, damage meter, your stats and search', 'Modo Historia, medidor de daño, tus estadísticas y buscador'],
+    new: [
+      [
+        "Story mode: Play now has a tab for each game mode. In Story, travel Kanto stage by stage: 10 minutes of themed routes (Route 1, Viridian Forest, Mt. Moon...) with their own wild Pokémon, three mini-bosses that each grant a bond, and a gym battle at the end against the leader's team. Beat all 8 leaders, from Brock to Giovanni, to collect every badge. Solo, not ranked.",
+        'Modo Historia: Jugar ahora tiene una pestaña para cada modo de juego. En Historia recorres Kanto etapa a etapa: 10 minutos de rutas temáticas (Ruta 1, Bosque Verde, Mt. Moon...) con sus propios Pokémon salvajes, tres minijefes que dan un vínculo cada uno y un combate de gimnasio al final contra el equipo del líder. Vence a los 8 líderes, de Brock a Giovanni, para conseguir todas las medallas. En solitario, sin ranking.'
+      ],
+      [
+        'Each stage gives coins and tickets the first time (plus its badge) and a smaller reward on every repeat, and keeps your best clear time. After a stage, go straight to the next one or try again. New Story achievements, including the title "Kanto champion".',
+        'Cada etapa da monedas y tickets la primera vez (y su medalla) y un premio menor cada vez que la repites, y guarda tu mejor tiempo. Al terminar una etapa puedes pasar directamente a la siguiente o reintentarla. Nuevos logros de Historia, con el título «Campeón de Kanto».'
+      ],
       [
         'Coming from the original game? Claim the welcome gift on the main menu: 300 gacha tickets and 50,000 coins, once per account.',
         '¿Vienes del juego original? Reclama el regalo de bienvenida en el menú principal: 300 tickets del gacha y 50.000 monedas, una vez por cuenta.'

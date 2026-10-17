@@ -9,8 +9,8 @@
   },
   "scripts": {
     "dev": "node server/index.mjs --dev",
-    "build": "node scripts/build.js && npm run build:pages",
-    "build:force": "node scripts/build.js --force && npm run build:pages",
+    "build": "node scripts/check_stages.js && node scripts/build.js && npm run build:pages",
+    "build:force": "node scripts/check_stages.js && node scripts/build.js --force && npm run build:pages",
     "build:debug": "node scripts/build.js --expose && npm run build:pages",
     "build:pages": "node scripts/export_data.js && node scripts/py.js scripts/make_seo_pages.py",
     "start": "node server/index.mjs",
@@ -27,7 +27,8 @@
     "data:font": "node scripts/py.js scripts/make_font.py",
     "docker:build": "docker build -t pokesurvivor .",
     "docker:run": "docker run --rm -p 8080:80 --env-file .env -e BETTER_AUTH_URL=http://localhost:8080 pokesurvivor",
-    "db:up": "docker compose -f docker-compose.dev.yml up -d"
+    "db:up": "docker compose -f docker-compose.dev.yml up -d",
+    "check:stages": "node scripts/check_stages.js"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
