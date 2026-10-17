@@ -1,6 +1,7 @@
 /* ============ input.js — keyboard and mouse (touch is in touch.js) ============ */
 import { U } from './util.js';
 import { Touch } from './touch.js';
+import { Pad } from './gamepad.js';
 
 export const Input = (() => {
   const down = new Set();
@@ -45,10 +46,12 @@ export const Input = (() => {
   addEventListener('mouseup', () => (mdown = false));
 
   return {
-    /** Player movement vector (keyboard or touch joystick). */
+    /** Player movement vector (touch joystick, controller or keyboard). */
     axis() {
       const t = Touch && Touch.vector();
       if (t && (t[0] || t[1])) return t;
+      const p = Pad.axis();
+      if (p[0] || p[1]) return p;
       let x = 0,
         y = 0;
       if (MOVE_KEYS.left.some(k => down.has(k))) x -= 1;

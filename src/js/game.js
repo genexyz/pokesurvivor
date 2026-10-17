@@ -71,6 +71,7 @@ import { GoalsUI, ProfileUI } from './ui/goals-ui.js';
 import { SettingsUI } from './ui/settings-ui.js';
 import { NewsUI } from './ui/news-ui.js';
 import { Updater } from './core/updater.js';
+import { Pad } from './core/gamepad.js';
 
 export const Game = (() => {
   let cv,
@@ -989,6 +990,8 @@ export const Game = (() => {
     }
     frameDt = state === 'playing' ? dt : 0;
 
+    // Controller: its buttons arrive as keys; with a screen open, it moves the menu highlight.
+    Pad.poll(Math.min(real, 0.1), state !== 'playing' || !!document.querySelector('section.scr:not(.hidden)'));
     handleKeys();
 
     if (state === 'playing') update(dt);

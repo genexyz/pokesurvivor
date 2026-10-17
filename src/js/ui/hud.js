@@ -4,6 +4,7 @@
 import { U } from '../core/util.js';
 import { Audio } from '../core/audio.js';
 import { Touch } from '../core/touch.js';
+import { Pad } from '../core/gamepad.js';
 import { Camera } from '../core/camera.js';
 import { Items } from '../data/items.js';
 import { World } from '../world/world.js';
@@ -738,7 +739,11 @@ export const HUD = (() => {
       ctx.textAlign = 'center';
       ctx.fillStyle = 'rgba(180,200,230,.55)';
       ctx.fillText(
-        touch ? 'Drag your finger to move  ·  tap a move to switch' : 'WASD move  ·  1-4 / Q / E or click a move to switch  ·  Esc pause',
+        Pad.active
+          ? 'Left stick move  ·  LB / RB switch move  ·  Y ×2 speed  ·  Start pause'
+          : touch
+            ? 'Drag your finger to move  ·  tap a move to switch'
+            : 'WASD move  ·  1-4 / Q / E or click a move to switch  ·  Esc pause',
         w / 2,
         h - 4
       );

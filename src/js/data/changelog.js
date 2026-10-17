@@ -11,6 +11,10 @@ export const CHANGELOG = [
     title: ['Story mode in every region', 'Modo Historia en todas las regiones'],
     new: [
       [
+        'Controller support: play with an Xbox, PlayStation or Switch Pro controller. Left stick to move, LB/RB to switch moves, Y for ×2 speed, Start to pause. In menus, the stick or D-pad moves a gold highlight, A chooses, B goes back, LB/RB switch tabs and the right stick scrolls. The full layout is in Settings > Controls.',
+        'Compatibilidad con mandos: juega con un mando de Xbox, PlayStation o Switch Pro. Stick izquierdo para moverte, LB/RB para cambiar de movimiento, Y para velocidad ×2, Start para pausar. En los menús, el stick o la cruceta mueven un resaltado dorado, A elige, B vuelve, LB/RB cambian de pestaña y el stick derecho desplaza. Tienes todos los botones en Ajustes > Controles.'
+      ],
+      [
         'Game speed ×2: in solo runs (story and the other modes), the ×2 button at the top right of the screen, "Game speed" in the pause menu or the F key make the whole game go twice as fast. Runs start at ×1, or at ×2 with Settings > Controls > "Start at ×2 speed". ×2 runs still count for the leaderboard. Not available in co-op.',
         'Velocidad ×2: en las partidas en solitario (Historia y los demás modos), el botón ×2 arriba a la derecha de la pantalla, «Velocidad del juego» en el menú de pausa o la tecla F hacen que todo el juego vaya el doble de rápido. Las partidas empiezan a ×1, o a ×2 con Ajustes > Controles > «Empezar a velocidad ×2». Las partidas a ×2 siguen contando para la clasificación. No disponible en cooperativo.'
       ],
@@ -58,6 +62,10 @@ export const CHANGELOG = [
       ]
     ],
     fix: [
+      [
+        'Main menu: the arrow next to the highlighted option is now centred on it, also on options with a two-line description.',
+        'Menú principal: la flecha junto a la opción resaltada ahora está centrada en ella, también en las opciones con descripción de dos líneas.'
+      ],
       [
         'Profile: the "View my public profile" button no longer sits right against the title picker; it is now on its own line below it.',
         'Perfil: el botón «Ver mi perfil público» ya no aparece pegado al selector de título; ahora está en su propia línea debajo.'

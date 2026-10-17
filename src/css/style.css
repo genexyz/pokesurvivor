@@ -259,7 +259,7 @@ input {
   content: '';
   position: absolute;
   left: 6px;
-  top: 14px;
+  top: 50%;
   width: 16px;
   height: 24px;
   background: var(--ico-cursor) no-repeat center / contain;
@@ -268,17 +268,19 @@ input {
   transition:
     opacity 0.1s,
     transform 0.1s;
-  transform: translateX(-4px);
+  transform: translate(-4px, -50%);
 }
 .menu-item:hover,
-.menu-item:focus-visible {
+.menu-item:focus-visible,
+.menu-item.pad-focus {
   background: rgba(255, 255, 255, 0.08);
-  outline: none;
+  outline: none !important;
 }
 .menu-item:hover::before,
-.menu-item:focus-visible::before {
+.menu-item:focus-visible::before,
+.menu-item.pad-focus::before {
   opacity: 1;
-  transform: none;
+  transform: translateY(-50%);
 }
 .menu-item.play {
   font-size: 30px;
@@ -2538,6 +2540,38 @@ body.touch .kbd-hint {
 }
 body.touch .touch-hint {
   display: block;
+}
+/* Controller (core/gamepad.js): its own hints, and the gold highlight that moves around menus. */
+.pad-hint {
+  display: none;
+}
+body.pad .pad-hint {
+  display: block;
+}
+body.pad .kbd-hint,
+body.pad .touch-hint,
+body.pad .card .key {
+  display: none !important;
+}
+/* Settings > Controls: the controller layout, one line per button. */
+.pad-map {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 14px;
+  margin: 4px 0 10px;
+  font-size: 13px;
+}
+.pad-map span {
+  color: var(--muted);
+}
+.pad-focus {
+  outline: 3px solid #ffd23f !important;
+  outline-offset: 2px;
+}
+.card.pad-focus {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--edge);
+  transform: translateX(4px);
 }
 #pause-sound + .row,
 #scr-pause .row {
