@@ -1,0 +1,16 @@
+# Every text file is stored and checked out with LF (Unix) line endings.
+* text=auto eol=lf
+
+# Binary assets: never touch their bytes.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.mp3 binary
+*.ogg binary
+*.wav binary
