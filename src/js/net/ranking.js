@@ -64,6 +64,34 @@ export const Ranking = (() => {
     return { d: 'd' + y + p2(m) + p2(d), w: 'w' + w.year + '-' + p2(w.week), m: 'm' + y + p2(m), y: 'y' + y, a: ALL };
   }
 
+  // Madrid's offset from UTC (ms) at a given instant: +1 h in winter, +2 h in summer.
+  let clockFmt = null;
+  function madridOffset(t) {
+    clockFmt =
+      clockFmt ||
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: TZ,
+        hourCycle: 'h23',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    const p = {};
+    for (const x of clockFmt.formatToParts(new Date(t))) p[x.type] = +x.value;
+    return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - Math.floor(t / 1000) * 1000;
+  }
+
+  /** When the current day ('d') or ISO week ('w') ends: the next Madrid midnight (a Monday for 'w'). */
+  function nextReset(kind, date = new Date()) {
+    const { y, m, d } = madridDate(date);
+    const days = kind === 'w' ? 8 - (new Date(Date.UTC(y, m - 1, d)).getUTCDay() || 7) : 1;
+    const wall = Date.UTC(y, m - 1, d + days); // that midnight as if Madrid were UTC
+    return wall - madridOffset(wall - madridOffset(wall));
+  }
+
   /*
    * Board names: those from periodIds() except week and month, which carry
    * a "j". periodIds() stays the same because missions use it too
@@ -306,6 +334,7 @@ export const Ranking = (() => {
   return {
     PERIODS,
     periodIds,
+    nextReset,
     board,
     runStarted,
     submitSolo,

@@ -24,7 +24,11 @@ export const CHANGELOG = [
         'Phones: starting a run no longer freezes for a few seconds, and the game no longer stutters every so often while you walk into new ground. The ground is now drawn a little at a time, ahead of where you are going.',
         'Móvil: empezar una partida ya no congela el juego unos segundos, y ya no se traba cada tanto al caminar hacia terreno nuevo. El suelo ahora se dibuja poco a poco, por delante de hacia donde vas.'
       ],
-      ['Defeating Pokémon no longer causes small hitches.', 'Derrotar Pokémon ya no provoca pequeños tirones.']
+      ['Defeating Pokémon no longer causes small hitches.', 'Derrotar Pokémon ya no provoca pequeños tirones.'],
+      [
+        'Missions: the "Refreshes in" countdown now matches when missions really change (midnight in Spain) wherever you live, and the weekly one no longer shows a day too many.',
+        'Misiones: la cuenta atrás de «Se renuevan en» ahora coincide con cuándo cambian de verdad (medianoche en España) vivas donde vivas, y la semanal ya no muestra un día de más.'
+      ]
     ]
   },
   {
