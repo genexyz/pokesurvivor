@@ -506,6 +506,7 @@ export const Tiles = (() => {
     return {
       w,
       h,
+      buf, // row-major pixels, for the hot loops (paintFloor writes them directly)
       set(x, y, col) {
         if (x >= 0 && y >= 0 && x < w && y < h) buf[y * w + x] = col;
       },
@@ -524,43 +525,67 @@ export const Tiles = (() => {
   // ---------------- ground chunk ----------------
 
   /**
-   * Paints an n×n tile chunk. `at(tx,ty)` returns the global terrain type
-   * ('floor' | 'wall' | 'liquid'), so autotiling can see past the
-   * chunk edge.
-   */
-  /**
    * The chunk's dirt mask at pixel resolution (plus one extra row
    * above to detect edges). Noise is evaluated every 4 px and interpolated:
    * ~30 times fewer calls than evaluating it pixel by pixel.
+   * Built on demand, row by row (upTo), so a chunk can be painted over several frames.
+   * mask[(y + 1) * W + x] is 1 for dirt (chunk-local coordinates; y may be -1).
    */
   function dirtMask(gx0, gy0, W, field, seed) {
     const S = 4,
       gw = W / S + 3;
     const grid = new Float32Array(gw * gw);
-    for (let j = 0; j < gw; j++) for (let i = 0; i < gw; i++) grid[j * gw + i] = field(gx0 + (i - 1) * S, gy0 + (j - 1) * S);
     const mask = new Uint8Array(W * (W + 1));
-    for (let y = -1; y < W; y++) {
-      const fy = (y + S) / S,
-        j = Math.floor(fy),
-        v = fy - j;
-      for (let x = 0; x < W; x++) {
-        const fx = (x + S) / S,
-          i = Math.floor(fx),
-          u = fx - i;
-        const a = grid[j * gw + i],
-          b = grid[j * gw + i + 1];
-        const c = grid[(j + 1) * gw + i],
-          d = grid[(j + 1) * gw + i + 1];
-        let val = (a + (b - a) * u) * (1 - v) + (c + (d - c) * u) * v;
-        val += (H((gx0 + x) >> 1, (gy0 + y) >> 1, seed + 9) - 0.5) * 0.05;
-        mask[(y + 1) * W + x] = val > 0.64 ? 1 : 0;
+    // The per-pixel jitter hash is the same for each 2×2 block (gx0, gy0 are even): one row of it, reused.
+    const jit = new Float64Array(W / 2);
+    let gridRows = 0,
+      next = -1, // next mask row to build
+      jitY = NaN;
+    function gridTo(j) {
+      for (; gridRows <= j; gridRows++)
+        for (let i = 0; i < gw; i++) grid[gridRows * gw + i] = field(gx0 + (i - 1) * S, gy0 + (gridRows - 1) * S);
+    }
+    function upTo(yMax) {
+      for (; next <= yMax; next++) {
+        const y = next;
+        const fy = (y + S) / S,
+          j = Math.floor(fy),
+          v = fy - j;
+        gridTo(j + 1);
+        const hy = (gy0 + y) >> 1;
+        if (hy !== jitY) {
+          for (let i = 0; i < W / 2; i++) jit[i] = H((gx0 >> 1) + i, hy, seed + 9);
+          jitY = hy;
+        }
+        const g0 = j * gw + 1,
+          g1 = g0 + gw,
+          o = (y + 1) * W;
+        for (let x = 0; x < W; x++) {
+          // (x + S) / S split exactly into its whole part and fraction (S = 4).
+          const i = x >> 2,
+            u = (x & 3) * 0.25;
+          const a = grid[g0 + i],
+            b = grid[g0 + i + 1];
+          const c = grid[g1 + i],
+            d = grid[g1 + i + 1];
+          let val = (a + (b - a) * u) * (1 - v) + (c + (d - c) * u) * v;
+          val += (jit[x >> 1] - 0.5) * 0.05;
+          mask[o + x] = val > 0.64 ? 1 : 0;
+        }
       }
     }
-    // dirtAt(x, y) in chunk-local coordinates (y may be -1).
-    return (x, y) => mask[(y + 1) * W + x] === 1;
+    return { mask, upTo };
   }
 
-  function paintChunk(cx, cy, n, at, dirtField, bi, seed = 0) {
+  /**
+   * Paints an n×n tile chunk, a row of tiles at a time. `at(tx,ty)` returns the global
+   * terrain type ('floor' | 'wall' | 'liquid'), so autotiling can see past the chunk edge.
+   * job.step(deadline) paints rows until performance.now() passes `deadline` (always at
+   * least one) and returns the canvas once the chunk is complete, else null. A whole chunk
+   * takes 10-40 ms on a phone: in one go it was a visible hitch (worst when entering or
+   * leaving a rift, where every chunk on screen is new); a row is ~1/16 of that.
+   */
+  function chunkJob(cx, cy, n, at, dirtField, bi, seed = 0) {
     const B = BIOMES[bi];
     const P = Pix(n * T, n * T);
     const C = {};
@@ -570,47 +595,64 @@ export const Tiles = (() => {
 
     const tx0 = cx * n,
       ty0 = cy * n;
-    const dirtAt = dirtMask(tx0 * T, ty0 * T, n * T, dirtField, seed);
+    const dirt = dirtMask(tx0 * T, ty0 * T, n * T, dirtField, seed);
+    let j = 0;
 
-    for (let j = 0; j < n; j++) {
-      for (let i = 0; i < n; i++) {
-        const tx = tx0 + i,
-          ty = ty0 + j;
-        const ox = i * T,
-          oy = j * T;
-        const kind = at(tx, ty);
+    return {
+      step(deadline) {
+        while (j < n) {
+          dirt.upTo(j * T + T - 1);
+          for (let i = 0; i < n; i++) {
+            const tx = tx0 + i,
+              ty = ty0 + j;
+            const ox = i * T,
+              oy = j * T;
+            const kind = at(tx, ty);
 
-        // 1) Ground under everything (rounded wall corners let it show).
-        paintFloor(P, C, ox, oy, tx, ty, dirtAt, at);
+            // 1) Ground under everything (rounded wall corners let it show).
+            paintFloor(P, C, ox, oy, tx, ty, dirt.mask, at);
 
-        if (kind === 'wall') paintWall(P, C, ox, oy, tx, ty, at);
-        else if (kind === 'liquid') paintLiquid(P, C, ox, oy, tx, ty, at);
+            if (kind === 'wall') paintWall(P, C, ox, oy, tx, ty, at);
+            else if (kind === 'liquid') paintLiquid(P, C, ox, oy, tx, ty, at);
+          }
+          j++;
+          if (performance.now() > deadline) break;
+        }
+        return j < n ? null : P.canvas();
       }
-    }
-    return P.canvas();
+    };
   }
 
-  function paintFloor(P, C, ox, oy, tx, ty, dirtAt, at) {
+  /** `mask`: the chunk's dirt mask (dirtMask), indexed (ly + 1) * width + lx. */
+  function paintFloor(P, C, ox, oy, tx, ty, mask, at) {
+    const W = P.w,
+      buf = P.buf;
     let dirtCount = 0;
     for (let y = 0; y < T; y++) {
+      const gy = ty * T + y,
+        ly = oy + y; // chunk-local
+      // Smooth tone, constant over 8×8 px: two values per tile row (gx >> 3 = tx * 2 + (x >> 3)).
+      const bandA = H(tx * 2, gy >> 3, 11) * 0.7,
+        bandB = H(tx * 2 + 1, gy >> 3, 11) * 0.7;
+      const row = (ly + 1) * W + ox,
+        up = ly * W + ox, // the pixel above
+        out = ly * W + ox;
       for (let x = 0; x < T; x++) {
-        const gx = tx * T + x,
-          gy = ty * T + y;
-        const lx = ox + x,
-          ly = oy + y; // chunk-local coordinates
-        const dirt = dirtAt(lx, ly);
+        const gx = tx * T + x;
+        const dirt = mask[row + x] === 1;
         if (dirt) dirtCount++;
         const pal = dirt ? C.dirt : C.floor;
         // Tone from smooth noise + per-pixel dithering.
-        const band = H(gx >> 3, gy >> 3, 11) * 0.7 + H(gx, gy, 12) * 0.5;
+        const band = (x < 8 ? bandA : bandB) + H(gx, gy, 12) * 0.5;
         let col = pal[Math.min(pal.length - 1, Math.floor((band * pal.length) / 1.2))];
         const r = H(gx, gy, 13);
         if (r < 0.035) col = C.speck;
         else if (r > 0.985) col = C.light;
         // Dirt edge: dark lip on top, grass creeping in below.
-        if (dirt && !dirtAt(lx, ly - 1)) col = C.speck;
-        else if (!dirt && dirtAt(lx, ly - 1) && r < 0.5) col = C.light;
-        P.set(ox + x, oy + y, col);
+        const dirtUp = mask[up + x] === 1;
+        if (dirt && !dirtUp) col = C.speck;
+        else if (!dirt && dirtUp && r < 0.5) col = C.light;
+        buf[out + x] = col;
       }
     }
     const dirt = dirtCount > (T * T) / 2;
@@ -1195,7 +1237,7 @@ export const Tiles = (() => {
     ARENA,
     ARENA_THEMES,
     ARENA_TYPES,
-    paintChunk,
+    chunkJob,
     propSprite,
     clearProps,
     /** Biome index of a type's arena. */

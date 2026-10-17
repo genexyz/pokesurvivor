@@ -173,11 +173,13 @@ export const Pad = (() => {
 
   /**
    * @param dt   real seconds since the last frame
-   * @param nav  menus are on screen (the highlight moves instead of the player)
+   * @param navFn  menus are on screen (the highlight moves instead of the player): a
+   *               function, asked only when a controller is connected
    */
-  function poll(dt, nav) {
+  function poll(dt, navFn) {
     const p = pad();
     if (!p) return;
+    const nav = navFn();
     const btn = i => !!(p.buttons[i] && (p.buttons[i].pressed || p.buttons[i].value > 0.5));
     const now = p.buttons.map((_, i) => btn(i));
     const hit = i => now[i] && !prev[i];

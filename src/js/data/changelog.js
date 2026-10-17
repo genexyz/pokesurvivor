@@ -63,9 +63,21 @@ export const CHANGELOG = [
       [
         "The move tooltip is wider, so the move's level stays on the same line as its name, and the level is now easy to read.",
         'La ficha de un movimiento es más ancha, así que el nivel del movimiento queda en la misma línea que su nombre, y ahora el nivel se lee bien.'
+      ],
+      [
+        'Mobile: the frame limit has a new "Auto" option, now the default, that runs the game at 60 FPS on phones and tablets (no limit on computers). On 90 and 120 Hz screens this halves the work, so the phone heats up less and does not slow itself down mid-run. You can still pick "No limit" in Settings.',
+        'Móvil: el límite de fotogramas tiene una opción nueva, «Auto», ahora la predeterminada, que hace ir el juego a 60 FPS en móviles y tablets (sin límite en ordenadores). En pantallas de 90 y 120 Hz esto reduce el trabajo a la mitad, así que el móvil se calienta menos y no se ralentiza a mitad de partida. Puedes seguir eligiendo «Sin límite» en Ajustes.'
       ]
     ],
     fix: [
+      [
+        'Mobile: entering and leaving a rift no longer stutters. The ground is drawn about a third faster and a little at a time, and the map you leave is kept, so coming back from the arena is instant.',
+        'Móvil: entrar y salir de una grieta ya no va a tirones. El suelo se dibuja como un tercio más rápido y poco a poco, y el mapa que dejas se guarda, así que volver de la arena es instantáneo.'
+      ],
+      [
+        'With a frame limit, the game no longer skips a frame every few seconds on screens slightly faster than the limit.',
+        'Con un límite de fotogramas, el juego ya no se salta un fotograma cada pocos segundos en pantallas algo más rápidas que el límite.'
+      ],
       [
         'Main menu: the arrow next to the highlighted option is now centred on it, also on options with a two-line description.',
         'Menú principal: la flecha junto a la opción resaltada ahora está centrada en ella, también en las opciones con descripción de dos líneas.'

@@ -56,15 +56,19 @@ export const HUD = (() => {
     ctx.save();
     roundRect(ctx, x, y, w, h, h / 2);
     if (on) {
+      // Glow: two soft outlines. (shadowBlur was a blur pass on every frame of an x2 run.)
+      ctx.strokeStyle = 'rgba(255,190,60,.16)';
+      ctx.lineWidth = 9;
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,190,60,.3)';
+      ctx.lineWidth = 4.5;
+      ctx.stroke();
       const g = ctx.createLinearGradient(x, y, x, y + h);
       g.addColorStop(0, '#ffe27a');
       g.addColorStop(1, '#ff9a3d');
       ctx.fillStyle = g;
-      ctx.shadowColor = 'rgba(255,190,60,.7)';
-      ctx.shadowBlur = 10;
     } else ctx.fillStyle = 'rgba(10,16,28,.7)';
     ctx.fill();
-    ctx.shadowBlur = 0;
     ctx.lineWidth = 1.5;
     ctx.strokeStyle = on ? '#fff3c4' : 'rgba(255,210,63,.6)';
     ctx.stroke();
