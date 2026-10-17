@@ -53,6 +53,10 @@ export const CHANGELOG = [
     ],
     chg: [
       [
+        'Collection: a new "Mega" filter shows the Pokémon that can Mega Evolve (or take their Primal form). On mobile, the filters now wrap onto several rows instead of one row you had to scroll.',
+        'Colección: un nuevo filtro «Mega» muestra los Pokémon que pueden megaevolucionar (o tomar su forma Primigenia). En el móvil, los filtros ahora ocupan varias filas en lugar de una sola fila que había que desplazar.'
+      ],
+      [
         'The run seed is no longer shown in the pause menu or on the end-of-run screen, and Settings > About no longer shows a version number and date.',
         'La semilla de la partida ya no se muestra en el menú de pausa ni en la pantalla final, y Ajustes > Acerca de ya no muestra número de versión ni fecha.'
       ],

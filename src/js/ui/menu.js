@@ -5,6 +5,7 @@ import { DEX, DEX_BY } from '../data/pokedex.js';
 import { DB } from '../core/db.js';
 import { Audio } from '../core/audio.js';
 import { Moves } from '../data/moves.js';
+import { Megas } from '../data/megas.js';
 import { startMoveOf } from '../data/starters.js';
 import { Balance } from '../data/balance.js';
 import { Upgrades } from '../data/upgrades.js';
@@ -190,6 +191,7 @@ export const MenuUI = (() => {
       ['own', 'Owned'],
       ['miss', 'Missing'],
       ['shiny', 'Shiny'],
+      ['mega', 'Mega'],
       ['5', 5],
       ['4', 4],
       ['3', 3],
@@ -204,7 +206,9 @@ export const MenuUI = (() => {
       c.innerHTML =
         k === 'shiny'
           ? Icons.html('shiny', 12) + ' Shiny'
-          : typeof label === 'number'
+          : k === 'mega'
+            ? Icons.html('mega:6', 12) + ' Mega'
+            : typeof label === 'number'
             ? Icons.rarity(label, 12) + ' ' + Gacha.RARITY_NAME[label]
             : label;
       c.onclick = () => {
@@ -286,6 +290,7 @@ export const MenuUI = (() => {
       if (dexFilter === 'own' && !own) continue;
       if (dexFilter === 'miss' && own) continue;
       if (dexFilter === 'shiny' && !sh) continue;
+      if (dexFilter === 'mega' && !Megas.of(p.dex)) continue;
       if (/^\d$/.test(dexFilter) && p.rarity !== +dexFilter) continue;
 
       const cell = document.createElement('div');

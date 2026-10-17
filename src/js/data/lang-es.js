@@ -591,6 +591,7 @@ export const ES = {
   // collection
   All: 'Todos',
   Owned: 'Tengo',
+  Mega: 'Mega',
   Missing: 'Me faltan',
   Legendary: 'Legendaria',
   Epic: 'Épica',
