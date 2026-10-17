@@ -18,6 +18,13 @@ export const CHANGELOG = [
         'Gym leaders appear next to their best Pokémon, stand at the back of their arena and send out their team when you arrive. Every badge has its own icon, and each region has a champion title to earn, plus "Pokémon Master" for all 72 badges.',
         'Los líderes de gimnasio aparecen junto a su mejor Pokémon, esperan al fondo de su arena y sacan a su equipo cuando llegas. Cada medalla tiene su icono, y cada región tiene un título de campeón, además de «Maestro Pokémon» por las 72 medallas.'
       ]
+    ],
+    fix: [
+      [
+        'Phones: starting a run no longer freezes for a few seconds, and the game no longer stutters every so often while you walk into new ground. The ground is now drawn a little at a time, ahead of where you are going.',
+        'Móvil: empezar una partida ya no congela el juego unos segundos, y ya no se traba cada tanto al caminar hacia terreno nuevo. El suelo ahora se dibuja poco a poco, por delante de hacia donde vas.'
+      ],
+      ['Defeating Pokémon no longer causes small hitches.', 'Derrotar Pokémon ya no provoca pequeños tirones.']
     ]
   },
   {

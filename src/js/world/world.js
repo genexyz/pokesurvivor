@@ -59,7 +59,7 @@ export const World = (() => {
   // Biome change: for FADE seconds the old palette blends into the new one.
   const FADE = 2.6;
   let fade = null; // { from, images, t }
-  const MAX_IMAGES = 48,
+  const MAX_IMAGES = 64, // the view plus the ring painted ahead (~40 chunks on a phone in portrait)
     MAX_DATA = 400;
   const broken = new Set(); // destroyed props: "tx,ty"
   let nextPropId = 1;
@@ -531,10 +531,27 @@ export const World = (() => {
 
   // ---------------- drawing ----------------
 
+  // Painting a chunk takes 10-40 ms on a phone. Painting every chunk that came into view
+  // in the same frame froze the game: seconds at the start of a run (a phone in portrait
+  // sees ~15 chunks) and a hitch every time you walked into new ground. Now each frame
+  // paints for at most PAINT_MS: the visible chunks first (nearest the centre), then the
+  // ring around the view, ahead of time. A visible chunk not painted yet shows plain floor.
+  const PAINT_MS = 6;
+  let paintEnd = 0,
+    painted = 0;
+
+  /** The chunk's baked canvas, or null if it isn't painted and this frame's budget is spent. */
   function chunkImage(cx, cy, bi = biome, cache = images) {
     const k = cx + ',' + cy;
     let img = cache.get(k);
-    if (img) return img;
+    if (img) {
+      // Most recently used last: the cache drops the oldest, never what is on screen.
+      cache.delete(k);
+      cache.set(k, img);
+      return img;
+    }
+    if (painted > 0 && performance.now() > paintEnd) return null;
+    painted++;
     const at = (tx, ty) => KIND[terrainAt(tx, ty)];
     // Continuous "dirt" field; tiles.js samples it on a grid and
     // interpolates per pixel so the patches get organic edges.
@@ -563,21 +580,38 @@ export const World = (() => {
     return out;
   }
 
+  /** A chunk (its image, or plain floor while it isn't painted). +1 overlap: no seams at non-integer scales. */
+  function drawChunk(ctx, img, cx, cy, bi) {
+    if (img) ctx.drawImage(img, cx * CW, cy * CW, CW + 1, CW + 1);
+    else {
+      ctx.fillStyle = Tiles.BIOMES[bi].floor[0];
+      ctx.fillRect(cx * CW, cy * CW, CW + 1, CW + 1);
+    }
+  }
+
   function drawGround(ctx, cam) {
     ctx.imageSmoothingEnabled = false;
+    paintEnd = performance.now() + PAINT_MS;
+    painted = 0;
     const k = fadeK();
-    for (const [cx, cy] of visibleChunks(cam)) {
-      // +1 overlap: avoids seams between chunks at non-integer scales.
+    const mx = (cam.left() + cam.w / 2) / CW - 0.5,
+      my = (cam.top() + cam.h / 2) / CW - 0.5;
+    const vis = visibleChunks(cam).sort((a, b) => Math.hypot(a[0] - mx, a[1] - my) - Math.hypot(b[0] - mx, b[1] - my));
+    for (const [cx, cy] of vis) {
       if (k == null) {
-        ctx.drawImage(chunkImage(cx, cy), cx * CW, cy * CW, CW + 1, CW + 1);
+        drawChunk(ctx, chunkImage(cx, cy), cx, cy, biome);
         continue;
       }
-      // Fade: the old biome underneath and the new one appearing on top.
-      ctx.drawImage(chunkImage(cx, cy, fade.from, fade.images), cx * CW, cy * CW, CW + 1, CW + 1);
+      // Fade: the old biome underneath and the new one appearing on top (as it gets painted).
+      drawChunk(ctx, chunkImage(cx, cy, fade.from, fade.images), cx, cy, fade.from);
+      const img = chunkImage(cx, cy);
+      if (!img) continue;
       ctx.globalAlpha = k;
-      ctx.drawImage(chunkImage(cx, cy), cx * CW, cy * CW, CW + 1, CW + 1);
+      ctx.drawImage(img, cx * CW, cy * CW, CW + 1, CW + 1);
       ctx.globalAlpha = 1;
     }
+    // Ahead of time: the chunks around the view, while this frame's budget lasts.
+    if (performance.now() < paintEnd) for (const [cx, cy] of visibleChunks(cam, CW)) if (!chunkImage(cx, cy)) break;
   }
 
   /** Animated glints on water / lava bubbles (and poison and electricity). */
