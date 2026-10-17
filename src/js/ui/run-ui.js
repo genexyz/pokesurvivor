@@ -182,14 +182,15 @@ export const RunUI = (() => {
   function storyResult(sr) {
     const g = sr.stage.gym;
     const badge =
-      Icons.html('badge:' + sr.stage.id, 48) + `<img class="leader-art" src="${Stages.leaderArt(sr.stage)}" alt="" draggable="false">`;
+      Icons.html('badge:' + sr.stage.id, 48) +
+      (Stages.leaderArt(sr.stage) ? `<img class="leader-art" src="${Stages.leaderArt(sr.stage)}" alt="" draggable="false">` : '');
     if (!sr.won)
       return `<div class="over-story lost" style="grid-column:1/-1">${badge}<div>
-        <b>${g.name} · ${g.leader}</b><div class="sub">Reached: ${sr.reached}</div></div></div>`;
+        <b><span>${g.name}</span> · <span>${g.leader}</span></b><div class="sub">Reached: ${sr.reached}</div></div></div>`;
     const rw = sr.reward;
     return `<div class="over-story" style="grid-column:1/-1">${badge}<div>
       <b class="gold">${sr.first ? g.badge + ' obtained!' : 'You beat ' + g.leader + ' again'}</b>
-      <div class="sub">${g.name} · <span class="coin"></span> +${rw.coins} · ${Icons.html('ticket', 12)} +${rw.t1}</div></div></div>`;
+      <div class="sub"><span>${g.name}</span> · <span class="coin"></span> +${rw.coins} · ${Icons.html('ticket', 12)} +${rw.t1}</div></div></div>`;
   }
 
   /*

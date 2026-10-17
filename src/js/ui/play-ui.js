@@ -148,6 +148,7 @@ export const PlayUI = (() => {
     const open = Stages.unlocked(s, st.id);
     const g = st.gym;
     const ace = Stages.ace(st);
+    const art = Stages.leaderArt(st);
     const rw = Balance.story.reward(st.pace, !rec);
     const prev = st.prev && Stages.BY_ID[st.prev];
     const el = document.createElement('div');
@@ -167,8 +168,8 @@ export const PlayUI = (() => {
         }</div>
       </div>
       <div class="stage-leader">
-        <div class="stage-duo"><img class="leader-art" src="${Stages.leaderArt(st)}" alt="" draggable="false"></div>
-        <small>Leader</small><b>${g.leader}</b>
+        <div class="stage-duo">${art ? `<img class="leader-art" src="${art}" alt="" draggable="false">` : ''}</div>
+        <small>${g.title === 'Gym Leader' ? 'Leader' : g.title}</small><b>${g.leader}</b>
       </div>
       <button class="btn ${open ? 'gold' : ''}" data-sfx="confirm" ${open && !Social.room ? '' : 'disabled'}>${open ? 'Play' : 'Locked'}</button>`;
     // The leader and their ace (both silhouettes until the stage opens).

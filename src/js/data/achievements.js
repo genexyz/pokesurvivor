@@ -9,6 +9,7 @@
 import { DEX, DEX_BY } from './pokedex.js';
 import { SPRITE_META } from './sprites-meta.js';
 import { Moves } from './moves.js';
+import { Stages } from './stages.js';
 
 export const AchDefs = (() => {
   const own = s => Object.keys(s.owned || {}).filter(d => DEX_BY[d]).length;
@@ -16,7 +17,9 @@ export const AchDefs = (() => {
   const legends = s => Object.keys(s.legends || {}).length;
   const st = k => s => (s.stats && s.stats[k]) || 0;
   const count = k => s => Object.keys(s[k] || {}).length;
-  const kanto = s => Object.keys(s.story || {}).filter(id => id.startsWith('kanto_')).length;
+  const inRegion = r => s => Object.keys(s.story || {}).filter(id => id.startsWith(r + '_')).length;
+  const kanto = inRegion('kanto');
+  const ALL_BADGES = Stages.REGIONS.reduce((n, r) => n + r.stages.length, 0);
 
   const CATS = [
     ['collection', 'Collection'],
@@ -387,6 +390,29 @@ export const AchDefs = (() => {
       goal: 8,
       reward: { t10: 2 },
       title: 'Kanto champion'
+    },
+    // One per region after Kanto (data/stages.js), and every badge of every region.
+    ...Stages.REGIONS.filter(r => r.id !== 'kanto').map(r => ({
+      id: r.id + '8',
+      cat: 'story',
+      tier: 3,
+      name: r.name + ' champion',
+      desc: 'Earn all 8 ' + r.name + ' badges.',
+      value: inRegion(r.id),
+      goal: r.stages.length,
+      reward: { t10: 2 },
+      title: r.name + ' champion'
+    })),
+    {
+      id: 'badgesAll',
+      cat: 'story',
+      tier: 3,
+      name: 'Pokémon Master',
+      desc: 'Earn every badge of every region.',
+      value: count('story'),
+      goal: ALL_BADGES,
+      reward: { t10: 10 },
+      title: 'Pokémon Master'
     },
 
     // ---------- rifts ----------

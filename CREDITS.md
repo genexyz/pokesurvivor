@@ -126,11 +126,13 @@ The *Pokémon Mystery Dungeon*-style sprites come from
 
 ## Gym leader sprites
 
-The gym leaders in Story mode (`public/assets/trainers/`) are the *Pokémon FireRed / LeafGreen*
-trainer sprites, taken from Smogon's sprite repository
-([smogon/sprites](https://github.com/smogon/sprites), `src/_uncategorized/canonical/trainers/gen3/firered-leafgreen`),
+The gym leaders in Story mode (`public/assets/trainers/<region>/`) are the official trainer sprites
+of *FireRed / LeafGreen* (Kanto), *HeartGold / SoulSilver* (Johto), *Ruby / Sapphire* and *Emerald*
+(Hoenn), *Diamond / Pearl* (Sinnoh) and *Black / White* (Unova), taken from Smogon's sprite repository
+([smogon/sprites](https://github.com/smogon/sprites), `src/_uncategorized/canonical/trainers/`),
 the collection behind Pokémon Showdown. They are © Nintendo / Creatures / GAME FREAK and are used
-here non-commercially, as in the rest of this fan project.
+here non-commercially, as in the rest of this fan project. Regions without official sprites there
+(Kalos, Alola, Galar, Paldea) show only the leader's Pokémon.
 
 ## Data
 

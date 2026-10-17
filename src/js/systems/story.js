@@ -13,6 +13,7 @@
  * Solo only for now: a co-op run always plays endless.
  */
 import { Balance } from '../data/balance.js';
+import { I18n } from '../core/i18n.js';
 import { DEX_BY } from '../data/pokedex.js';
 import { SPRITE_META } from '../data/sprites-meta.js';
 import { Stages } from '../data/stages.js';
@@ -55,7 +56,7 @@ export const Story = (() => {
     stage = Stages.BY_ID[id] || null;
     art = null;
     focusT = 0;
-    if (stage) {
+    if (stage && Stages.leaderArt(stage)) {
       art = new Image();
       art.src = Stages.leaderArt(stage);
     }
@@ -84,6 +85,13 @@ export const Story = (() => {
     });
     return i;
   };
+  /** A route's music, from its biome: caves and dark places, volcanoes, or the forest. */
+  const musicOf = l =>
+    l.biome === 1 || ['ghost', 'dark', 'steel', 'poison', 'psychic', 'dragon'].includes(l.biome)
+      ? 'cave'
+      : l.biome === 2 || l.biome === 'fire'
+        ? 'volcano'
+        : 'forest';
   /** Biome index of a leg (a number, or an arena type to borrow its palette). */
   const biomeOf = l => (typeof l.biome === 'number' ? l.biome : Tiles.arenaBiome(l.biome));
 
@@ -177,7 +185,7 @@ export const Story = (() => {
     );
     Game.flash('#ffffff', 0.9);
     Audio.sfx('rift');
-    Spawner.say(`Gym Leader ${g.leader} wants to battle!`, B.gym.intro + 0.6, true);
+    Spawner.say(`${g.title} ${g.leader} wants to battle!`, B.gym.intro + 0.6, true);
   }
 
   /** The leader sends out the next wave (1 or 2 Pokémon). */
@@ -219,7 +227,7 @@ export const Story = (() => {
     Hazards.clear();
     Audio.sfx('legend');
     Game.flash('#ffd23f', 0.8);
-    Spawner.say(`You defeated Gym Leader ${stage.gym.leader}!`, B.gym.won, true);
+    Spawner.say(`You defeated ${stage.gym.title} ${stage.gym.leader}!`, B.gym.won, true);
     const pl = Game.player;
     if (pl) {
       FX.ring(pl.x, pl.y, 8, 160, '#ffd23f', 0.9, 6);
@@ -282,7 +290,14 @@ export const Story = (() => {
         gym: false
       };
     }
-    return { clock: null, place: stage.gym.name + ' · ' + stage.gym.leader, progress: 1, marks: [], gym: true };
+    return {
+      clock: null,
+      place: I18n.t(stage.gym.name) + ' · ' + I18n.t(stage.gym.leader), // (translated in pieces: the canvas only sees the joined text)
+      progress: 1,
+      marks: [],
+      gym: true,
+      battle: stage.gym.battle
+    };
   }
 
   /** The leader, Y-sorted with the scene while you are in the gym (game.js drawScene). */
@@ -291,7 +306,7 @@ export const Story = (() => {
     y: 0,
     draw(ctx) {
       if (!art || !art.complete || !art.naturalWidth) return;
-      const P = B.gym.leaderScale,
+      const P = B.gym.leaderHeight / art.naturalHeight,
         w = art.naturalWidth * P,
         h = art.naturalHeight * P;
       ctx.save();
@@ -336,7 +351,7 @@ export const Story = (() => {
     get music() {
       if (!stage) return null;
       if (phase !== 'route') return 'boss';
-      return stage.legs[Math.max(0, leg)].music || 'forest';
+      return musicOf(stage.legs[Math.max(0, leg)]);
     }
   };
 })();

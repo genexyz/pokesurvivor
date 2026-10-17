@@ -1,8 +1,9 @@
 # Story mode
 
 Story mode is a run of fixed length through themed routes, ending in a gym battle. It is a port and
-redesign of upstream PR #107 ("Kanto Stages & Gyms", see `COMMUNITY_SUGGESTIONS.md`). Kanto ships
-first, with all 8 gyms. The code is region-agnostic, so the other regions only need data.
+redesign of upstream PR #107 ("Kanto Stages & Gyms", see `COMMUNITY_SUGGESTIONS.md`). All nine
+regions are playable: 72 stages, 8 per region, each ending against that region's gym leader (Alola:
+its island trials, against Captains and Kahunas, for Z-Crystals).
 
 ## How a stage plays
 
@@ -22,7 +23,12 @@ to two boss bars.
 ## Difficulty: one number per stage
 
 Each stage has a `pace`. At stage second `t`, enemies, spawn rate, swarms and bosses are those of
-**endless second `pace × t / 600`**, so the gym is fought at endless second `pace`.
+**endless second `pace × t / 600`**, so the gym is fought at endless second `pace`. Inside a region
+the pace goes 180 → 600 (+60 per stage), and each region after Kanto adds 30: Johto 210 → 630 …
+Paldea 420 → 840. Every region's first stage is open, so you can start wherever you like; later
+regions are simply a bit harder and pay a bit more.
+
+Kanto, for example:
 
 | Stage | Route                                                | Leader    | Badge   | pace |
 | ----- | ---------------------------------------------------- | --------- | ------- | ---- |
@@ -42,34 +48,36 @@ data. All tuning is in `Balance.story`, which you can edit live from the `?dev` 
 
 Reward per clear also comes from the pace (`Balance.story.reward`):
 
-- first clear: 450 coins and 6 tickets (Brock) up to 1,500 coins and 20 tickets (Giovanni)
+- first clear: 450 coins and 6 tickets (Brock) up to 1,500 coins and 20 tickets (Giovanni); Paldea's
+  last gym gives 2,100 coins and 28 tickets
 - each repeat: about a quarter of that
 
 ## Rules
 
-- Stages unlock in order: stage N needs stage N-1 cleared.
+- Stages unlock in order inside a region: stage N needs stage N-1 cleared. Every region is open.
 - Solo only for now. Co-op runs always play Endless.
 - Story runs are not ranked and don't change endless records (`bestTime`). Kills, levels, missions
   and achievements still count.
-- New achievements in a "Story" category: First badge, Halfway there (4 Kanto badges), and Kanto
-  champion (all 8, with a title).
+- New achievements in a "Story" category: First badge, Halfway there (4 Kanto badges), a champion
+  title for each region (all 8 of its badges), and Pokémon Master (all 72).
 
 ## Code map
 
-| File                                 | Role                                                                                                                      |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `src/js/data/stages.js`              | `Stages`: regions → stages (legs, minis, gym waves, pace), unlock and badge helpers                                       |
-| `src/js/systems/story.js`            | `Story`: the run. Leg changes, mini-boss bonds, gym travel and waves, win, `finish()` (save + reward), HUD info           |
-| `src/js/data/balance.js`             | `Balance.story`: duration, cap, gym HP, timings, rewards                                                                  |
-| `src/js/data/enemies.js`             | `rollStory` (leg casts + minis), `bossAt` (boss curve at any second), `bossDef`                                           |
-| `src/js/systems/spawner.js`          | Scales everything by `Story.eq(t)` and pauses spawns during the gym                                                       |
-| `src/js/game.js`                     | `startRun(coop, stageId)`, `winStory()`, story-aware `endRun`, `Flow.play(id)` and `Flow.replay(id)`                      |
-| `src/js/ui/play-ui.js`               | The **Play screen**: one tab per game mode (`MODES`) and the Story region tabs                                            |
-| `src/js/ui/hud.js`                   | Countdown, route name, progress line, two boss bars                                                                       |
-| `src/js/ui/run-ui.js`                | Summary banner (badge and reward, or how far you got), Next / Try again                                                   |
-| `src/js/ui/icons.js`                 | 8 pixel-art badge icons (`'badge:kanto_1'` …)                                                                             |
-| `public/assets/trainers/kanto/`      | Leader sprites (FireRed/LeafGreen), named after the leader in lowercase letters only (`Stages.leaderArt`)                 |
-| `src/js/core/db.js`, `save-merge.js` | `save.story[id] = { at, clears, best }`. A merge keeps the first date, the most clears and the best time from each device |
+| File                                 | Role                                                                                                                                     |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/js/data/stages.js`              | `Stages`: 9 regions × 8 stages, written by Pokémon name (`S(...)`, legs, minis, gym waves), pace, unlock and badge helpers               |
+| `scripts/check_stages.js`            | Checks every name, route, wave and leader sprite (`npm run check:stages`; `npm run build` runs it first)                                 |
+| `src/js/systems/story.js`            | `Story`: the run. Leg changes, mini-boss bonds, gym travel and waves, win, `finish()` (save + reward), HUD info                          |
+| `src/js/data/balance.js`             | `Balance.story`: duration, cap, gym HP, timings, rewards                                                                                 |
+| `src/js/data/enemies.js`             | `rollStory` (leg casts + minis), `bossAt` (boss curve at any second), `bossDef`                                                          |
+| `src/js/systems/spawner.js`          | Scales everything by `Story.eq(t)` and pauses spawns during the gym                                                                      |
+| `src/js/game.js`                     | `startRun(coop, stageId)`, `winStory()`, story-aware `endRun`, `Flow.play(id)` and `Flow.replay(id)`                                     |
+| `src/js/ui/play-ui.js`               | The **Play screen**: one tab per game mode (`MODES`) and the Story region tabs                                                           |
+| `src/js/ui/hud.js`                   | Countdown, route name, progress line, two boss bars                                                                                      |
+| `src/js/ui/run-ui.js`                | Summary banner (badge and reward, or how far you got), Next / Try again                                                                  |
+| `src/js/ui/icons.js`                 | Badges `'badge:<stage id>'`: Kanto's 8 hand-drawn, the rest generated from a pixel shape per type in the type's colors                   |
+| `public/assets/trainers/<region>/`   | Official leader sprites for Kanto, Johto, Hoenn, Sinnoh and Unova, named after the leader in lowercase letters only (`Stages.leaderArt`) |
+| `src/js/core/db.js`, `save-merge.js` | `save.story[id] = { at, clears, best }`. A merge keeps the first date, the most clears and the best time from each device                |
 
 ## Differences from PR #107
 
@@ -102,11 +110,13 @@ Reward per clear also comes from the pace (`Balance.story.reward`):
 
 1. **Playtest balance.** `pace`, `Balance.story.gym.hp` and the reward curve are first guesses. Tune
    them live with `?dev` (Balance panel), then edit `balance.js`.
-2. **Johto** (and later regions): add a `stages` array to the region in `data/stages.js`, plus badge
-   icons `'badge:johto_1'`…, leader sprites in `public/assets/trainers/johto/` (Smogon's repository
-   has HeartGold/SoulSilver ones) and Spanish names. A pace above 600 continues past endless minute 10.
-   Consider an Elite Four stage (5 waves) for each region's finale.
-3. **Co-op Story:** the gym is local-only today. It would need host-driven `story` sync messages
+2. **Leader art for Kalos, Alola, Galar and Paldea.** No official sprites in Smogon's repository:
+   its Kalos/Alola ones are fan-made ("noncanonical"), and PokeRogue's asset repository has every
+   Galar/Paldea leader but as unlicensed community art. Ask those artists for permission (and credit
+   them), or commission originals, then drop them in `public/assets/trainers/<region>/` and set
+   `art: true` on the region.
+3. **Elite Four and Champion** stage per region (5 waves), unlocked by the 8 badges.
+4. **Co-op Story:** the gym is local-only today. It would need host-driven `story` sync messages
    like `rift.js` (`'gym'` cfg, `'gw'` wave, `'gwin'`).
-4. **More modes on the Play screen:** for example the "Challenges" idea from #124 (rule modifiers
+5. **More modes on the Play screen:** for example the "Challenges" idea from #124 (rule modifiers
    such as enemy damage ×1.25, rewards validated by `server/`). Each is one `MODES` entry.

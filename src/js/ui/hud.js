@@ -320,7 +320,7 @@ export const HUD = (() => {
     ctx.textAlign = 'center';
     ctx.font = F(800, story && story.gym ? 20 : 26);
     ctx.fillStyle = story && story.gym ? '#ffd23f' : 'rgba(255,255,255,.95)';
-    ctx.fillText(!story ? U.mmss(st.time) : story.gym ? 'GYM BATTLE' : U.mmss(story.clock), w / 2, 42);
+    ctx.fillText(!story ? U.mmss(st.time) : story.gym ? story.battle.toUpperCase() : U.mmss(story.clock), w / 2, 42);
     ctx.font = F(600, 10);
     ctx.fillStyle = '#8fa3c4';
     const place = story ? story.place : World.biomeName();

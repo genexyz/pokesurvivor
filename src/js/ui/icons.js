@@ -11,6 +11,7 @@
 import { U } from '../core/util.js';
 import { Moves } from '../data/moves.js';
 import { Gacha } from '../systems/gacha.js';
+import { Stages } from '../data/stages.js';
 
 export const Icons = (() => {
   const K = '#1b1528'; // outline
@@ -1110,6 +1111,303 @@ export const Icons = (() => {
     const f = c => Math.max(0, Math.min(255, Math.round(c * k)));
     return '#' + [f((n >> 16) & 255), f((n >> 8) & 255), f(n & 255)].map(v => v.toString(16).padStart(2, '0')).join('');
   }
+
+  // ---------- generated gym badges: a shape per type, colored by the type (badgeOf) ----------
+  const BADGE_SHAPES = {
+    octagon: [
+      '...kkkkkk...',
+      '..kddddddk..',
+      '.kddwwwwddk.',
+      'kddwwmmmmddk',
+      'kdwwmmmmmmdk',
+      'kdwmmmmmmddk',
+      'kdwmmmmmdddk',
+      'kdmmmmmmdddk',
+      'kddmmmmdddk.',
+      '.kdddddddk..',
+      '..kddddddk..',
+      '...kkkkkk...'
+    ],
+    drop: [
+      '.....kk.....',
+      '....kmmk....',
+      '....kmmk....',
+      '...kwmmmk...',
+      '..kwmmmmmk..',
+      '.kwmmmmmmmk.',
+      '.kwmmmmmmdk.',
+      'kmmmmmmmmddk',
+      'kmmmmmmmdddk',
+      '.kmmmmmdddk.',
+      '..kkddddkk..',
+      '....kkkk....'
+    ],
+    star: [
+      '.....kk.....',
+      '....kmmk....',
+      '.kk.kmmk.kk.',
+      '.kmkkmmkkmk.',
+      '..kmmwwmmk..',
+      'kkmmwddwmmkk',
+      'kmmmwddwmmmk',
+      '.kkmmwwmmkk.',
+      '..kmmkkmmk..',
+      '.kmk.kk.kmk.',
+      '.kk.kmmk.kk.',
+      '.....kk.....'
+    ],
+    heart: [
+      '............',
+      '.kkk....kkk.',
+      'kwwmk..kmmdk',
+      'kwmmmmkmmmmk',
+      'kwmmmmmmmddk',
+      'kmmmmmmmmmdk',
+      '.kmmmmmmmdk.',
+      '..kmmmmmddk.',
+      '...kmmmddk..',
+      '....kmmdk...',
+      '.....kdk....',
+      '......k.....'
+    ],
+    rings: [
+      '...kkkkkk...',
+      '..kwwmmmmk..',
+      '.kwmkkkkmdk.',
+      'kwmk....kmdk',
+      'kmk.kkkk.kdk',
+      'kmk.kwmk.kdk',
+      'kmk.kmdk.kdk',
+      'kmk.kkkk.kdk',
+      'kmmk....kddk',
+      '.kmmkkkkddk.',
+      '..kddddddk..',
+      '...kkkkkk...'
+    ],
+    flame: [
+      '.....k......',
+      '....kmk.....',
+      '....kmmk.k..',
+      '...kmmmkkmk.',
+      '..kmmwmmmmk.',
+      '..kmwwwmmmdk',
+      '.kmmwwwwmmdk',
+      '.kmwwwwwwmdk',
+      '.kmwwwwwwmdk',
+      '.kmmwwwwmmdk',
+      '..kdmmmmddk.',
+      '...kkkkkkk..'
+    ],
+    leaf: [
+      '.....kk.....',
+      '....kwmk....',
+      '...kwmmmk...',
+      '..kwmmdmmk..',
+      '.kwmmmdmmmk.',
+      'kwmmmmdmmmmk',
+      'kmmmmmdmmmdk',
+      '.kmmmmdmmdk.',
+      '..kmmmdmdk..',
+      '...kmmddk...',
+      '....kmdk....',
+      '.....kk.....'
+    ],
+    wing: [
+      '............',
+      '.........kk.',
+      '.......kkwk.',
+      '.....kkwwmk.',
+      '...kkwwmmmk.',
+      '.kkwwmmmmdk.',
+      'kwwmmmmmddk.',
+      'kmmmmmmddk..',
+      '.kmmmmddk...',
+      '..kmmddk....',
+      '...kddk.....',
+      '....kk......'
+    ],
+    bolt: [
+      '......kkkk..',
+      '.....kwwmk..',
+      '....kwmmk...',
+      '...kwmmk....',
+      '..kwmmkkkkk.',
+      '.kwmmmmmmmk.',
+      '.kkkkkmmmk..',
+      '....kmmmk...',
+      '...kmmdk....',
+      '..kmddk.....',
+      '..kddk......',
+      '..kkk.......'
+    ],
+    snow: [
+      '.....kk.....',
+      '..k..kk..k..',
+      '.kwk.kk.kmk.',
+      '..kwkwmkmk..',
+      'kk.kwmmmk.kk',
+      'kwwwmwdmmmdk',
+      'kmmmmdwmddk.',
+      'kk.kmmmdk.kk',
+      '..kmkmdkdk..',
+      '.kmk.kk.kdk.',
+      '..k..kk..k..',
+      '.....kk.....'
+    ],
+    fist: [
+      '............',
+      '..kkkkkkk...',
+      '.kwkwkwkwk..',
+      '.kwkmkmkmkk.',
+      '.kmkmkmkmkmk',
+      '.kmmmmmmmkmk',
+      '.kmmmmmmmmdk',
+      '.kmmmmmmmmdk',
+      '..kmmmmmmdk.',
+      '..kmmmmmddk.',
+      '..kdddddddk.',
+      '..kkkkkkkk..'
+    ],
+    fang: [
+      '.kk......kk.',
+      'kwmk....kmdk',
+      'kwmmk..kmmdk',
+      '.kwmmkkmmdk.',
+      '.kwmmmmmmdk.',
+      '..kmmmmmmk..',
+      '..kmmmmmdk..',
+      '...kmmmdk...',
+      '...kmmmdk...',
+      '....kmdk....',
+      '....kmdk....',
+      '.....kk.....'
+    ],
+    shield: [
+      '.kkkkkkkkkk.',
+      'kwwwwmmmmmdk',
+      'kwmmmmmmmmdk',
+      'kwmmkkkkmmdk',
+      'kwmkwwmdkmdk',
+      'kmmkwmmdkmdk',
+      'kmmkmmddkmdk',
+      '.kmmkkkkmdk.',
+      '.kmmmmmmmdk.',
+      '..kmmmmmdk..',
+      '...kmmmdk...',
+      '....kkkk....'
+    ],
+    bug: [
+      '..k......k..',
+      '...k....k...',
+      '...kkkkkk...',
+      '..kwmmmmdk..',
+      '.kkkkkkkkkk.',
+      'kwmmmkkmmmdk',
+      'kwmmmkkmmmdk',
+      'kmmmmkkmmmdk',
+      'kmmmmkkmmddk',
+      '.kmmmkkmmdk.',
+      '..kmmkkmdk..',
+      '...kkkkkk...'
+    ],
+    eye: [
+      '............',
+      '....kkkk....',
+      '..kkwwmmkk..',
+      '.kwwmkkmmdk.',
+      'kwmmkddkmmdk',
+      'kwmkdwwdkmdk',
+      'kmmkdwwdkmdk',
+      'kmmmkddkmmdk',
+      '.kmmmkkmmdk.',
+      '..kkmmmdkk..',
+      '....kkkk....',
+      '............'
+    ],
+    moon: [
+      '....kkkk....',
+      '..kkwwmmk...',
+      '.kwwmmkk....',
+      '.kwmmk......',
+      'kwmmk.......',
+      'kwmmk.......',
+      'kmmmk.......',
+      'kmmmk.....k.',
+      '.kmmmk...kdk',
+      '.kmmmmkkkmdk',
+      '..kkmmmmddk.',
+      '....kkkkkk..'
+    ],
+    sparkle: [
+      '.....kk.....',
+      '....kwmk....',
+      '....kwmk....',
+      '...kwmmdk...',
+      'kkkkwmmmkkkk',
+      'kwwwmmmmmmdk',
+      'kmmmmmmmdddk',
+      'kkkkmmmdkkkk',
+      '...kmmmdk...',
+      '....kmdk....',
+      '....kmdk....',
+      '.....kk.....'
+    ],
+    peak: [
+      '............',
+      '.....kk.....',
+      '....kwmk....',
+      '...kwwmmk...',
+      '...kwmmmdk..',
+      '..kwmmkmmdk.',
+      '..kwmk.kmdk.',
+      '.kwmmk.kmmdk',
+      '.kmmk...kmdk',
+      'kmmmk...kmdk',
+      'kmmddkkkkddk',
+      'kkkkkkkkkkkk'
+    ]
+  };
+  const TYPE_BADGE = {
+    normal: 'rings',
+    fire: 'flame',
+    water: 'drop',
+    grass: 'leaf',
+    electric: 'bolt',
+    ice: 'snow',
+    fighting: 'fist',
+    poison: 'heart',
+    ground: 'peak',
+    flying: 'wing',
+    psychic: 'eye',
+    bug: 'bug',
+    rock: 'octagon',
+    ghost: 'moon',
+    dragon: 'fang',
+    dark: 'moon',
+    steel: 'shield',
+    fairy: 'sparkle'
+  };
+
+  /** Mixes a color towards another (k = 0 → a, 1 → b). */
+  function mix(a, b, k) {
+    const ca = parseInt(a.slice(1), 16),
+      cb = parseInt(b.slice(1), 16);
+    const ch = sh => Math.round(((ca >> sh) & 255) * (1 - k) + ((cb >> sh) & 255) * k);
+    return '#' + [16, 8, 0].map(sh => ch(sh).toString(16).padStart(2, '0')).join('');
+  }
+
+  // 'badge:<stage id>' for every story stage without a hand-drawn badge (Kanto's are above):
+  // the shape of its gym's type (or the gym's own `icon`), in that type's colors.
+  for (const r of Stages.REGIONS)
+    for (const st of r.stages) {
+      const k = 'badge:' + st.id;
+      if (UI[k]) continue;
+      const col = U.TYPE_COLOR[st.gym.type] || '#b0a99f';
+      UI[k] = {
+        pal: { w: mix(col, '#ffffff', 0.55), m: col, d: shade(col, 0.6) },
+        rows: BADGE_SHAPES[st.gym.icon || TYPE_BADGE[st.gym.type]]
+      };
+    }
 
   function fromRows(def) {
     const h = def.rows.length,

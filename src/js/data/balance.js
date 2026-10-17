@@ -138,7 +138,7 @@ Balance.story = {
     lull: 2.5, // seconds between waves
     north: 5, // the leader's Pokémon appear this far north of the center (tiles)
     leaderBack: 3, // the leader stands this far inside the north wall (tiles)
-    leaderScale: 1.5, // leader sprite size (Pokémon are drawn at Sprites.PX = 2)
+    leaderHeight: 100, // leader sprite height in the arena (px; sprites are 54-80 px tall depending on the game)
     spread: 2.6, // ...and this far apart when two come out (tiles)
     won: 3.5 // seconds to grab what's left before the summary
   },

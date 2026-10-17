@@ -7,6 +7,20 @@
  */
 export const CHANGELOG = [
   {
+    d: '2026-10-17',
+    title: ['Story mode in every region', 'Modo Historia en todas las regiones'],
+    new: [
+      [
+        "Story mode now covers all nine regions: 72 stages, from Brock to Grusha, each with its own routes, wild Pokémon and the leader's real team. In Alola you face the island trials, against Captains and Kahunas, for Z-Crystals. Every region is open from the start; later regions are a bit harder and give more.",
+        'El modo Historia ya recorre las nueve regiones: 72 etapas, de Brock a Grusha, cada una con sus rutas, sus Pokémon salvajes y el equipo de verdad del líder. En Alola te enfrentas a las pruebas de las islas, contra capitanes y kahunas, por cristales Z. Todas las regiones están abiertas desde el principio; las últimas son algo más difíciles y dan más.'
+      ],
+      [
+        'Gym leaders appear next to their best Pokémon, stand at the back of their arena and send out their team when you arrive. Every badge has its own icon, and each region has a champion title to earn, plus "Pokémon Master" for all 72 badges.',
+        'Los líderes de gimnasio aparecen junto a su mejor Pokémon, esperan al fondo de su arena y sacan a su equipo cuando llegas. Cada medalla tiene su icono, y cada región tiene un título de campeón, además de «Maestro Pokémon» por las 72 medallas.'
+      ]
+    ]
+  },
+  {
     d: '2026-10-16',
     title: ['Story mode, damage meter, your stats and search', 'Modo Historia, medidor de daño, tus estadísticas y buscador'],
     new: [
