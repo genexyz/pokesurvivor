@@ -14,7 +14,8 @@
  *   recount     true/false                        damage meter in the run (key R)
  *   autoFast    true/false                        solo runs start at x2 speed
  *   res         'auto' | 'high' | 'low'            internal resolution (game.js computeDpr)
- *   fpsCap      0 | 30 | 60 | 120                 frame cap (0 = the screen's rate)
+ *   fpsCap      'auto' | 0 | 30 | 60 | 120        frame cap (0 = the screen's rate; auto = 60 on mobile,
+ *                                                 none on computers). Settings.fpsCap resolves it.
  *   pad         { bar, pause, stick } | null      where the buttons go on mobile (centre, relative
  *                                                 to the screen); set by layout-ui.js
  *
@@ -35,7 +36,7 @@ export const Settings = (() => {
     recount: false,
     autoFast: false,
     res: 'auto',
-    fpsCap: 0,
+    fpsCap: 'auto',
     pad: null
   };
   let s = Object.assign({}, DEF);
@@ -49,6 +50,13 @@ export const Settings = (() => {
   // Automatic quality: starts high (medium on mobile) and drops if it stutters.
   const touchy = matchMedia('(pointer: coarse)').matches;
   let autoLevel = touchy ? 1 : 2;
+  // 'auto' frame cap (2026-10-17): until then every stored copy had fpsCap 0 whether the
+  // player chose "No limit" or not, so a 0 moves to auto once. On a 90/120 Hz phone it was
+  // drawing every frame twice as often as needed: heat, then the phone slowing itself down.
+  if (!s.fpsAuto) {
+    if (s.fpsCap === 0) s.fpsCap = 'auto';
+    s.fpsAuto = true;
+  }
   let acc = 0,
     frames = 0,
     slowT = 0,
@@ -135,6 +143,10 @@ export const Settings = (() => {
     },
     get autoLevel() {
       return autoLevel;
+    },
+    /** Frame cap in use (0 = none), with 'auto' resolved. */
+    get fpsCap() {
+      return s.fpsCap === 'auto' ? (touchy ? 60 : 0) : s.fpsCap | 0;
     },
     get touch() {
       return touchy;

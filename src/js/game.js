@@ -941,14 +941,16 @@ export const Game = (() => {
   let loopErrs = 0,
     errRun = 0;
   /*
-   * Frame cap (setting `fpsCap`, 0 = whatever the screen gives). Menus and the solo
+   * Frame cap (setting `fpsCap`, 0 = whatever the screen gives; 'auto' = 60 on mobile). Menus and the solo
    * pause run at most at 30: nothing there needs more, and the laptop cools down.
    * The next frame is due at nextAt; frames that come early are skipped. Counting
    * from the due time (not from the last frame) keeps 60 on 75/144 Hz screens.
+   * But never more than one interval after this frame: on a screen a hair faster than
+   * the cap (60.3 Hz) the due time slid later every frame until one was skipped, a hitch.
    */
   let nextAt = 0;
   function targetFps() {
-    const cap = Settings.get('fpsCap') | 0;
+    const cap = Settings.fpsCap;
     const idle = state === 'ui' || (state === 'paused' && !Coop.active);
     return idle ? Math.min(cap || 30, 30) : cap;
   }
@@ -958,7 +960,7 @@ export const Game = (() => {
     const fps = targetFps();
     if (fps) {
       if (ts < nextAt - 1) return;
-      nextAt = Math.max(nextAt + 1000 / fps, ts);
+      nextAt = Math.min(Math.max(nextAt + 1000 / fps, ts), ts + 1000 / fps);
     }
     try {
       const t0 = performance.now();
@@ -1000,7 +1002,8 @@ export const Game = (() => {
     frameDt = state === 'playing' ? dt : 0;
 
     // Controller: its buttons arrive as keys; with a screen open, it moves the menu highlight.
-    Pad.poll(Math.min(real, 0.1), state !== 'playing' || !!document.querySelector('section.scr:not(.hidden)'));
+    // (The screens lookup is lazy: it ran on every frame of a run, with or without a controller.)
+    Pad.poll(Math.min(real, 0.1), () => state !== 'playing' || !!document.querySelector('section.scr:not(.hidden)'));
     handleKeys();
 
     if (state === 'playing') update(dt);

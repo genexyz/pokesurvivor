@@ -57,6 +57,9 @@ export const World = (() => {
   let arena = null; // { tx, ty, r } in tiles
   const data = new Map(); // "cx,cy" -> chunk data
   let images = new Map(); // "cx,cy" -> baked canvas
+  // The biome left last and its painted chunks: going back to it (out of a rift arena,
+  // where the arena has its own palette) reuses them instead of repainting the whole view.
+  let prev = null; // { biome, images }
   // Biome change: for FADE seconds the old palette blends into the new one.
   const FADE = 2.6;
   let fade = null; // { from, images, t }
@@ -539,7 +542,11 @@ export const World = (() => {
   // sees ~15 chunks) and a hitch every time you walked into new ground. Now each frame
   // paints for at most PAINT_MS: the visible chunks first (nearest the centre), then the
   // ring around the view, ahead of time. A visible chunk not painted yet shows plain floor.
+  // A chunk is painted a row of tiles at a time (Tiles.chunkJob) and carries on next
+  // frame where it stopped, so not even a single chunk goes over the budget.
   const PAINT_MS = 6;
+  const MAX_JOBS = 12; // chunks started and not finished (each holds its canvas)
+  const jobs = new Map(); // "biome|cx,cy" -> chunk being painted
   let paintEnd = 0,
     painted = 0;
 
@@ -555,12 +562,21 @@ export const World = (() => {
     }
     if (painted > 0 && performance.now() > paintEnd) return null;
     painted++;
-    const at = (tx, ty) => KIND[terrainAt(tx, ty)];
-    // Continuous "dirt" field; tiles.js samples it on a grid and
-    // interpolates per pixel so the patches get organic edges.
-    const S = 6 * Tiles.T;
-    const dirtField = (gx, gy) => fbm(gx / S, gy / S, seed + 303);
-    img = Tiles.paintChunk(cx, cy, N, at, dirtField, bi, seed);
+    const jk = bi + '|' + k;
+    let job = jobs.get(jk);
+    if (!job) {
+      const at = (tx, ty) => KIND[terrainAt(tx, ty)];
+      // Continuous "dirt" field; tiles.js samples it on a grid and
+      // interpolates per pixel so the patches get organic edges.
+      const S = 6 * Tiles.T;
+      const dirtField = (gx, gy) => fbm(gx / S, gy / S, seed + 303);
+      job = Tiles.chunkJob(cx, cy, N, at, dirtField, bi, seed);
+      if (jobs.size >= MAX_JOBS) jobs.delete(jobs.keys().next().value);
+      jobs.set(jk, job);
+    }
+    img = job.step(paintEnd);
+    if (!img) return null;
+    jobs.delete(jk);
     if (cache.size > MAX_IMAGES) cache.delete(cache.keys().next().value);
     cache.set(k, img);
     return img;
@@ -750,6 +766,8 @@ export const World = (() => {
     seed = s | 0 || 1;
     data.clear();
     images.clear();
+    jobs.clear();
+    prev = null;
     broken.clear();
     fade = null;
     arena = null;
@@ -768,8 +786,10 @@ export const World = (() => {
     if (b === biome) return;
     // The terrain stays the same: only the palette changes, blending gradually.
     fade = instant ? null : { from: biome, images, t: 0 };
+    const back = prev && prev.biome === b ? prev.images : new Map();
+    prev = { biome, images };
     biome = b;
-    images = new Map();
+    images = back;
   }
 
   function biomeName() {
@@ -822,13 +842,16 @@ export const World = (() => {
       a.th = Tiles.ARENA_THEMES[a.type] || Tiles.ARENA_THEMES.normal;
       // Forget chunks in that area (in case they were generated earlier).
       const R = a.r + 9;
-      for (const k of [...data.keys(), ...images.keys()]) {
+      const kept = prev ? prev.images : new Map();
+      for (const k of [...data.keys(), ...images.keys(), ...kept.keys()]) {
         const [cx, cy] = k.split(',').map(Number);
         if (Math.abs(cx * N + N / 2 - a.tx) < R + N && Math.abs(cy * N + N / 2 - a.ty) < R + N) {
           data.delete(k);
           images.delete(k);
+          kept.delete(k);
         }
       }
+      jobs.clear(); // they read the terrain as it was
     },
     get arena() {
       return arena;

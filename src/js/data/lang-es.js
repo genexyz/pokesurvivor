@@ -1508,8 +1508,9 @@ export const ES = {
     'es mucho más ligera en pantallas grandes (menos calor y batería); el texto se ve algo más pixelado.',
   'goes low when the quality does (now: ×{x}).': 'la baja cuando baja la calidad (ahora: ×{x}).',
   'Frame limit': 'Límite de fotogramas',
-  'Fewer frames per second: less heat and battery. Menus always run at 30.':
-    'Menos fotogramas por segundo: menos calor y batería. Los menús siempre van a 30.',
+  'Fewer frames per second: less heat and battery.': 'Menos fotogramas por segundo: menos calor y batería.',
+  'is 60 on phones and tablets and no limit on computers. Menus always run at 30.':
+    'es 60 en móviles y tablets, y sin límite en ordenadores. Los menús siempre van a 30.',
   'No limit': 'Sin límite',
   // ---------------- Play screen and Story mode (ui/play-ui.js, systems/story.js) ----------------
   'Endless · Story': 'Infinito · Historia',

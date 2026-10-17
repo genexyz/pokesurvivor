@@ -140,8 +140,12 @@ export const SettingsUI = (() => {
           ['high', 'High'],
           ['low', 'Low']
         ]) +
-        section('Frame limit', 'Fewer frames per second: less heat and battery. Menus always run at 30.') +
+        section(
+          'Frame limit',
+          'Fewer frames per second: less heat and battery. <b>Auto</b> is 60 on phones and tablets and no limit on computers. Menus always run at 30.'
+        ) +
         choice('fpsCap', [
+          ['auto', 'Auto'],
           [0, 'No limit'],
           [120, '120'],
           [60, '60'],
