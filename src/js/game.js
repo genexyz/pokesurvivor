@@ -42,6 +42,7 @@ import { Combat } from './systems/combat.js';
 import { Spawner } from './systems/spawner.js';
 import { LevelUp } from './systems/levelup.js';
 import { Interact } from './systems/interact.js';
+import { Mega } from './systems/mega.js';
 import { Rift } from './systems/rift.js';
 import { Judgment } from './systems/judgment.js';
 import { Events } from './systems/events.js';
@@ -258,6 +259,7 @@ export const Game = (() => {
 
     pl = new Player(mon, perks, !!save.partnerShiny && DB.ownsShiny(mon.dex));
     Recount.reset(pl);
+    Mega.reset(pl);
     banked = { t1: 0, t10: 0 };
     caught = [];
     // Shortcuts: moves with a fixed slot (save.pbind[dex] = [id of 1, id of 2, ...]),
@@ -795,6 +797,11 @@ export const Game = (() => {
   /** @param who  who picked it up (in co-op it can be a teammate) */
   function onCollect(p, who = pl) {
     const mine = who === pl;
+    // Only yours, only on your screen (your Mega Stone).
+    if (p.local) {
+      if (p.kind === 'stone') Mega.collect(pl);
+      return;
+    }
     if (Coop.active && !Coop.isHost) {
       // Copy of a host item: the host decides the effect.
       if (mine) Audio.sfx(PICK_SFX[p.kind]);
@@ -909,6 +916,8 @@ export const Game = (() => {
     if (Input.tap('keye') || Input.tap('tab')) pl.cycle(1);
     if (Input.tap('keyr')) Settings.set('recount', !Settings.get('recount')); // damage meter
     if (Input.tap('keyf')) toggleFast();
+    // Mega Evolution (A on a controller sends Space).
+    if (Input.tap('space') || Input.tap('keyg')) Mega.tryEvolve(pl);
   }
 
   // ---------------- loop ----------------
@@ -1077,6 +1086,7 @@ export const Game = (() => {
     Pickups.update(dt, all, onCollect);
     Hazards.update(dt);
     Interact.update(dt, pl);
+    Mega.update(dt);
     // Story stages have no rifts, events or Judgment: the routes and the gym instead.
     if (Story.active) Story.update(dt, pl, time);
     else {
@@ -1364,6 +1374,10 @@ export const Game = (() => {
     offerBond,
     togglePause,
     toggleFast,
+    /** HUD Mega button. */
+    megaEvolve() {
+      if (state === 'playing' && pl) Mega.tryEvolve(pl);
+    },
     /** Whether the run is going at x2 right now. */
     get fast() {
       return fast && !Coop.active;
@@ -1413,6 +1427,11 @@ export const Game = (() => {
         Spawner.debugBoss();
       },
       /** Knocks out every enemy (they drop their loot as usual). */
+      /** Your Mega Stone and a full meter (partners with a Mega form only). */
+      mega() {
+        tampered = true;
+        Mega.debugGive();
+      },
       killAll() {
         tampered = true;
         for (const e of EnemyMgr.all())

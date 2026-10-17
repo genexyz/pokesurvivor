@@ -11,6 +11,10 @@ export const CHANGELOG = [
     title: ['Story mode in every region', 'Modo Historia en todas las regiones'],
     new: [
       [
+        'Mega Evolution: 42 partners with a Mega or Primal form (Charizard, Gengar, Lucario, Gardevoir, Rayquaza, Kyogre, Groudon and more) can Mega Evolve in a run. A boss or a chest drops its Mega Stone (or its Orb); then defeating foes fills the Mega meter next to your moves. When it is full, press Space, A on a controller or tap the Mega button: for 25 seconds your partner takes its Mega form, with more damage, speed and defense, an aura, and a shockwave that heals you and pushes foes back. Afterwards the meter rests for a while and charges again. Your teammates see your Mega form in co-op too.',
+        'Megaevolución: 42 compañeros con forma Mega o Primigenia (Charizard, Gengar, Lucario, Gardevoir, Rayquaza, Kyogre, Groudon y más) pueden megaevolucionar en una partida. Un jefe o un cofre suelta su megapiedra (o su prisma); después, derrotar enemigos llena el medidor Mega junto a tus movimientos. Cuando esté lleno, pulsa Espacio, A en el mando o toca el botón Mega: durante 25 segundos tu compañero toma su forma Mega, con más daño, velocidad y defensa, un aura y una onda que te cura y aparta a los enemigos. Después el medidor descansa un rato y vuelve a cargarse. En cooperativo tus compañeros también ven tu forma Mega.'
+      ],
+      [
         'Controller support: play with an Xbox, PlayStation or Switch Pro controller. Left stick to move, LB/RB to switch moves, Y for ×2 speed, Start to pause. In menus, the stick or D-pad moves a gold highlight, A chooses, B goes back, LB/RB switch tabs and the right stick scrolls. The full layout is in Settings > Controls.',
         'Compatibilidad con mandos: juega con un mando de Xbox, PlayStation o Switch Pro. Stick izquierdo para moverte, LB/RB para cambiar de movimiento, Y para velocidad ×2, Start para pausar. En los menús, el stick o la cruceta mueven un resaltado dorado, A elige, B vuelve, LB/RB cambian de pestaña y el stick derecho desplaza. Tienes todos los botones en Ajustes > Controles.'
       ],
@@ -78,6 +82,14 @@ export const CHANGELOG = [
       [
         'Missions: the "Refreshes in" countdown now matches when missions really change (midnight in Spain) wherever you live, and the weekly one no longer shows a day too many.',
         'Misiones: la cuenta atrás de «Se renuevan en» ahora coincide con cuándo cambian de verdad (medianoche en España) vivas donde vivas, y la semanal ya no muestra un día de más.'
+      ],
+      [
+        'Picking up a magnet no longer pulls in the other magnets on the map, so you can save them for later.',
+        'Recoger un imán ya no atrae a los demás imanes del mapa, así que puedes guardarlos para más tarde.'
+      ],
+      [
+        'Story gyms: when the leader sends out a Pokémon, it now stands still inside a bubble for 2 seconds and can\'t be hurt, so a strong team no longer knocks it out before you even see it.',
+        'Gimnasios de Historia: cuando el líder saca un Pokémon, ahora se queda quieto dentro de una burbuja durante 2 segundos y no se le puede dañar, así un equipo fuerte ya no lo debilita antes de que llegues a verlo.'
       ]
     ]
   },

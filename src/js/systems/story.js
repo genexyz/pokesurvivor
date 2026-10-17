@@ -212,6 +212,7 @@ export const Story = (() => {
       const e = new Enemy(def, x, y, sc, true);
       e.flying = false; // it bumps into the arena's pillars like you
       e.gym = true;
+      e.guard = G.guard;
       EnemyMgr.add(e);
       waveIds.push(e.id);
       FX.ring(x, y, 8, 120, '#ffffff', 0.6, 5);

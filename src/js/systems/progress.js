@@ -5,6 +5,7 @@
  *   chest     locked chest opened
  *   item      { id }        item equipped
  *   evolve    { move }      move evolved
+ *   mega      { dex }       Mega Evolved (systems/mega.js)
  *   rift      { type }      rift fight won
  *   runEnd    { time, level, coins, types, group }
  *   judge     you reach Arceus's Judgment (minute 30)
@@ -14,6 +15,7 @@
  * and this updates in the save:
  *   stats.bossesTotal · riftWins · evolutions · missionsDone · groupRuns
  *   stats.judged · judgeTime (best time against Arceus) · judgeBosses (best boss count)
+ *   stats.megaEvos · megaDex{dex} (partners Mega Evolved)
  *   legends{dex} · arenas{type} · itemsFound{id} · evoMoves{id} · ach{id}
  *   missions { day, daily[], rerolled, week, weekly[] }
  *
@@ -192,6 +194,11 @@ export const Progress = (() => {
         S.evolutions = (S.evolutions || 0) + 1;
         s.evoMoves = s.evoMoves || {};
         s.evoMoves[d.move] = s.evoMoves[d.move] || Date.now();
+        break;
+      case 'mega':
+        S.megaEvos = (S.megaEvos || 0) + 1;
+        s.megaDex = s.megaDex || {};
+        s.megaDex[d.dex] = s.megaDex[d.dex] || Date.now();
         break;
       case 'item':
         s.itemsFound = s.itemsFound || {};

@@ -138,6 +138,7 @@ Balance.story = {
     intro: 2.4, // seconds from arriving to the first wave (the camera shows the leader meanwhile)
     focusAfter: 1, // ...and keeps showing them this long after the first wave comes out
     lull: 2.5, // seconds between waves
+    guard: 2, // each wave can't be hurt (nor moves or attacks) this long after coming out, so you see it first
     north: 5, // the leader's Pokémon appear this far north of the center (tiles)
     leaderBack: 3, // the leader stands this far inside the north wall (tiles)
     leaderHeight: 100, // leader sprite height in the arena (px; sprites are 54-80 px tall depending on the game)
@@ -485,6 +486,33 @@ Balance.items = {
   shinySash: { invuln: 2.5, radius: 170, dmg: 10, perLevel: 2, knock: 280 },
   shellBell: { frac: 0.04, cap: 4, rate: 4 }, // heal = damage × frac, pending heal capped at `cap`, paid at `rate` HP/s
   rockyHelmet: { dmg: 15, perLevel: 4, knock: 80 } // damage to an enemy touching you = dmg + perLevel × level
+};
+
+/** Mega Evolution (systems/mega.js, Player.megaStart): only partners with a Mega or Primal form (data/megas.js). */
+Balance.mega = {
+  dur: 25, // seconds a Mega Evolution lasts
+  lockout: 35, // seconds after reverting before the meter fills again
+  goal: 100, // meter points to Mega Evolve
+  startFrac: 0.5, // the meter starts half full when you get the stone
+  perKill: 1, // points per foe defeated within `radius` of you
+  perElite: 3, // golden foes
+  perBoss: 30,
+  passive: 0.5, // points per second (quiet stretches still charge it)
+  radius: 700,
+  // The stone drops from a boss (always from a rift legendary; by the `pityBosses`-th boss at the latest)
+  // or from a chest; after `pityTime` seconds the next chest always has it.
+  drop: { boss: 0.4, chest: 0.02, bigchest: 0.25, pityBosses: 2, pityTime: 540 },
+  // On Mega Evolving: a shockwave (dmg + perLevel × level), a short invulnerability and a heal (× max HP).
+  burst: { radius: 160, dmg: 20, perLevel: 3, knock: 260, invuln: 1.2, heal: 0.25 },
+  // Stat multipliers by profile (data/megas.js): damage, speed, cooldown, and damage reduction added.
+  profiles: {
+    atk: { atk: 1.45, spd: 1.08, cd: 0.92, def: 0.1 },
+    spd: { atk: 1.25, spd: 1.3, cd: 0.85, def: 0.05 },
+    cd: { atk: 1.3, spd: 1.1, cd: 0.75, def: 0.05 },
+    def: { atk: 1.2, spd: 1.05, cd: 0.9, def: 0.3 }
+  },
+  /** Multipliers of a Mega (its profile, with its own overrides `k`). */
+  k: def => Object.assign({}, Balance.mega.profiles[def.profile], def.k)
 };
 
 // ================= Mid-run events, rift, Judgment of Arceus, hazards and weather =================

@@ -38,6 +38,7 @@ import { FX } from '../entities/fx.js';
 import { Pickups } from '../entities/pickup.js';
 import { Interact } from '../systems/interact.js';
 import { Progress } from '../systems/progress.js';
+import { Mega } from '../systems/mega.js';
 import { Coop } from '../net/coop.js';
 import { Game } from '../game.js';
 
@@ -509,6 +510,7 @@ export const World = (() => {
       Pickups.drop(lootR.chance(L.healChance) ? 'heal' : 'magnet', p.x, p.y);
       Pickups.dropXp(p.x, p.y, L.xp);
       if (lootR.chance(L.item)) Pickups.drop('item', p.x, p.y - 12, Items.roll());
+      Mega.onChest(p, false);
       return;
     }
     if (p.type === 'bigchest') {
@@ -524,6 +526,7 @@ export const World = (() => {
       if (lootR.chance(L.item)) Pickups.drop('item', p.x + 14, p.y - 14, Items.roll());
       Pickups.dropXp(p.x, p.y, Game.levelXp());
       Progress.event('chest');
+      Mega.onChest(p, true);
       return;
     }
     if (p.type === 'trap') Interact.trapEffect(p);

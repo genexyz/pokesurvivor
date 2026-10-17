@@ -19,10 +19,16 @@ export const StatsUI = (() => {
   const CARD = {};
   for (const s of LevelUp.STATS) CARD[s.id] = s;
 
-  /** A player stat without the active altar power. */
+  /** A player stat without the active altar power or Mega Evolution. */
+  const MEGA_STAT = { atkMul: 'atk', spdMul: 'spd', cdMul: 'cd' };
   function base(p, stat) {
     const pw = p.power;
-    return pw && pw.def.stat === stat ? p[stat] / (p._powerK || 1) : p[stat];
+    let v = pw && pw.def.stat === stat ? p[stat] / (p._powerK || 1) : p[stat];
+    if (p.form && p._megaK) {
+      if (MEGA_STAT[stat]) v /= p._megaK[MEGA_STAT[stat]];
+      else if (stat === 'dmgReduce') v -= p._megaK.def;
+    }
+    return v;
   }
   const signed = (v, d = 0) =>
     (v >= 0 ? '+' : '-') +
@@ -41,8 +47,8 @@ export const StatsUI = (() => {
       id: 'def',
       icon: 'shield',
       name: 'Damage reduction',
-      val: p => pct(Math.min(Balance.player.reductionCap, p.dmgReduce)) + '%',
-      cmp: p => p.dmgReduce
+      val: p => pct(Math.min(Balance.player.reductionCap, base(p, 'dmgReduce'))) + '%',
+      cmp: p => base(p, 'dmgReduce')
     },
     { id: 'rgn', icon: 'sprout', name: 'Regeneration', val: p => num(p.regenFlat) + ' HP/s', cmp: p => p.regenFlat },
     {
@@ -143,6 +149,12 @@ export const StatsUI = (() => {
       const pw = p.power;
       fx.push(
         `<div class="st-row">${Icons.html(pw.def.icon, 18)}<span>${pw.def.name}</span><b>${pw.def.desc}</b><small>${Math.ceil(pw.t)} s</small></div>`
+      );
+    }
+    if (p.form && p._megaK) {
+      const k = p._megaK;
+      fx.push(
+        `<div class="st-row">${Icons.html('star', 18)}<span>${esc(p.form.name)}</span><b><span>damage ×${num(k.atk)}</span> · <span>+${pct(k.spd - 1)}% speed</span> · <span>-${pct(1 - k.cd)}% cooldown</span> · <span>+${pct(k.def)}% reduction</span></b><small>${Math.ceil(p.megaT)} s</small></div>`
       );
     }
     const moves = p.slots.map((g, i) => g.map(m => moveCard(p, m, g.length > 1 ? '' : i + 1)).join('')).join('');

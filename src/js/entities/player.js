@@ -12,6 +12,7 @@ import { Camera } from '../core/camera.js';
 import { Moves } from '../data/moves.js';
 import { Types } from '../data/types.js';
 import { Items } from '../data/items.js';
+import { Megas } from '../data/megas.js';
 import { World } from '../world/world.js';
 import { FX } from './fx.js';
 import { Projectiles } from './projectile.js';
@@ -90,6 +91,15 @@ export class Player {
     this.bellHeal = 0; // pending Shell Bell healing
     this.statsTaken = {}; // stat upgrades taken (evolution condition)
 
+    // Mega Evolution (systems/mega.js): `form` is the active Mega (data/megas.js) or null.
+    this.form = null;
+    this.megaT = 0; // seconds left as a Mega
+    this.megaDur = 0;
+    this.megaStone = false; // its Mega Stone was found this run
+    this.megaCharge = 0; // meter, 0..Balance.mega.goal
+    this.megaLock = 0; // seconds before the meter charges again after reverting
+    this.baseBodyH = this.bodyH;
+
     // Trainer perks (data/perks.js, set by Perks.apply) and Playstyle achievement tracking.
     this.perks = [];
     this.cardOffer = 0; // level-up cards (0 = Balance.levelup.offer)
@@ -126,6 +136,60 @@ export class Player {
 
   cy() {
     return this.y;
+  }
+
+  /** Sprite key drawn right now: the base dex, or its Mega form's ("m6x"). */
+  get skin() {
+    return this.form ? this.form.key : this.dex;
+  }
+
+  // ---------------- Mega Evolution ----------------
+  /** Only the look (also for teammates in co-op): sprite and height. The hitbox stays the same. */
+  megaVisual(def) {
+    this.form = def || null;
+    this.anim.setDex(this.skin, this.shiny);
+    this.bodyH = def ? Sprites.bodyHeight(def.key) : this.baseBodyH;
+    const col = def ? def.aura : '#ffffff';
+    FX.ring(this.x, this.y, 8, def ? 150 : 70, col, def ? 0.7 : 0.4, def ? 6 : 3);
+    FX.burst(this.x, this.y - this.bodyH * 0.5, col, def ? 40 : 14, def ? 260 : 140);
+    if (def) FX.ring(this.x, this.y, 4, 90, '#ffffff', 0.5, 3);
+  }
+
+  /** Mega Evolves (systems/mega.js checks the meter): stats, shockwave, heal. */
+  megaStart(def) {
+    const B = Balance.mega;
+    // The factors applied are kept on the player: a live balance change can't leave the stats wrong.
+    const k = (this._megaK = B.k(def));
+    this.atkMul *= k.atk;
+    this.spdMul *= k.spd;
+    this.cdMul *= k.cd;
+    this.dmgReduce += k.def;
+    this.megaVisual(def);
+    this.megaT = this.megaDur = B.dur;
+    this.megaCharge = 0;
+    const W = B.burst;
+    this.invuln = Math.max(this.invuln, W.invuln);
+    this.heal(this.maxHp * W.heal);
+    for (const e of EnemyMgr.queryCircle(this.x, this.y, W.radius)) {
+      if (!e.dead) e.hurt(W.dmg + this.level * W.perLevel, def.aura, e.x - this.x, e.y - this.y, W.knock);
+    }
+    FX.dmgText(this.x, this.y - this.bodyH - 16, def.kind === 'primal' ? 'Primal Reversion!' : 'Mega Evolution!', def.aura, true);
+    Camera.kick(0.7);
+    Audio.sfx('legend');
+  }
+
+  /** Back to the base form (time's up or knocked out). */
+  megaEnd() {
+    if (!this.form) return;
+    const k = this._megaK || { atk: 1, spd: 1, cd: 1, def: 0 };
+    this.atkMul /= k.atk;
+    this.spdMul /= k.spd;
+    this.cdMul /= k.cd;
+    this.dmgReduce -= k.def;
+    this._megaK = null;
+    this.megaT = 0;
+    this.megaLock = Balance.mega.lockout;
+    this.megaVisual(null);
   }
 
   // ---------------- effective stats ----------------
@@ -315,7 +379,7 @@ export class Player {
     if (m.kind === 'trail') return;
     // Don't restart an animation halfway through: it would look jerky.
     if (this.anim.busy() && this.anim.progress() < 0.65) return;
-    const meta = Sprites.animMeta(this.dex, anim);
+    const meta = Sprites.animMeta(this.skin, anim);
     const len = meta ? meta.d.reduce((a, b) => a + b, 0) / 60 : 0.4;
     const cd = Math.max(0.12, m.cd * this.cdMul);
     this.anim.play(anim, { speed: Math.max(1, len / (cd * 0.9)) });
@@ -388,6 +452,7 @@ export class Player {
     }
     if (this.hp <= 0) {
       this.hp = 0;
+      this.megaEnd(); // faints in its base form
       this.dead = true;
       this.anim.play('Faint', { hold: true });
       Projectiles.clearOrbs(this);
@@ -482,6 +547,8 @@ export class Player {
       this.power.def.off(this);
       this.power = null;
     }
+    if (this.form && (this.megaT -= dt) <= 0) this.megaEnd();
+    if (this.megaLock > 0) this.megaLock -= dt;
     if (this.regen > 0) this.hp = Math.min(this.maxHp, this.hp + this.regen * dt);
 
     // --- movement with collisions ---
@@ -595,6 +662,9 @@ export class Player {
     this.maxHp = n.maxHp;
     this.magnet = n.mag || this.magnet;
     this.reviveT = n.rev || 0;
+    // Mega Evolution: only the look (their stats are on their screen). Before fainting: they faint in their base form.
+    const mega = n.mg ? Megas.of(this.dex) : null;
+    if (mega !== this.form) this.megaVisual(mega);
     if (n.dead && !this.dead) {
       this.dead = true;
       this.anim.play('Faint', { hold: true });
@@ -629,7 +699,29 @@ export class Player {
       ctx.stroke();
       ctx.restore();
     }
-    Sprites.drawShadow(ctx, this.dex, this.x, this.y);
+    Sprites.drawShadow(ctx, this.skin, this.x, this.y);
+    // Mega Evolution: pulsing aura of its colour, under and around it.
+    if (this.form && !this.dead) {
+      const t = performance.now() / 1000,
+        h = this.bodyH;
+      ctx.save();
+      ctx.globalAlpha = 0.16 + Math.sin(t * 5) * 0.06;
+      ctx.fillStyle = this.form.aura;
+      ctx.beginPath();
+      ctx.ellipse(this.x, this.y - h * 0.45, this.r * 2 + h * 0.25, h * 0.75, 0, 0, 6.2832);
+      ctx.fill();
+      ctx.globalAlpha = 0.5 + Math.sin(t * 7) * 0.2;
+      ctx.strokeStyle = this.form.aura;
+      ctx.lineWidth = 2;
+      for (let j = 0; j < 2; j++) {
+        const k = (t * 0.9 + j / 2) % 1; // rings rising from the feet
+        ctx.globalAlpha = (1 - k) * 0.6;
+        ctx.beginPath();
+        ctx.ellipse(this.x, this.y - k * h, this.r * (1.9 - k * 0.6), this.r * (0.8 - k * 0.25), 0, 0, 6.2832);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
     // Altar power: pulsing ring of its colour under the feet.
     if (this.power && !this.dead) {
       ctx.save();

@@ -170,7 +170,7 @@ export const SettingsUI = (() => {
         ]) +
         toggle('autoFast', 'Start at ×2 speed', 'Solo runs start at double speed. You can still switch it during the run (the ×2 button or F).') +
         section('Controller', 'Plug in a controller (Xbox, PlayStation, Switch Pro...) and press any button.') +
-        `<div class="pad-map"><b>Left stick / D-pad</b><span>Move · in menus, move between buttons</span><b>A</b><span>Choose · skip the Judgment cutscene</span><b>B</b><span>Back · pause</span><b>X</b><span>Damage meter · new cards on level-up</span><b>Y</b><span>×2 speed</span><b>LB / RB</b><span>Previous / next move · in menus, switch tabs</span><b>Start</b><span>Pause</span><b>Right stick</b><span>Scroll long lists</span></div>` +
+        `<div class="pad-map"><b>Left stick / D-pad</b><span>Move · in menus, move between buttons</span><b>A</b><span>Choose · Mega Evolve · skip the Judgment cutscene</span><b>B</b><span>Back · pause</span><b>X</b><span>Damage meter · new cards on level-up</span><b>Y</b><span>×2 speed</span><b>LB / RB</b><span>Previous / next move · in menus, switch tabs</span><b>Start</b><span>Pause</span><b>Right stick</b><span>Scroll long lists</span></div>` +
         section('On mobile or tablet') +
         `<p class="sub">Put your finger anywhere and drag to move: the joystick appears where you touch. Tap a move at the bottom to switch to it and the top-right button to pause. Play in landscape.</p>` +
         `<div class="set-row"><div class="grow"><b>Joystick size</b><small>How far you need to drag your finger.</small></div></div>` +

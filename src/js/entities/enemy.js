@@ -31,6 +31,7 @@ import { Events } from '../systems/events.js';
 import { Weather } from '../systems/weather.js';
 import { Path } from '../systems/pathing.js';
 import { Progress } from '../systems/progress.js';
+import { Mega } from '../systems/mega.js';
 import { Hazards } from '../systems/hazards.js';
 import { Coop } from '../net/coop.js';
 import { Recount } from '../systems/recount.js';
@@ -84,6 +85,7 @@ class Enemy {
     this.flying = boss || Sprites.hovers(def.dex);
 
     this.flash = 0;
+    this.guard = 0; // seconds it can't be hurt, move or attack (a gym leader's Pokémon just sent out)
     this.slow = 0;
     this.slowT = 0;
     this.burn = 0;
@@ -155,7 +157,7 @@ class Enemy {
 
   /** @param eff  'super' | 'weak' | null (type chart, only for display) */
   hurt(amount, color = '#fff', dirX = 0, dirY = 0, knock = 0, eff = null) {
-    if (this.dead) return;
+    if (this.dead || this.guard > 0) return;
     const d = Math.max(1, Math.round(amount));
     // Copy of a host enemy: the hit is sent to the host, who
     // decides whether it faints. Here it's only shown (number, flash and animation).
@@ -350,6 +352,12 @@ class Enemy {
     if (this.flash > 0) this.flash -= dt;
     if (this.dead) {
       this.fade -= dt;
+      return;
+    }
+    // Just sent out by a gym leader: it stands still for a moment so you can see it.
+    if (this.guard > 0) {
+      this.guard -= dt;
+      this.anim.loop('Idle');
       return;
     }
     if (this.shiny && seen) {
@@ -1057,8 +1065,8 @@ class Enemy {
 
     if (this.dead) return;
 
-    // Shield: blue bubble.
-    if (this.shield > 0 || this.netFlag('shield')) {
+    // Shield (or just sent out by a gym leader): blue bubble.
+    if (this.shield > 0 || this.guard > 0 || this.netFlag('shield')) {
       ctx.save();
       ctx.globalAlpha = 0.35 + Math.sin(this.bob) * 0.08;
       ctx.strokeStyle = '#9fd8ff';
@@ -1181,6 +1189,7 @@ export const EnemyMgr = (() => {
     if (died) {
       e.die();
       Progress.kill(e);
+      Mega.onKill(e);
     }
     const i = list.indexOf(e);
     if (i >= 0) list.splice(i, 1);
@@ -1311,6 +1320,7 @@ export const EnemyMgr = (() => {
         pl.kills++;
         if (e.boss && !e.judge) pl.bosses++;
         Progress.kill(e);
+        Mega.onKill(e);
         corpses.push(e);
         list.splice(i, 1);
         byId.delete(e.id);

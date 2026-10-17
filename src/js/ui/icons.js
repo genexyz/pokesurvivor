@@ -7,11 +7,13 @@
  *   Icons.url('star')          data URL (for CSS)
  *   'move:<id>'                  type emblem + family badge
  *   'type:<type>'                emblem only
+ *   'mega:<dex>'                 that partner's Mega Stone (assets/items/, PokeAPI's item sprite)
  */
 import { U } from '../core/util.js';
 import { Moves } from '../data/moves.js';
 import { Gacha } from '../systems/gacha.js';
 import { Stages } from '../data/stages.js';
+import { Megas } from '../data/megas.js';
 
 export const Icons = (() => {
   const K = '#1b1528'; // outline
@@ -1494,6 +1496,33 @@ export const Icons = (() => {
     return cv;
   }
 
+  /** Mega Stone: a coloured orb until its sprite (16×16, scripts/fetch_sprites.py) loads, then
+   *  the sprite, drawn into the same canvas (cached and drawn every frame, so it updates on its own). */
+  function stone(def) {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 16;
+    const c = cv.getContext('2d');
+    c.fillStyle = K;
+    c.beginPath();
+    c.arc(8, 8, 7, 0, 6.2832);
+    c.fill();
+    c.fillStyle = def ? def.aura : '#c98aff';
+    c.beginPath();
+    c.arc(8, 8, 5.5, 0, 6.2832);
+    c.fill();
+    c.fillStyle = 'rgba(255,255,255,.7)';
+    c.fillRect(5, 4, 2, 2);
+    if (def) {
+      const img = new Image();
+      img.onload = () => {
+        c.clearRect(0, 0, 16, 16);
+        c.drawImage(img, 0, 0, 16, 16);
+      };
+      img.src = `assets/items/${def.stone}.png`;
+    }
+    return cv;
+  }
+
   function canvas(name) {
     let cv = cache.get(name);
     if (cv) return cv;
@@ -1502,6 +1531,8 @@ export const Icons = (() => {
       cv = emblem(m ? m.type : 'normal', m ? m.kind : null);
     } else if (name.startsWith('type:')) {
       cv = emblem(name.slice(5));
+    } else if (name.startsWith('mega:')) {
+      cv = stone(Megas.of(+name.slice(5)));
     } else {
       cv = fromRows(UI[name] || UI.star);
     }

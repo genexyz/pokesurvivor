@@ -8,17 +8,28 @@
  * Each animation has its own frame size, so they are aligned by the ground
  * anchor (ax, ay): that pixel always lands on the entity's feet and the
  * sprite doesn't "jump" when switching from Walk to Attack.
+ *
+ * Mega and Primal forms use string keys ("m6x", "m382": MEGA_META, same
+ * format) wherever a dex number goes: assets/pokemon/m6x/{Anim}.png.
  */
 import { U } from './util.js';
 import { SPRITE_META } from '../data/sprites-meta.js';
+import { MEGA_META } from '../data/sprites-meta-mega.js';
 
 export const Sprites = (() => {
   /** World units per art pixel. Tiles and sprites share the scale. */
   const PX = 2;
   const sheets = new Map(); // "dex/Anim[/s]" -> {img, ready, failed}
+  const pinned = new Set(); // dex/keys whose sheets are never evicted (your Pokémon and its Mega)
 
   function meta(dex) {
-    return SPRITE_META[dex] || null;
+    return SPRITE_META[dex] || MEGA_META[dex] || null;
+  }
+
+  /** Keeps those sheets loaded: a Mega Evolution leaves the base ones idle for
+   *  longer than IDLE_MS and reverting would flash the placeholder ball. */
+  function pin(...dexes) {
+    for (const d of dexes) if (d != null) pinned.add(d);
   }
 
   /** Does it float in its sprite? (scripts/hover_flags.py) It passes over rocks and water. */
@@ -83,7 +94,7 @@ export const Sprites = (() => {
   const MAX_SHEETS = 200,
     IDLE_MS = 20000; // ~0.66 MB each once drawn: ~130 MB
   function evict(now) {
-    const old = [...sheets].filter(([, s]) => now - s.at > IDLE_MS).sort((a, b) => a[1].at - b[1].at);
+    const old = [...sheets].filter(([, s]) => now - s.at > IDLE_MS && !pinned.has(s.dex)).sort((a, b) => a[1].at - b[1].at);
     const drop = old.slice(0, Math.max(sheets.size - Math.floor(MAX_SHEETS * 0.75), 0));
     for (const [k, s] of drop) {
       sheets.delete(k);
@@ -117,6 +128,7 @@ export const Sprites = (() => {
       tries: 0,
       retryAt: 0,
       at: now,
+      dex,
       src: `assets/pokemon/${dex}/${shiny ? 's/' : ''}${name}.png`
     };
     s.img.onload = () => {
@@ -203,6 +215,16 @@ export const Sprites = (() => {
       this.dir = 0;
       // Sheets load when first drawn; the run preloads them all with
       // preload() so they don't flicker on the first attack.
+    }
+
+    /** Switches to another sprite (Mega Evolution and back), keeping the animation. */
+    setDex(dex, shiny = false) {
+      this.dex = dex;
+      this.shiny = shiny && hasShiny(dex);
+      // The same animation from its first frame (a one-shot one stays one-shot).
+      this.cur = animName(dex, this.cur, this.shiny) || 'Idle';
+      this.frame = 0;
+      this.t = 0;
     }
 
     loop(anim, speed = 1) {
@@ -318,6 +340,7 @@ export const Sprites = (() => {
     animMeta,
     sheet,
     preload,
+    pin,
     dirFromAngle,
     bodyRadius,
     bodyHeight,

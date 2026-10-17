@@ -7,6 +7,7 @@ import { Touch } from '../core/touch.js';
 import { Pad } from '../core/gamepad.js';
 import { Camera } from '../core/camera.js';
 import { Items } from '../data/items.js';
+import { Balance } from '../data/balance.js';
 import { World } from '../world/world.js';
 import { EnemyMgr } from '../entities/enemy.js';
 import { Player } from '../entities/player.js';
@@ -16,6 +17,7 @@ import { Story } from '../systems/story.js';
 import { Events } from '../systems/events.js';
 import { Weather } from '../systems/weather.js';
 import { Recount } from '../systems/recount.js';
+import { Mega } from '../systems/mega.js';
 import { Settings } from '../core/settings.js';
 import { Coop } from '../net/coop.js';
 import { Icons } from './icons.js';
@@ -192,6 +194,78 @@ export const HUD = (() => {
     ctx.restore();
   }
 
+  /**
+   * Round Mega button: the meter fills its ring; gold and pulsing when ready (tap, Space
+   * or A); while Mega Evolved the ring is the time left, and after it the rest time.
+   */
+  function megaButton(ctx, pl, x, y, S, touch) {
+    const M = Balance.mega,
+      def = Mega.def;
+    const cx = x + S / 2,
+      cy = y + S / 2,
+      r = S / 2;
+    const ready = Mega.ready(pl);
+    const t = performance.now() / 1000;
+    let frac = pl.megaCharge / M.goal,
+      col = ready ? '#ffd23f' : def.aura;
+    if (pl.form) frac = pl.megaT / (pl.megaDur || 1);
+    else if (pl.megaLock > 0) {
+      frac = 1 - pl.megaLock / M.lockout;
+      col = '#6b7a94';
+    }
+    ctx.save();
+    if (ready) {
+      ctx.globalAlpha = 0.3 + Math.sin(t * 6) * 0.15;
+      ctx.fillStyle = '#ffd23f';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r + 7, 0, 6.2832);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, 6.2832);
+    ctx.fillStyle = ready ? 'rgba(40,30,10,.92)' : 'rgba(10,16,28,.8)';
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(255,255,255,.12)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r - 2, 0, 6.2832);
+    ctx.stroke();
+    ctx.strokeStyle = col;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r - 2, -Math.PI / 2, -Math.PI / 2 + 6.2832 * U.clamp(frac, 0, 1));
+    ctx.stroke();
+    if (!ready && !pl.form) ctx.globalAlpha = 0.55;
+    Icons.draw(ctx, 'mega:' + pl.dex, Math.round(cx - 16), Math.round(cy - 16), 32);
+    ctx.globalAlpha = 1;
+    // Above: MEGA (ready), the seconds left, or the rest countdown.
+    ctx.font = F(800, 10);
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,.8)';
+    const top = pl.form
+      ? Math.ceil(pl.megaT) + 's'
+      : pl.megaLock > 0
+        ? Math.ceil(pl.megaLock) + 's'
+        : ready
+          ? 'MEGA!'
+          : Math.floor((pl.megaCharge / M.goal) * 100) + '%';
+    ctx.strokeText(top, cx, y - 7);
+    ctx.fillStyle = col;
+    ctx.fillText(top, cx, y - 7);
+    // Below: the key.
+    const key = Pad.active ? 'A' : touch ? '' : 'Space';
+    if (key && ready) {
+      ctx.font = F(700, 9);
+      ctx.strokeText(key, cx, y + S + 11);
+      ctx.fillStyle = '#ffd23f';
+      ctx.fillText(key, cx, y + S + 11);
+    }
+    ctx.restore();
+    Touch.addButton(x, y, S, S, () => Game.megaEvolve(), 6);
+  }
+
   const xpGrad = { w: 0, g: null }; // the experience bar's gradient, rebuilt only on resize
 
   // ---------- damage meter (systems/recount.js) ----------
@@ -320,9 +394,9 @@ export const HUD = (() => {
     ctx.save();
     ctx.scale(K, K);
     ctx.font = F(800, 13);
-    ctx.fillStyle = '#eaf2ff';
+    ctx.fillStyle = pl.form ? pl.form.aura : '#eaf2ff';
     ctx.textAlign = 'left';
-    ctx.fillText(pl.mon.name, px, py + 10);
+    ctx.fillText(pl.form ? pl.form.name : pl.mon.name, px, py + 10);
 
     ctx.font = F(700, 11);
     ctx.fillStyle = '#ffcb3d';
@@ -350,6 +424,10 @@ export const HUD = (() => {
     if (pl.power) {
       const pw = pl.power;
       effect(ctx, ex, ey, ER, pw.t / pw.dur, pw.t, pw.def.color, Math.ceil(pw.t) + 's', pw.def.icon);
+      ex += ER * 2 + 12;
+    }
+    if (pl.form) {
+      effect(ctx, ex, ey, ER, pl.megaT / (pl.megaDur || 1), pl.megaT, pl.form.aura, Math.ceil(pl.megaT) + 's', 'mega:' + pl.dex);
       ex += ER * 2 + 12;
     }
     const effects = ex > px + ER;
@@ -691,6 +769,9 @@ export const HUD = (() => {
         ctx.fillText('×' + pl.bonds, bx + 25, by + 20);
       }
     }
+
+    // ---------- Mega Evolution (once you have the stone) ----------
+    if (pl.megaStone && Mega.def) megaButton(ctx, pl, Math.min(sx + totalW + 12 + (pl.bonds > 0 ? 44 : 0), w - S - 6), sy, S, touch);
 
     // ---------- held item (left of the moves) ----------
     {

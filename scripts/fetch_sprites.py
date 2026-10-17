@@ -6,6 +6,7 @@ into assets/pokemon/ and generates js/data/sprites-meta.js.
 
     python scripts/fetch_sprites.py            # every one that exists (1-1025)
     python scripts/fetch_sprites.py 1 151      # only a Pokédex range
+    python scripts/fetch_sprites.py --megas    # only the Mega/Primal forms (and their stone icons)
 
 It can be interrupted and restarted: whatever was already downloaded is reused (.cache/).
 
@@ -15,6 +16,7 @@ Credits: python scripts/fetch_credits.py
 SpriteCollab format:
   sprite/{dex}/            normal sprite
   sprite/{dex}/0000/0001/  shiny sprite (form 0000, variant 0001)
+  sprite/{dex}/{form}/     other forms: the Mega/Primal ones go to assets/pokemon/m{dex}[x|y]/
   - columns = frames, rows = 8 directions
     (Down, DownRight, Right, UpRight, Up, UpLeft, Left, DownLeft; verified
      against the -Offsets.png)
@@ -174,29 +176,29 @@ def download_set(url_base, out_dir, anims, geometry_from=None):
     return meta
 
 
-def do_dex(job):
-    dex, want_shiny = job
-    cache_file = os.path.join(CACHE, f'{dex}.json')
-    out_dir = os.path.join(OUT_ASSETS, str(dex))
+def do_set(job):
+    """Downloads one sprite set. job = (key, url tag, shiny url tag or None)."""
+    key, tag, stag = job
+    cache_file = os.path.join(CACHE, f'{key}.json')
+    out_dir = os.path.join(OUT_ASSETS, str(key))
     if os.path.exists(cache_file):
         meta = json.load(open(cache_file, encoding='utf-8'))
         if all(os.path.exists(os.path.join(out_dir, a + '.png')) for a in meta['a']):
-            return dex, meta
+            return key, meta
 
-    tag = f'{dex:04d}'
     xml = fetch(f'{BASE}/{tag}/AnimData.xml')
     if not xml:
-        return dex, None
+        return key, None
     anims, shadow = parse_animdata(xml.decode('utf-8', 'replace'))
     normal = download_set(f'{BASE}/{tag}', out_dir, anims)
     if not REQUIRED & set(normal):
-        return dex, None
+        return key, None
     meta = {'s': shadow, 'a': normal}
 
-    if want_shiny:
-        sxml = fetch(f'{BASE}/{tag}/0000/0001/AnimData.xml')
+    if stag:
+        sxml = fetch(f'{BASE}/{stag}/AnimData.xml')
         sanims = parse_animdata(sxml.decode('utf-8', 'replace'))[0] if sxml else anims
-        shiny = download_set(f'{BASE}/{tag}/0000/0001', os.path.join(out_dir, 's'), sanims, normal)
+        shiny = download_set(f'{BASE}/{stag}', os.path.join(out_dir, 's'), sanims, normal)
         if REQUIRED <= set(shiny) or ('Idle' in shiny and 'Walk' in shiny):
             meta['sh'] = 1
             # The shiny geometry is only stored if it differs from the normal one.
@@ -209,17 +211,137 @@ def do_dex(job):
 
     with open(cache_file, 'w', encoding='utf-8') as f:
         json.dump(meta, f, separators=(',', ':'))
-    return dex, meta
+    return key, meta
+
+
+def do_dex(job):
+    dex, want_shiny = job
+    tag = f'{dex:04d}'
+    return do_set((dex, tag, f'{tag}/0000/0001' if want_shiny else None))
+
+
+def mega_key(dex, name):
+    """Asset key of a Mega/Primal form: m6x, m150y, m382..."""
+    suffix = name[-1].lower() if re.search(r'_[XY]$', name) else ''
+    return f'm{dex}{suffix}'
+
+
+def mega_jobs(tracker):
+    """Mega and Primal forms with the required animations (alternate colors and
+    variants like Mega_Z or Shadow_Mega_X left out)."""
+    jobs, seen = [], set()
+    for tag, e in sorted(tracker.items()):
+        if not tag.isdigit():
+            continue
+        dex = int(tag)
+        for fid, sg in sorted(e.get('subgroups', {}).items()):
+            name = sg.get('name', '')
+            if not re.fullmatch(r'(Mega|Primal)(_[XY])?', name):
+                continue
+            if not REQUIRED <= set(sg.get('sprite_files', {})):
+                continue
+            key = mega_key(dex, name)
+            if key in seen:
+                continue
+            seen.add(key)
+            s = sg.get('subgroups', {}).get('0001', {})
+            stag = f'{tag}/{fid}/0001' if {'Idle', 'Walk'} <= set(s.get('sprite_files', {})) else None
+            jobs.append(((key, f'{tag}/{fid}', stag), {'b': dex, 'f': fid, 'n': name}))
+    return jobs
+
+
+# Mega Stone / Orb icons (data/megas.js `stone`), from PokeAPI's item sprites.
+ITEM_ICONS = ['key-stone', 'charizardite-x', 'alakazite', 'slowbronite', 'gengarite', 'kangaskhanite',
+              'aerodactylite', 'mewtwonite-y', 'steelixite', 'houndoominite', 'tyranitarite',
+              'gardevoirite', 'sablenite', 'mawilite', 'medichamite', 'manectite', 'sharpedonite',
+              'cameruptite', 'altarianite', 'banettite', 'absolite', 'glalitite', 'latiasite', 'latiosite',
+              'blue-orb', 'red-orb', 'meteorite', 'lopunnite', 'lucarionite', 'galladite', 'adamant-orb',
+              'skarmorite', 'excadrite', 'scraftinite', 'eelektrossite', 'floettite', 'dragalgite',
+              'zygardite', 'diancite', 'drampanite', 'zeraorite', 'tatsugirinite', 'darkranite']
+OUT_ITEMS = os.path.join(ROOT, 'public', 'assets', 'items')
+OUT_MEGA_META = os.path.join(ROOT, 'src', 'js', 'data', 'sprites-meta-mega.js')
+
+
+ICON = 16
+
+
+def icon16(png):
+    """Item sprite -> 16×16 PNG, trimmed. The classic ones are 30×30 pixel art with a
+    wide margin; the newer ones (Legends Z-A) are 160×160 art, scaled down."""
+    im = Image.open(io.BytesIO(png)).convert('RGBA')
+    im = im.crop(im.getbbox() or (0, 0, im.width, im.height))
+    if max(im.size) > ICON:
+        k = ICON / max(im.size)
+        im = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.LANCZOS)
+        # Hard edges, like the pixel art ones.
+        a = im.getchannel('A').point(lambda v: 255 if v >= 110 else 0)
+        im.putalpha(a)
+    out = Image.new('RGBA', (ICON, ICON))
+    out.paste(im, ((ICON - im.width) // 2, (ICON - im.height) // 2))
+    buf = io.BytesIO()
+    out.save(buf, 'PNG')
+    return buf.getvalue()
+
+
+def fetch_item_icons():
+    os.makedirs(OUT_ITEMS, exist_ok=True)
+    missing = []
+    for slug in ITEM_ICONS:
+        path = os.path.join(OUT_ITEMS, slug + '.png')
+        if os.path.exists(path):
+            continue
+        png = fetch(f'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/{slug}.png')
+        if png:
+            save_optimized(icon16(png), path)
+        else:
+            missing.append(slug)
+    if missing:
+        print(f'Item icons not found (the game draws its own): {missing}')
+
+
+def do_megas(tracker):
+    jobs = mega_jobs(tracker)
+    print(f'{len(jobs)} Mega/Primal forms with sprites ({sum(1 for j, _ in jobs if j[2])} with shiny)')
+    metas, missing = {}, []
+    with ThreadPoolExecutor(max_workers=16) as ex:
+        for (key, meta), (_, extra) in zip(ex.map(do_set, [j for j, _ in jobs]), jobs):
+            if meta:
+                metas[key] = {**meta, **extra}
+            else:
+                missing.append(key)
+    order = sorted(metas, key=lambda k: (metas[k]['b'], k))
+    print('  ' + ' '.join(order))
+
+    lines = [
+        '/* ============ sprites-meta-mega.js — GENERATED, do not edit by hand ============',
+        ' * Produced by scripts/fetch_sprites.py (Mega and Primal forms from SpriteCollab).',
+        ' * Same format as sprites-meta.js, keyed by asset key (assets/pokemon/{key}/),',
+        ' * plus  b base Pokédex number · f SpriteCollab form id · n form name.',
+        ' */',
+        'export const MEGA_META = {',
+    ]
+    for key in order:
+        lines.append(f'  {key}: {json.dumps(metas[key], separators=(",", ":"))},')
+    lines += ['};', '']
+    with io.open(OUT_MEGA_META, 'w', encoding='utf-8', newline='\n') as f:
+        f.write('\n'.join(lines))
+    fetch_item_icons()
+    if missing:
+        print(f'Failed ({len(missing)}): {missing}')
 
 
 def main():
-    lo = int(sys.argv[1]) if len(sys.argv) > 1 else 1
-    hi = int(sys.argv[2]) if len(sys.argv) > 2 else 1025
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    lo = int(args[0]) if len(args) > 0 else 1
+    hi = int(args[1]) if len(args) > 1 else 1025
     os.makedirs(OUT_ASSETS, exist_ok=True)
     os.makedirs(CACHE, exist_ok=True)
 
     print('Reading SpriteCollab tracker.json...')
     tracker = json.loads(fetch(RAW + '/tracker.json').decode('utf-8'))
+    if '--megas' in sys.argv:
+        do_megas(tracker)
+        return
     jobs = []
     for dex in range(lo, hi + 1):
         e = tracker.get(f'{dex:04d}')
@@ -250,7 +372,9 @@ def main():
 
     # Merge with whatever was already cached outside the requested range.
     for fn in os.listdir(CACHE):
-        d = int(fn.split('.')[0])
+        if not (fn.endswith('.json') and fn[:-5].isdigit()):
+            continue  # Mega forms (m6x.json) and other tools' files
+        d = int(fn[:-5])
         if d not in metas and os.path.isdir(os.path.join(OUT_ASSETS, str(d))):
             metas[d] = json.load(open(os.path.join(CACHE, fn), encoding='utf-8'))
 
@@ -281,6 +405,8 @@ def main():
     print(f'\n{len(metas)} Pokemon ({sum(1 for m in metas.values() if m.get("sh"))} with shiny), {size / 1e6:.1f} MB')
     if missing:
         print(f'Failed ({len(missing)}): {missing}')
+    if lo == 1 and hi == 1025:
+        do_megas(tracker)
 
 
 if __name__ == '__main__':

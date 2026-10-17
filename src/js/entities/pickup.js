@@ -5,7 +5,8 @@
  *
  * Co-op: the host creates the pickups (each with its own id) and the
  * others get a copy. They all fly towards the nearest player; the host
- * decides who picked them up.
+ * decides who picked them up. Local pickups (dropLocal: your Mega Stone)
+ * exist only on your screen and only you can grab them.
  */
 import { U } from '../core/util.js';
 import { RNG } from '../core/rng.js';
@@ -28,7 +29,8 @@ export const Pickups = (() => {
     coin: { color: '#ffd23f', glow: '#b8860b', r: 5.5 },
     ticket: { color: '#ffd23f', glow: '#c08a10', r: 7 },
     ticket10: { color: '#c47bff', glow: '#8a3fd0', r: 8 },
-    item: { color: '#ffd23f', glow: '#c08a10', r: 9 } // value = item id
+    item: { color: '#ffd23f', glow: '#c08a10', r: 9 }, // value = item id
+    stone: { color: '#e9b8ff', glow: '#9a4dff', r: 9 } // Mega Stone, value = base dex (local)
   };
   // Drop chances, ticket rates and magnet pull: Balance.drops.
   // Whether something drops is rolled on the seeded 'loot' stream.
@@ -63,10 +65,22 @@ export const Pickups = (() => {
         }
         if (Coop.isHost) Coop.pickupGone(a.id);
       } else {
-        const a = list.shift();
-        if (Coop.isHost) Coop.pickupGone(a.id);
+        const k = list.findIndex(p => !p.local);
+        const a = list.splice(Math.max(0, k), 1)[0];
+        if (Coop.isHost && !a.local) Coop.pickupGone(a.id);
       }
     }
+  }
+
+  /** A pickup only for you (not sent over the network, nobody else can take it).
+   *  It flies to you at once, so it can't be lost. */
+  let localId = 0;
+  function dropLocal(kind, x, y, value = 0) {
+    const o = orb(kind, x, y, value);
+    o.id = --localId; // negative: never clashes with the host's ids
+    o.local = true;
+    o.pulled = true;
+    list.push(o);
   }
 
   /** Copy of a host pickup. */
@@ -83,9 +97,9 @@ export const Pickups = (() => {
     return list.splice(i, 1)[0];
   }
 
-  /** Magnet: everything flies to the nearest player. */
+  /** Magnet: everything (except other magnets) flies to the nearest player. */
   function pullAll() {
-    for (const o of list) o.pulled = true;
+    for (const o of list) if (o.kind !== 'magnet') o.pulled = true;
   }
 
   /** @param plain  experience only (the Judgment of Arceus legendaries) */
@@ -150,7 +164,8 @@ export const Pickups = (() => {
       let pl = null,
         d2 = Infinity;
       for (const o of players) {
-        if (o.dead && players.length > 1) continue;
+        if (p.local && o !== players[0]) break; // yours only (players[0] is always you)
+        if (o.dead && players.length > 1 && !p.local) continue;
         const dd = U.dist2(o.x, o.y, p.x, p.y);
         if (dd < d2) {
           d2 = dd;
@@ -227,17 +242,19 @@ export const Pickups = (() => {
       } else {
         // Berry, magnet and bomb: their pixel art icon.
         const ICON = { heal: 'berry', magnet: 'magnet', bomb: 'bomb', ticket: 'ticket', ticket10: 'ticket10' };
-        const sz = p.kind === 'ticket10' || p.kind === 'item' ? 24 : 18;
-        if (p.kind === 'item') {
-          // Item: pulsing golden glow, so it can be seen from afar.
+        const big = p.kind === 'item' || p.kind === 'stone';
+        const sz = p.kind === 'ticket10' || big ? 24 : 18;
+        if (big) {
+          // Item / Mega Stone: pulsing glow, so it can be seen from afar.
           ctx.globalAlpha = 0.35 + Math.sin(p.t * 1.5) * 0.15;
-          ctx.fillStyle = '#ffe14d';
+          ctx.fillStyle = p.kind === 'stone' ? '#c98aff' : '#ffe14d';
           ctx.beginPath();
           ctx.arc(p.x, y, 18, 0, 6.2832);
           ctx.fill();
           ctx.globalAlpha = 1;
         }
-        Icons.draw(ctx, p.kind === 'item' ? p.value : ICON[p.kind], p.x - sz / 2, y - sz / 2 - 1, sz);
+        const icon = p.kind === 'item' ? p.value : p.kind === 'stone' ? 'mega:' + p.value : ICON[p.kind];
+        Icons.draw(ctx, icon, p.x - sz / 2, y - sz / 2 - 1, sz);
         continue;
       }
       ctx.fillStyle = 'rgba(255,255,255,.8)';
@@ -253,6 +270,7 @@ export const Pickups = (() => {
     all,
     dropXp,
     drop,
+    dropLocal,
     update,
     draw,
     addRemote,

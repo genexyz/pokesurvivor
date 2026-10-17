@@ -3,7 +3,7 @@
  *
  * Buttons become real key events (keydown/keyup) for the key they stand for, so
  * Input, the game's key handling and the menus' own listeners need nothing new:
- *   A Space (in a run) · B Escape · X R · Y F (×2 speed) · LB/RB Q/E · Start/Select P
+ *   A Space (in a run: Mega Evolve) · B Escape · X R · Y F (×2 speed) · LB/RB Q/E · Start/Select P
  * The left stick moves (analog, Pad.axis(), read by Input.axis()); so does the D-pad.
  *
  * Menus (any screen open, or outside a run): the stick and D-pad move a gold

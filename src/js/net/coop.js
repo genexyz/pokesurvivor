@@ -34,6 +34,7 @@ import { Audio } from '../core/audio.js';
 import { Sprites } from '../core/sprites.js';
 import { Camera } from '../core/camera.js';
 import { startMoveOf } from '../data/starters.js';
+import { Megas } from '../data/megas.js';
 import { World } from '../world/world.js';
 import { VFX } from '../entities/vfx.js';
 import { FX } from '../entities/fx.js';
@@ -155,6 +156,12 @@ export const Coop = (() => {
         rev: 0
       };
       Sprites.preload([mon.dex], 8000, p.shiny);
+      // Their Mega form, if they have one: ready (and kept) for when they Mega Evolve.
+      const mega = Megas.of(mon.dex);
+      if (mega) {
+        Sprites.pin(mon.dex, mega.key);
+        Sprites.preload([mega.key], 8000, p.shiny);
+      }
       mates.set(m.uid, { uid: m.uid, name: m.name, color: COLORS[i], pl: p, connected: true, q: [], flushT: 0, xpMul: 1 });
     });
   }
@@ -239,7 +246,8 @@ export const Coop = (() => {
       r2(local.reviveT || 0),
       api.choosing && api.choosing() ? 1 : 0,
       doneSeq,
-      r1(Recount.myTotal()) // damage dealt this run (damage meter)
+      r1(Recount.myTotal()), // damage dealt this run (damage meter)
+      local.form ? 1 : 0 // Mega Evolved
     ];
   }
 
@@ -260,7 +268,8 @@ export const Coop = (() => {
       rev: a[12],
       ch: a[13],
       ld: a[14],
-      dm: a[15] || 0 // older versions don't send it
+      dm: a[15] || 0, // older versions don't send it
+      mg: a[16] || 0
     };
   }
 

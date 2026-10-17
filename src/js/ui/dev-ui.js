@@ -156,6 +156,10 @@ export const DevUI = (() => {
         btn(
           'God mode',
           run(() => D().god(!D().godOn))
+        ),
+        btn(
+          'Mega ready',
+          run(() => D().mega())
         )
       ),
       el('h4', { text: 'Spawn' }),

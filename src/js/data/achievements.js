@@ -328,6 +328,37 @@ export const AchDefs = (() => {
       title: 'Evolutionist'
     },
     {
+      id: 'mega1',
+      cat: 'combat',
+      tier: 1,
+      name: 'Mega Evolution',
+      desc: 'Mega Evolve your partner in a run.',
+      value: st('megaEvos'),
+      goal: 1,
+      reward: { t1: 3 }
+    },
+    {
+      id: 'mega25',
+      cat: 'combat',
+      tier: 2,
+      name: 'Mega Trainer',
+      desc: 'Mega Evolve 25 times.',
+      value: st('megaEvos'),
+      goal: 25,
+      reward: { t10: 1 },
+      title: 'Mega Trainer'
+    },
+    {
+      id: 'megaDex5',
+      cat: 'combat',
+      tier: 2,
+      name: 'Mega collector',
+      desc: 'Mega Evolve 5 different Pokémon.',
+      value: s => Object.keys(s.megaDex || {}).length,
+      goal: 5,
+      reward: { t10: 1 }
+    },
+    {
       id: 'evoAll',
       cat: 'combat',
       tier: 3,
