@@ -37,12 +37,13 @@ export const Ranking = (() => {
 
   // ---------------- periods ----------------
 
+  // Built once: a new Intl.DateTimeFormat with a time zone is slow (far more the first time
+  // on a phone), and missions ask for the date on every kill (progress.js).
+  let dayFmt = null;
   function madridDate(date) {
+    dayFmt = dayFmt || new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
     const p = {};
-    for (const x of new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(
-      date
-    ))
-      p[x.type] = x.value;
+    for (const x of dayFmt.formatToParts(date)) p[x.type] = x.value;
     return { y: +p.year, m: +p.month, d: +p.day };
   }
 

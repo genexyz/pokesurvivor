@@ -64,10 +64,18 @@ export const Progress = (() => {
     return out;
   }
 
+  // The day and week, looked up at most every 10 s (ensure runs on every kill).
+  let ids = null,
+    idsAt = 0;
+
   /** Creates the day's / week's missions if they have changed. */
   function ensure(s) {
     if (!s) return;
-    const ids = Ranking.periodIds();
+    const now = Date.now();
+    if (!ids || now - idsAt > 10000) {
+      ids = Ranking.periodIds();
+      idsAt = now;
+    }
     const key = String(s.created || 0);
     s.missions = s.missions || {};
     const M = s.missions;
