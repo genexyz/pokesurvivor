@@ -498,7 +498,9 @@ export const Tiles = (() => {
     const cv = document.createElement('canvas');
     cv.width = w;
     cv.height = h;
-    const c = cv.getContext('2d');
+    // Kept in CPU memory: on mobile (Firefox above all) GPU-backed canvases filled with
+    // putImageData sometimes came out empty, leaving black holes in the ground.
+    const c = cv.getContext('2d', { willReadFrequently: true });
     const img = c.createImageData(w, h);
     const buf = new Uint32Array(img.data.buffer);
     return {

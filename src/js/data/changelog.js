@@ -66,7 +66,11 @@ export const CHANGELOG = [
         'Co-op: picking up two items at once could leave the whole group stuck on "choosing".',
         'Cooperativo: coger dos objetos a la vez podía dejar a todo el grupo parado en «eligiendo».'
       ],
-      ['You can type spaces in the search boxes again.', 'Ya se pueden escribir espacios en los buscadores.']
+      ['You can type spaces in the search boxes again.', 'Ya se pueden escribir espacios en los buscadores.'],
+      [
+        'Mobile (Firefox above all): parts of the ground could turn into black squares with Pokémon leaving trails over them.',
+        'Móvil (sobre todo Firefox): partes del suelo podían quedarse en cuadros negros con los Pokémon dejando rastro encima.'
+      ]
     ]
   }
 ];
