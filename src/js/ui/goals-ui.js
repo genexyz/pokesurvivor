@@ -14,6 +14,7 @@ import { MissionDefs } from '../data/missions.js';
 import { AchDefs } from '../data/achievements.js';
 import { Progress } from '../systems/progress.js';
 import { Social } from '../net/social.js';
+import { Ranking } from '../net/ranking.js';
 import { Icons } from './icons.js';
 import { UI } from './ui.js';
 import { SearchSelect } from './search-select.js';
@@ -57,15 +58,8 @@ export const GoalsUI = (() => {
   // ---------------- missions ----------------
 
   function untilText(kind) {
-    const now = new Date();
-    // Midnight (dailies) or Monday (weeklies), Spain time approximated by the browser's.
-    const end = new Date(now);
-    end.setHours(24, 0, 0, 0);
-    if (kind === 'w') {
-      const add = (8 - (now.getDay() || 7)) % 7;
-      end.setDate(end.getDate() + add);
-    }
-    const mins = Math.max(1, Math.round((end - now) / 60000));
+    // Missions change at midnight (dailies) or on Monday (weeklies) in Spain time (Ranking.periodIds).
+    const mins = Math.max(1, Math.round((Ranking.nextReset(kind) - Date.now()) / 60000));
     return mins >= 1440
       ? Math.floor(mins / 1440) + ' d ' + Math.floor((mins % 1440) / 60) + ' h'
       : Math.floor(mins / 60) + ' h ' + (mins % 60) + ' min';
