@@ -133,9 +133,12 @@ Balance.story = {
     hp: 0.75, // × boss HP at the pace, per team member (× its own k)
     dmg: 1, // × boss damage
     arenaR: 12, // arena radius (tiles)
-    intro: 2.2, // seconds from arriving to the first wave
+    intro: 2.4, // seconds from arriving to the first wave (the camera shows the leader meanwhile)
+    focusAfter: 1, // ...and keeps showing them this long after the first wave comes out
     lull: 2.5, // seconds between waves
     north: 5, // the leader's Pokémon appear this far north of the center (tiles)
+    leaderBack: 3, // the leader stands this far inside the north wall (tiles)
+    leaderScale: 1.5, // leader sprite size (Pokémon are drawn at Sprites.PX = 2)
     spread: 2.6, // ...and this far apart when two come out (tiles)
     won: 3.5 // seconds to grab what's left before the summary
   },

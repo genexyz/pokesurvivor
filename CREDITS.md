@@ -124,6 +124,14 @@ The *Pokémon Mystery Dungeon*-style sprites come from
 | YoukaiMinori | <@91001329228464128> | 252, 253 |
 | ◥θ┴θ◤ | DC:<@215638650434617345> | 157, 445, 501, 504, 505, 566, 577, 595, 627, 650, 651, 658, 661, 676, 684, 707, 724, 726, 728, 729, 730, 761, 763, 790, 823, 872, 907, 991 |
 
+## Gym leader sprites
+
+The gym leaders in Story mode (`public/assets/trainers/`) are the *Pokémon FireRed / LeafGreen*
+trainer sprites, taken from Smogon's sprite repository
+([smogon/sprites](https://github.com/smogon/sprites), `src/_uncategorized/canonical/trainers/gen3/firered-leafgreen`),
+the collection behind Pokémon Showdown. They are © Nintendo / Creatures / GAME FREAK and are used
+here non-commercially, as in the rest of this fan project.
+
 ## Data
 
 Base stats and names: [PokeAPI](https://pokeapi.co/),

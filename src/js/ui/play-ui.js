@@ -147,7 +147,7 @@ export const PlayUI = (() => {
     const rec = Stages.record(s, st.id);
     const open = Stages.unlocked(s, st.id);
     const g = st.gym;
-    const ace = g.waves[g.waves.length - 1].slice(-1)[0].dex;
+    const ace = Stages.ace(st);
     const rw = Balance.story.reward(st.pace, !rec);
     const prev = st.prev && Stages.BY_ID[st.prev];
     const el = document.createElement('div');
@@ -166,13 +166,16 @@ export const PlayUI = (() => {
               : `First clear: ${g.badge} · <span class="coin"></span> ${rw.coins} · ${Icons.html('ticket', 12)} ${rw.t1}`
         }</div>
       </div>
-      <div class="stage-leader"><small>Leader</small><b>${g.leader}</b></div>
+      <div class="stage-leader">
+        <div class="stage-duo"><img class="leader-art" src="${Stages.leaderArt(st)}" alt="" draggable="false"></div>
+        <small>Leader</small><b>${g.leader}</b>
+      </div>
       <button class="btn ${open ? 'gold' : ''}" data-sfx="confirm" ${open && !Social.room ? '' : 'disabled'}>${open ? 'Play' : 'Locked'}</button>`;
-    // The leader's ace (a silhouette until the stage opens).
+    // The leader and their ace (both silhouettes until the stage opens).
     const cv = UI.spriteCanvas(ace, 84, 70, { scale: 2, lively: open, silhouette: !open, shadow: open });
     cv.className = 'stage-ace';
     cv.title = DEX_BY[ace].name;
-    el.querySelector('.stage-leader').prepend(cv);
+    el.querySelector('.stage-duo').appendChild(cv);
     el.querySelector('button').onclick = () => {
       if (!Stages.unlocked(DB.save, st.id) || Social.room) return;
       Flow.play(st.id);

@@ -1018,7 +1018,9 @@ export const Game = (() => {
       }
       if (pl.dead) reviveTick(dt);
     }
-    Camera.follow(pl.x, pl.y, dt);
+    // (Arriving at a story gym, the camera shows the leader for a moment.)
+    const focus = Story.focus;
+    Camera.follow(focus ? focus.x : pl.x, focus ? focus.y : pl.y, dt);
     World.update(dt, Camera);
 
     const all = everyone();
@@ -1105,6 +1107,8 @@ export const Game = (() => {
     if (rift) sceneAdd(rift.y, null, rift);
     const arceus = pl && state !== 'ui' ? Judgment.drawable() : null;
     if (arceus) sceneAdd(arceus.y, null, arceus);
+    const leader = pl && state !== 'ui' ? Story.drawable() : null;
+    if (leader) sceneAdd(leader.y, null, leader);
     if (pl && state !== 'ui') for (const d of Events.drawables()) sceneAdd(d.y, null, d);
     sceneItems.sort(byY);
     for (const it of sceneItems) {

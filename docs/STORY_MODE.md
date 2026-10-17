@@ -6,14 +6,14 @@ first, with all 8 gyms. The code is region-agnostic, so the other regions only n
 
 ## How a stage plays
 
-| Stage time         | What happens                                                                                                                                                 |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 0:00 → 10:00       | Three **legs** (routes). Each leg has its own biome palette, music and wild Pokémon. Only the current leg's Pokémon spawn.                                   |
-| 2:30 · 5:30 · 8:30 | **Mini-bosses** (e.g. Pidgeotto, Beedrill, Butterfree). Each one drops a held item and grants a **bond**, so you can fuse moves before the gym.              |
-| 9:30               | "Pewter Gym is just ahead!"                                                                                                                                  |
-| 9:57               | Every pickup on the map flies to you, so no XP is left behind.                                                                                               |
-| 10:00              | You travel to a closed **gym arena** of the leader's type. The leader sends out the team in **waves**, at most 2 at a time, with a short lull between waves. |
-| Win                | A few seconds to grab drops, then the summary. You get the badge, coins and tickets, and **Next stage** / **Try again** buttons.                             |
+| Stage time         | What happens                                                                                                                                                                                                |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0:00 → 10:00       | Three **legs** (routes). Each leg has its own biome palette, music and wild Pokémon. Only the current leg's Pokémon spawn.                                                                                  |
+| 2:30 · 5:30 · 8:30 | **Mini-bosses** (e.g. Pidgeotto, Beedrill, Butterfree). Each one drops a held item and grants a **bond**, so you can fuse moves before the gym.                                                             |
+| 9:30               | "Pewter Gym is just ahead!"                                                                                                                                                                                 |
+| 9:57               | Every pickup on the map flies to you, so no XP is left behind.                                                                                                                                              |
+| 10:00              | You travel to a closed **gym arena** of the leader's type. The camera shows the leader at the back of the arena, who sends out the team in **waves**, at most 2 at a time, with a short lull between waves. |
+| Win                | A few seconds to grab drops, then the summary. You get the badge, coins and tickets, and **Next stage** / **Try again** buttons.                                                                            |
 
 There are no rifts, events or Arceus's Judgment in Story mode. The HUD clock counts down to the gym
 and shows a progress line with a tick for each mini-boss. In the gym, the HUD shows the leader and up
@@ -68,6 +68,7 @@ Reward per clear also comes from the pace (`Balance.story.reward`):
 | `src/js/ui/hud.js`                   | Countdown, route name, progress line, two boss bars                                                                       |
 | `src/js/ui/run-ui.js`                | Summary banner (badge and reward, or how far you got), Next / Try again                                                   |
 | `src/js/ui/icons.js`                 | 8 pixel-art badge icons (`'badge:kanto_1'` …)                                                                             |
+| `public/assets/trainers/kanto/`      | Leader sprites (FireRed/LeafGreen), named after the leader in lowercase letters only (`Stages.leaderArt`)                 |
 | `src/js/core/db.js`, `save-merge.js` | `save.story[id] = { at, clears, best }`. A merge keeps the first date, the most clears and the best time from each device |
 
 ## Differences from PR #107
@@ -89,8 +90,10 @@ Reward per clear also comes from the pace (`Balance.story.reward`):
   the stash.
 - **Saves:** clears are merged across devices (the cloud and ledger rules). In the PR, `save.stages`
   and `save.badges` would have been overwritten by the newer device.
-- **Art:** badges are drawn in the game's own pixel-icon system, and each leader is shown with their
-  ace's sprite. The PR shipped badge and trainer PNGs ripped from a fan wiki.
+- **Art:** badges are drawn in the game's own pixel-icon system. Leaders use the FireRed/LeafGreen
+  trainer sprites from Smogon's sprite repository (`public/assets/trainers/<region>/`, credited in
+  `CREDITS.md`), shown next to their ace on the stage cards, standing in the gym arena and on the
+  summary. The PR shipped badge and "VS" leader PNGs from a fan wiki.
 - **New:** best clear time per stage, Next stage and Try again on the summary (back to the menu
   instead if an update is waiting, which keeps the updater rule), Story achievements, and Spanish
   translations.
@@ -100,7 +103,8 @@ Reward per clear also comes from the pace (`Balance.story.reward`):
 1. **Playtest balance.** `pace`, `Balance.story.gym.hp` and the reward curve are first guesses. Tune
    them live with `?dev` (Balance panel), then edit `balance.js`.
 2. **Johto** (and later regions): add a `stages` array to the region in `data/stages.js`, plus badge
-   icons `'badge:johto_1'`… and Spanish names. A pace above 600 continues past endless minute 10.
+   icons `'badge:johto_1'`…, leader sprites in `public/assets/trainers/johto/` (Smogon's repository
+   has HeartGold/SoulSilver ones) and Spanish names. A pace above 600 continues past endless minute 10.
    Consider an Elite Four stage (5 waves) for each region's finale.
 3. **Co-op Story:** the gym is local-only today. It would need host-driven `story` sync messages
    like `rift.js` (`'gym'` cfg, `'gw'` wave, `'gwin'`).

@@ -46,8 +46,19 @@ export const Story = (() => {
   let warned = false,
     pulled = false;
 
+  // The gym leader's sprite (data/stages.js leaderArt), standing at the back of the arena,
+  // and how long the camera still looks at them after arriving.
+  let art = null,
+    focusT = 0;
+
   function begin(id) {
     stage = Stages.BY_ID[id] || null;
+    art = null;
+    focusT = 0;
+    if (stage) {
+      art = new Image();
+      art.src = Stages.leaderArt(stage);
+    }
     phase = stage ? 'route' : null;
     leg = -1;
     wave = 0;
@@ -104,6 +115,7 @@ export const Story = (() => {
     for (const p of Game.everyone()) Rift.keepIn(p, center.x, center.y, B.gym.arenaR);
     for (const e of EnemyMgr.all()) if (!e.remote) Rift.keepIn(e, center.x, center.y, B.gym.arenaR);
     phaseT -= dt;
+    if (focusT > 0) focusT -= dt;
     if (phase === 'intro' || phase === 'lull') {
       if (phaseT <= 0) sendWave();
     } else if (phase === 'gym') {
@@ -142,6 +154,7 @@ export const Story = (() => {
       ty = 9000;
     phase = 'intro';
     phaseT = B.gym.intro;
+    focusT = B.gym.intro + B.gym.focusAfter;
     wave = 0;
     waveIds = [];
     EnemyMgr.stash();
@@ -153,6 +166,8 @@ export const Story = (() => {
     World.setArena({ tx, ty, r: B.gym.arenaR, type: g.type });
     World.setBiome(Tiles.arenaBiome(g.type), true);
     center = { x: tx * ts + ts / 2, y: ty * ts + ts / 2 };
+    leader.x = center.x;
+    leader.y = center.y - (B.gym.arenaR - B.gym.leaderBack) * ts;
     Rift.lineUp(center.x, center.y);
     Camera.x = pl.x;
     Camera.y = pl.y;
@@ -270,8 +285,38 @@ export const Story = (() => {
     return { clock: null, place: stage.gym.name + ' · ' + stage.gym.leader, progress: 1, marks: [], gym: true };
   }
 
+  /** The leader, Y-sorted with the scene while you are in the gym (game.js drawScene). */
+  const leader = {
+    x: 0,
+    y: 0,
+    draw(ctx) {
+      if (!art || !art.complete || !art.naturalWidth) return;
+      const P = B.gym.leaderScale,
+        w = art.naturalWidth * P,
+        h = art.naturalHeight * P;
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.ellipse(this.x, this.y, w * 0.32, 7, 0, 0, 6.2832);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(art, Math.round(this.x - w / 2), Math.round(this.y - h + 4), w, h);
+      ctx.restore();
+    }
+  };
+  function drawable() {
+    return stage && center ? leader : null;
+  }
+
   return {
     begin,
+    drawable,
+    /** Where the camera looks instead of your Pokémon (the leader, when you arrive at the gym), or null. */
+    get focus() {
+      return focusT > 0 && center ? { x: leader.x, y: leader.y - 40 } : null;
+    },
     end,
     eq,
     rollCast,

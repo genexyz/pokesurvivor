@@ -18,6 +18,9 @@
  * stage's pace (systems/story.js, Balance.story). A region with `stages: []` shows
  * as "coming soon".
  *
+ * Leader art: public/assets/trainers/<region>/<leader, letters only>.png (Stages.leaderArt),
+ * FireRed/LeafGreen sprites from Smogon's sprite repository (CREDITS.md).
+ *
  * Saved progress: save.story[stage id] = { at, clears, best } (core/db.js).
  */
 
@@ -244,6 +247,10 @@ export const Stages = (() => {
       const s = BY_ID[id];
       return !!s && (!s.prev || !!record(save, s.prev));
     },
+    /** The gym leader's sprite ('Lt. Surge' -> assets/trainers/kanto/ltsurge.png). */
+    leaderArt: s => `assets/trainers/${s.region}/${s.gym.leader.toLowerCase().replace(/[^a-z]/g, '')}.png`,
+    /** The leader's ace: the last Pokémon of the last wave. */
+    ace: s => s.gym.waves[s.gym.waves.length - 1].slice(-1)[0].dex,
     /** Badges earned in a region. */
     badges: (save, region) => (REGIONS.find(r => r.id === region) || { stages: [] }).stages.filter(s => record(save, s.id)).length
   };

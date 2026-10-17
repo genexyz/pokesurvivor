@@ -3145,6 +3145,23 @@ a.btn {
 .stage-leader small {
   color: var(--muted);
 }
+.stage-duo {
+  display: flex;
+  align-items: flex-end;
+  height: 70px;
+}
+/* Gym leader sprite (FireRed/LeafGreen, ~64 px tall): crisp, never scaled by a fraction. */
+.leader-art {
+  height: 64px;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+}
+.stage-duo .stage-ace {
+  margin-left: -14px;
+}
+.stage-card.locked .leader-art {
+  filter: brightness(0) opacity(0.45);
+}
 .stage-card > .btn {
   flex-shrink: 0;
   min-width: 82px;

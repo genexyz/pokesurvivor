@@ -181,7 +181,8 @@ export const RunUI = (() => {
   /** The story banner on the summary: the badge won (and the reward), or how far you got. */
   function storyResult(sr) {
     const g = sr.stage.gym;
-    const badge = Icons.html('badge:' + sr.stage.id, 48);
+    const badge =
+      Icons.html('badge:' + sr.stage.id, 48) + `<img class="leader-art" src="${Stages.leaderArt(sr.stage)}" alt="" draggable="false">`;
     if (!sr.won)
       return `<div class="over-story lost" style="grid-column:1/-1">${badge}<div>
         <b>${g.name} · ${g.leader}</b><div class="sub">Reached: ${sr.reached}</div></div></div>`;
