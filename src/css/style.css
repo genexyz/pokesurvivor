@@ -3021,8 +3021,8 @@ a.btn {
     display: none;
   }
   #scr-dex .filters {
-    flex-wrap: nowrap;
-    overflow-x: auto;
+    flex-wrap: wrap;
+    gap: 4px;
     margin-bottom: 4px;
     flex: 0 0 auto;
   }
