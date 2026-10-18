@@ -7,6 +7,7 @@ import { I18n } from '../core/i18n.js';
 import { Settings } from '../core/settings.js';
 import { DB } from '../core/db.js';
 import { Audio } from '../core/audio.js';
+import { Fullscreen } from '../core/fullscreen.js';
 import { Social } from '../net/social.js';
 import { Icons } from './icons.js';
 import { UI } from './ui.js';
@@ -35,6 +36,7 @@ export const SettingsUI = (() => {
       $('btn-full').innerHTML = Icons.html('full', 20);
       $('btn-full').onclick = toggleFull;
     }
+    Fullscreen.onChange(() => isOpen() && tab === 'gfx' && render());
   }
 
   function open(t) {
@@ -48,44 +50,16 @@ export const SettingsUI = (() => {
   const isOpen = () => !$('scr-settings').classList.contains('hidden');
 
   // ---------------- fullscreen ----------------
-  function canFull() {
-    return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
-  }
-  function isFull() {
-    return !!(document.fullscreenElement || document.webkitFullscreenElement);
-  }
-  // iPhone: Safari does not let a website go fullscreen (that's why the option
-  // sometimes didn't show). It does work when opened from the home screen.
-  const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const standalone = () =>
-    !!navigator.standalone || (window.matchMedia && matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches);
-  function iosTip() {
-    return IOS && !canFull() && !standalone();
-  }
-  const IOS_TIP =
-    'On iPhone, Safari does not let websites go fullscreen. Tap Share and then "Add to Home Screen": opening the game from that icon plays it fullscreen.';
+  const canFull = Fullscreen.can,
+    isFull = Fullscreen.is,
+    iosTip = Fullscreen.iosTip,
+    IOS_TIP = Fullscreen.IOS_TIP;
   function toggleFull() {
     if (!canFull()) {
       if (iosTip()) UI.toast(IOS_TIP, 9000);
       return;
     }
-    if (isFull()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
-    else {
-      const el = document.documentElement;
-      const p = (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
-      // On mobile, also try to lock the screen in landscape.
-      if (p && p.then)
-        p.then(() => {
-          try {
-            screen.orientation.lock('landscape').catch(() => {});
-          } catch (e) {
-            /* nothing */
-          }
-        }).catch(() => {});
-    }
-    setTimeout(() => {
-      if (isOpen()) render();
-    }, 300);
+    Fullscreen.toggle();
   }
 
   // ---------------- pieces ----------------
@@ -172,7 +146,11 @@ export const SettingsUI = (() => {
           ['always', 'Always'],
           ['never', 'Never']
         ]) +
-        toggle('autoFast', 'Start at ×2 speed', 'Solo runs start at double speed. You can still switch it during the run (the ×2 button or F).') +
+        toggle(
+          'autoFast',
+          'Start at ×2 speed',
+          'Solo runs start at double speed. You can still switch it during the run (the ×2 button or F).'
+        ) +
         section('Controller', 'Plug in a controller (Xbox, PlayStation, Switch Pro...) and press any button.') +
         `<div class="pad-map"><b>Left stick / D-pad</b><span>Move · in menus, move between buttons</span><b>A</b><span>Choose · Mega Evolve · skip the Judgment cutscene</span><b>B</b><span>Back · pause</span><b>X</b><span>Damage meter · new cards on level-up</span><b>Y</b><span>×2 speed</span><b>LB / RB</b><span>Previous / next move · in menus, switch tabs</span><b>Start</b><span>Pause</span><b>Right stick</b><span>Scroll long lists</span></div>` +
         section('On mobile or tablet') +
