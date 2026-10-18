@@ -7,6 +7,22 @@
  */
 export const CHANGELOG = [
   {
+    d: '2026-10-18',
+    title: ['Fullscreen comes back', 'La pantalla completa vuelve'],
+    new: [
+      [
+        'If fullscreen turns off during a run (for example after minimizing the browser), a fullscreen button appears at the top right of the screen and in the pause menu.',
+        'Si la pantalla completa se desactiva durante una partida (por ejemplo, al minimizar el navegador), aparece un botón de pantalla completa arriba a la derecha de la pantalla y en el menú de pausa.'
+      ]
+    ],
+    fix: [
+      [
+        'Fullscreen no longer stays off after minimizing the browser on mobile: the first tap when you come back turns it on again.',
+        'La pantalla completa ya no se queda desactivada al minimizar el navegador en el móvil: el primer toque al volver la activa de nuevo.'
+      ]
+    ]
+  },
+  {
     d: '2026-10-17',
     title: ['Story mode in every region', 'Modo Historia en todas las regiones'],
     new: [
@@ -104,7 +120,7 @@ export const CHANGELOG = [
         'Recoger un imán ya no atrae a los demás imanes del mapa, así que puedes guardarlos para más tarde.'
       ],
       [
-        'Story gyms: when the leader sends out a Pokémon, it now stands still inside a bubble for 2 seconds and can\'t be hurt, so a strong team no longer knocks it out before you even see it.',
+        "Story gyms: when the leader sends out a Pokémon, it now stands still inside a bubble for 2 seconds and can't be hurt, so a strong team no longer knocks it out before you even see it.",
         'Gimnasios de Historia: cuando el líder saca un Pokémon, ahora se queda quieto dentro de una burbuja durante 2 segundos y no se le puede dañar, así un equipo fuerte ya no lo debilita antes de que llegues a verlo.'
       ]
     ]
