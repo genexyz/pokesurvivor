@@ -14,6 +14,12 @@ export const CHANGELOG = [
         'Mega Evolution is a bit weaker: it lasts 20 seconds instead of 25, the meter rests for 60 seconds afterwards instead of 35 and charges more slowly on its own, the shockwave heals 15% of your HP instead of 25%, and the damage, speed, cooldown and defense bonuses are smaller.',
         'La Megaevolución es un poco más débil: dura 20 segundos en vez de 25, después el medidor descansa 60 segundos en vez de 35 y se carga más despacio por sí solo, la onda cura el 15% de tu vida en vez del 25%, y las mejoras de daño, velocidad, enfriamiento y defensa son menores.'
       ]
+    ],
+    fix: [
+      [
+        'When the biome changes, the new ground no longer appears in big squares one after another: the old biome stays until the new one is ready and then blends in all at once.',
+        'Al cambiar de bioma, el suelo nuevo ya no aparece en grandes cuadrados uno tras otro: el bioma anterior se mantiene hasta que el nuevo está listo y después se funde de una vez.'
+      ]
     ]
   },
   {
