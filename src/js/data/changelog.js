@@ -8,11 +8,23 @@
 export const CHANGELOG = [
   {
     d: '2026-10-18',
-    title: ['Mega Evolution balance', 'Equilibrio de la Megaevolución'],
+    title: ['Mega Evolution balance and fullscreen', 'Equilibrio de la Megaevolución y pantalla completa'],
+    new: [
+      [
+        'If fullscreen turns off during a run (for example after minimizing the browser), a fullscreen button appears at the top right of the screen and in the pause menu.',
+        'Si la pantalla completa se desactiva durante una partida (por ejemplo, al minimizar el navegador), aparece un botón de pantalla completa arriba a la derecha de la pantalla y en el menú de pausa.'
+      ]
+    ],
     chg: [
       [
         'Mega Evolution is a bit weaker: it lasts 20 seconds instead of 25, the meter rests for 60 seconds afterwards instead of 35 and charges more slowly on its own, the shockwave heals 15% of your HP instead of 25%, and the damage, speed, cooldown and defense bonuses are smaller.',
         'La Megaevolución es un poco más débil: dura 20 segundos en vez de 25, después el medidor descansa 60 segundos en vez de 35 y se carga más despacio por sí solo, la onda cura el 15% de tu vida en vez del 25%, y las mejoras de daño, velocidad, enfriamiento y defensa son menores.'
+      ]
+    ],
+    fix: [
+      [
+        'Fullscreen no longer stays off after minimizing the browser on mobile: the first tap when you come back turns it on again.',
+        'La pantalla completa ya no se queda desactivada al minimizar el navegador en el móvil: el primer toque al volver la activa de nuevo.'
       ]
     ]
   },
@@ -114,7 +126,7 @@ export const CHANGELOG = [
         'Recoger un imán ya no atrae a los demás imanes del mapa, así que puedes guardarlos para más tarde.'
       ],
       [
-        'Story gyms: when the leader sends out a Pokémon, it now stands still inside a bubble for 2 seconds and can\'t be hurt, so a strong team no longer knocks it out before you even see it.',
+        "Story gyms: when the leader sends out a Pokémon, it now stands still inside a bubble for 2 seconds and can't be hurt, so a strong team no longer knocks it out before you even see it.",
         'Gimnasios de Historia: cuando el líder saca un Pokémon, ahora se queda quieto dentro de una burbuja durante 2 segundos y no se le puede dañar, así un equipo fuerte ya no lo debilita antes de que llegues a verlo.'
       ]
     ]

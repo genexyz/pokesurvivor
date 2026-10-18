@@ -4,6 +4,7 @@
 import { U } from '../core/util.js';
 import { Audio } from '../core/audio.js';
 import { Touch } from '../core/touch.js';
+import { Fullscreen } from '../core/fullscreen.js';
 import { Pad } from '../core/gamepad.js';
 import { Camera } from '../core/camera.js';
 import { Items } from '../data/items.js';
@@ -290,7 +291,7 @@ export const HUD = (() => {
     const open = rOpen == null ? !narrow : rOpen;
     const x = w - RW - 16 - (touch && !Touch.spot('pause') ? 56 : 0);
     // Under the weather and x2 speed pills; on narrow screens, also under the boss bar.
-    const y = narrow ? 92 : Weather.current || !Coop.active ? 46 : 14;
+    const y = narrow ? 92 : Weather.current || !Coop.active || Fullscreen.offer() ? 46 : 14;
     const now = performance.now(),
       dpr = Camera.dpr || 1;
     const key = (open ? 1 : 0) + ':' + dpr;
@@ -470,6 +471,23 @@ export const HUD = (() => {
       drawSpeed(ctx, sx, sy, sw, sh, Game.fast);
       Touch.addButton(sx, sy, sw, sh, () => Game.toggleFast(), 8);
       topR = sx - 8;
+    }
+
+    // ---------- fullscreen (left of x2; only while it is off, e.g. after minimizing) ----------
+    if (Fullscreen.offer()) {
+      const sa = touch ? Touch.safeArea() : { top: 0 },
+        fs = 30,
+        fx = topR - fs,
+        fy = touch ? 17 + Math.min(20, sa.top) : 12;
+      roundRect(ctx, fx, fy, fs, fs, 9);
+      ctx.fillStyle = 'rgba(10,16,28,.7)';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(244,248,255,.8)';
+      ctx.stroke();
+      Icons.draw(ctx, 'full', fx + 5, fy + 5, 20);
+      Touch.addButton(fx, fy, fs, fs, () => Fullscreen.arm(), 8);
+      topR = fx - 8;
     }
 
     // ---------- weather (top right) ----------

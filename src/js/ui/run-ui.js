@@ -4,6 +4,7 @@ import { Balance } from '../data/balance.js';
 import { I18n } from '../core/i18n.js';
 import { DEX_BY } from '../data/pokedex.js';
 import { Audio } from '../core/audio.js';
+import { Fullscreen } from '../core/fullscreen.js';
 import { Items } from '../data/items.js';
 import { Stages } from '../data/stages.js';
 import { DB } from '../core/db.js';
@@ -323,6 +324,7 @@ export const RunUI = (() => {
     $('btn-quit').textContent = coop ? 'Leave the game' : 'Quit run';
     $('pause-speed').classList.toggle('hidden', coop);
     syncSpeed();
+    syncFull();
     UI.show('scr-pause');
   }
 
@@ -331,11 +333,19 @@ export const RunUI = (() => {
     document.querySelectorAll('#pause-speed button').forEach(b => b.classList.toggle('on', (b.dataset.v === '2') === Game.fast));
   }
 
+  /** The pause menu's fullscreen button shows only while fullscreen is off. */
+  function syncFull() {
+    $('btn-pause-full').classList.toggle('hidden', !Fullscreen.offer());
+  }
+
   function wirePause(onResume, onQuit) {
     $('btn-resume').onclick = onResume;
-    document.querySelectorAll('#pause-speed button').forEach(
-      b => (b.onclick = () => (b.dataset.v === '2') !== Game.fast && Game.toggleFast())
-    );
+    $('btn-pause-full').innerHTML = Icons.html('full', 18) + ' Fullscreen';
+    $('btn-pause-full').onclick = () => Fullscreen.enter();
+    Fullscreen.onChange(syncFull);
+    document
+      .querySelectorAll('#pause-speed button')
+      .forEach(b => (b.onclick = () => (b.dataset.v === '2') !== Game.fast && Game.toggleFast()));
     $('btn-quit').onclick = onQuit;
     document.querySelectorAll('#pause-tabs .gen-tab').forEach(b => (b.onclick = () => pauseShowTab(b.dataset.t)));
   }
