@@ -490,26 +490,26 @@ Balance.items = {
 
 /** Mega Evolution (systems/mega.js, Player.megaStart): only partners with a Mega or Primal form (data/megas.js). */
 Balance.mega = {
-  dur: 25, // seconds a Mega Evolution lasts
-  lockout: 35, // seconds after reverting before the meter fills again
+  dur: 20, // seconds a Mega Evolution lasts
+  lockout: 60, // seconds after reverting before the meter fills again
   goal: 100, // meter points to Mega Evolve
   startFrac: 0.5, // the meter starts half full when you get the stone
   perKill: 1, // points per foe defeated within `radius` of you
   perElite: 3, // golden foes
   perBoss: 30,
-  passive: 0.5, // points per second (quiet stretches still charge it)
+  passive: 0.35, // points per second (quiet stretches still charge it)
   radius: 700,
   // The stone drops from a boss (always from a rift legendary; by the `pityBosses`-th boss at the latest)
   // or from a chest; after `pityTime` seconds the next chest always has it.
   drop: { boss: 0.4, chest: 0.02, bigchest: 0.25, pityBosses: 2, pityTime: 540 },
   // On Mega Evolving: a shockwave (dmg + perLevel × level), a short invulnerability and a heal (× max HP).
-  burst: { radius: 160, dmg: 20, perLevel: 3, knock: 260, invuln: 1.2, heal: 0.25 },
+  burst: { radius: 160, dmg: 20, perLevel: 3, knock: 260, invuln: 1.2, heal: 0.15 },
   // Stat multipliers by profile (data/megas.js): damage, speed, cooldown, and damage reduction added.
   profiles: {
-    atk: { atk: 1.45, spd: 1.08, cd: 0.92, def: 0.1 },
-    spd: { atk: 1.25, spd: 1.3, cd: 0.85, def: 0.05 },
-    cd: { atk: 1.3, spd: 1.1, cd: 0.75, def: 0.05 },
-    def: { atk: 1.2, spd: 1.05, cd: 0.9, def: 0.3 }
+    atk: { atk: 1.35, spd: 1.06, cd: 0.94, def: 0.08 },
+    spd: { atk: 1.18, spd: 1.22, cd: 0.88, def: 0.04 },
+    cd: { atk: 1.22, spd: 1.08, cd: 0.8, def: 0.04 },
+    def: { atk: 1.15, spd: 1.04, cd: 0.92, def: 0.22 }
   },
   /** Multipliers of a Mega (its profile, with its own overrides `k`). */
   k: def => Object.assign({}, Balance.mega.profiles[def.profile], def.k)
