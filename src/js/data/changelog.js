@@ -23,6 +23,10 @@ export const CHANGELOG = [
     ],
     fix: [
       [
+        'When the biome changes, the new ground no longer appears in big squares one after another: the old biome stays until the new one is ready and then blends in all at once. The same goes for rift, gym and Judgment arenas and the start of a run: the ground appears whole instead of square by square.',
+        'Al cambiar de bioma, el suelo nuevo ya no aparece en grandes cuadrados uno tras otro: el bioma anterior se mantiene hasta que el nuevo está listo y después se funde de una vez. Lo mismo en las arenas de las fisuras, los gimnasios y el Juicio, y al empezar una partida: el suelo aparece entero en vez de cuadrado a cuadrado.'
+      ],
+      [
         'Fullscreen no longer stays off after minimizing the browser on mobile: the first tap when you come back turns it on again.',
         'La pantalla completa ya no se queda desactivada al minimizar el navegador en el móvil: el primer toque al volver la activa de nuevo.'
       ]

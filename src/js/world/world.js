@@ -61,8 +61,14 @@ export const World = (() => {
   // where the arena has its own palette) reuses them instead of repainting the whole view.
   let prev = null; // { biome, images }
   // Biome change: for FADE seconds the old palette blends into the new one.
-  const FADE = 2.6;
-  let fade = null; // { from, images, t }
+  // The blend only starts once every visible chunk of the new biome is painted (`ready`);
+  // until then the old biome stays on screen, so the new one never shows up a chunk at a time.
+  // Arenas (setBiome instant) have no old ground to keep: the view shows plain floor until
+  // the arena is painted and then it appears over REVEAL seconds (behind the entry flash).
+  const FADE = 2.6,
+    REVEAL = 0.4;
+  const FADE_WAIT = 3; // seconds: past this, blend anyway (whatever is missing paints as it can)
+  let fade = null; // { from (null: plain floor), images, dur, t, wait, ready, fresh }
   const MAX_IMAGES = 64, // the view plus the ring painted ahead (~40 chunks on a phone in portrait)
     MAX_DATA = 400;
   const broken = new Set(); // destroyed props: "tx,ty"
@@ -545,6 +551,7 @@ export const World = (() => {
   // A chunk is painted a row of tiles at a time (Tiles.chunkJob) and carries on next
   // frame where it stopped, so not even a single chunk goes over the budget.
   const PAINT_MS = 6;
+  const PAINT_MS_FADE = 10; // while a new biome waits to be painted before blending in
   const MAX_JOBS = 12; // chunks started and not finished (each holds its canvas)
   const jobs = new Map(); // "biome|cx,cy" -> chunk being painted
   let paintEnd = 0,
@@ -585,7 +592,8 @@ export const World = (() => {
   /** 0..1 biome fade progress (smoothed), or null if none. */
   function fadeK() {
     if (!fade) return null;
-    const x = Math.min(1, fade.t / FADE);
+    if (!fade.ready) return 0;
+    const x = Math.min(1, fade.t / fade.dur);
     return x * x * (3 - 2 * x);
   }
 
@@ -610,21 +618,30 @@ export const World = (() => {
 
   function drawGround(ctx, cam) {
     ctx.imageSmoothingEnabled = false;
-    paintEnd = performance.now() + PAINT_MS;
+    paintEnd = performance.now() + (fade && !fade.ready ? PAINT_MS_FADE : PAINT_MS);
     painted = 0;
-    const k = fadeK();
     const mx = (cam.left() + cam.w / 2) / CW - 0.5,
       my = (cam.top() + cam.h / 2) / CW - 0.5;
     const vis = visibleChunks(cam).sort((a, b) => Math.hypot(a[0] - mx, a[1] - my) - Math.hypot(b[0] - mx, b[1] - my));
-    for (const [cx, cy] of vis) {
+    const imgs = vis.map(([cx, cy]) => chunkImage(cx, cy));
+    if (fade && !fade.ready && imgs.every(Boolean)) {
+      // Already painted on the first frame (back from an arena to cached ground): no reveal.
+      if (fade.from == null && fade.fresh) fade = null;
+      else fade.ready = true;
+    }
+    if (fade) fade.fresh = false;
+    const k = fadeK();
+    for (let i = 0; i < vis.length; i++) {
+      const [cx, cy] = vis[i],
+        img = imgs[i];
       if (k == null) {
-        drawChunk(ctx, chunkImage(cx, cy), cx, cy, biome);
+        drawChunk(ctx, img, cx, cy, biome);
         continue;
       }
-      // Fade: the old biome underneath and the new one appearing on top (as it gets painted).
-      drawChunk(ctx, chunkImage(cx, cy, fade.from, fade.images), cx, cy, fade.from);
-      const img = chunkImage(cx, cy);
-      if (!img) continue;
+      // Fade: the old biome (or plain floor) underneath and the new one on top, once all of it is painted.
+      if (fade.from == null) drawChunk(ctx, null, cx, cy, biome);
+      else drawChunk(ctx, chunkImage(cx, cy, fade.from, fade.images), cx, cy, fade.from);
+      if (!img || !fade.ready) continue;
       ctx.globalAlpha = k;
       ctx.drawImage(img, cx * CW, cy * CW, CW + 1, CW + 1);
       ctx.globalAlpha = 1;
@@ -732,7 +749,8 @@ export const World = (() => {
     const x = Math.round(p.x - w / 2),
       y = Math.round(p.y - h + (p.type === 'grass' ? 4 : 2));
     const k = fadeK();
-    if (k != null) {
+    if (k != null && fade.from == null) ctx.globalAlpha = k;
+    else if (k != null) {
       // The old object fades out while the new one appears.
       const old = Tiles.propSprite(fade.from, p.type, variant);
       ctx.globalAlpha = 1 - k;
@@ -754,13 +772,20 @@ export const World = (() => {
   }
 
   function update(dt, cam) {
-    if (fade && (fade.t += dt) >= FADE) fade = null;
+    if (fade) {
+      if (!fade.ready && (fade.wait += dt) >= FADE_WAIT) fade.ready = true;
+      if (fade.ready && (fade.t += dt) >= fade.dur) fade = null;
+    }
     for (const [cx, cy] of visibleChunks(cam, 60)) {
       for (const p of chunkData(cx, cy).props) if (p.flash > 0) p.flash -= dt;
     }
   }
 
   // ---------------- control ----------------
+
+  function reveal() {
+    return { from: null, images: null, dur: REVEAL, t: 0, wait: 0, ready: false, fresh: true };
+  }
 
   function reset(s) {
     seed = s | 0 || 1;
@@ -769,13 +794,14 @@ export const World = (() => {
     jobs.clear();
     prev = null;
     broken.clear();
-    fade = null;
+    fade = reveal(); // the first ground of the run appears whole too
     arena = null;
   }
 
   /**
    * @param i        biome (Tiles.ARENA onwards are the rift arenas)
-   * @param instant  no fade (when starting a run)
+   * @param instant  no blend from the old biome (starting a run, entering or leaving an arena):
+   *                 plain floor until the view is painted, then a quick reveal
    * A run changes biome every 4 min and goes through the whole list; when it ends,
    * it starts over. (Previously, past the last one, around minute 84, it asked for
    * a biome that doesn't exist: black screen, broken game and endless levels.)
@@ -785,7 +811,7 @@ export const World = (() => {
     const b = ((i % n) + n) % n;
     if (b === biome) return;
     // The terrain stays the same: only the palette changes, blending gradually.
-    fade = instant ? null : { from: biome, images, t: 0 };
+    fade = instant ? reveal() : { from: biome, images, dur: FADE, t: 0, wait: 0, ready: false, fresh: true };
     const back = prev && prev.biome === b ? prev.images : new Map();
     prev = { biome, images };
     biome = b;
