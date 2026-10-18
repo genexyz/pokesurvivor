@@ -8,11 +8,17 @@
 export const CHANGELOG = [
   {
     d: '2026-10-18',
-    title: ['Fullscreen comes back', 'La pantalla completa vuelve'],
+    title: ['Mega Evolution balance and fullscreen', 'Equilibrio de la Megaevolución y pantalla completa'],
     new: [
       [
         'If fullscreen turns off during a run (for example after minimizing the browser), a fullscreen button appears at the top right of the screen and in the pause menu.',
         'Si la pantalla completa se desactiva durante una partida (por ejemplo, al minimizar el navegador), aparece un botón de pantalla completa arriba a la derecha de la pantalla y en el menú de pausa.'
+      ]
+    ],
+    chg: [
+      [
+        'Mega Evolution is a bit weaker: it lasts 20 seconds instead of 25, the meter rests for 60 seconds afterwards instead of 35 and charges more slowly on its own, the shockwave heals 15% of your HP instead of 25%, and the damage, speed, cooldown and defense bonuses are smaller.',
+        'La Megaevolución es un poco más débil: dura 20 segundos en vez de 25, después el medidor descansa 60 segundos en vez de 35 y se carga más despacio por sí solo, la onda cura el 15% de tu vida en vez del 25%, y las mejoras de daño, velocidad, enfriamiento y defensa son menores.'
       ]
     ],
     fix: [
