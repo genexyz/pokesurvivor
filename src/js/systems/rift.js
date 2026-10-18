@@ -272,13 +272,22 @@ export const Rift = (() => {
       return;
     }
     arena.endT -= dt;
+    // Won and the loot all picked up: no need to wait out the whole delay.
+    if (arena.phase === 'won' && arena.t - arena.wonAt >= B.wonMin && !lootLeft()) arena.endT = Math.min(arena.endT, B.wonGrabbed);
     if (arena.endT <= 0) finish();
+  }
+
+  /** Is any of the arena's loot still on the ground? (Magnets aren't pulled, so they don't count.) */
+  function lootLeft() {
+    const max = arena.r * World.TS;
+    return Pickups.all().some(o => o.kind !== 'magnet' && U.dist2(o.x, o.y, arena.x, arena.y) < max * max);
   }
 
   function won() {
     if (!arena || arena.phase !== 'fight') return;
     arena.phase = 'won';
     arena.endT = B.wonDelay;
+    arena.wonAt = arena.t;
     Progress.event('rift', { type: arena.type });
     Pickups.pullAll();
     Spawner.say(`You defeated ${DEX_BY[arena.dex].name}! Grab your reward…`, 3.4, true);

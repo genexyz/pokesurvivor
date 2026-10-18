@@ -15,6 +15,7 @@ import { Items } from '../data/items.js';
 import { Megas } from '../data/megas.js';
 import { World } from '../world/world.js';
 import { FX } from './fx.js';
+import { Icons } from '../ui/icons.js';
 import { Projectiles } from './projectile.js';
 import { EnemyMgr } from './enemy.js';
 import { Weather } from '../systems/weather.js';
@@ -119,6 +120,11 @@ export class Player {
     return Balance.player.revive.time;
   }
 
+  /** Seconds the Mega Stone shows over its head when it Mega Evolves. */
+  static get MEGA_FX() {
+    return 1.6;
+  }
+
   /** Experience needed to go from `level` to the next one (curve in Balance.player). */
   /** Colour of each buff (arcs under the feet and HUD circles). */
   static get BUFF_COLOR() {
@@ -153,6 +159,56 @@ export class Player {
     FX.ring(this.x, this.y, 8, def ? 150 : 70, col, def ? 0.7 : 0.4, def ? 6 : 3);
     FX.burst(this.x, this.y - this.bodyH * 0.5, col, def ? 40 : 14, def ? 260 : 140);
     if (def) FX.ring(this.x, this.y, 4, 90, '#ffffff', 0.5, 3);
+    // Its Mega Stone (or Orb) appears over its head while it changes (drawMegaStone).
+    this.megaFxAt = def ? performance.now() / 1000 : 0;
+  }
+
+  /** Mega Evolution start: the stone drops in over its head, shines with rays and bursts in a flash. */
+  drawMegaStone(ctx) {
+    if (!this.megaFxAt || !this.form) return;
+    const t = performance.now() / 1000 - this.megaFxAt,
+      k = t / Player.MEGA_FX;
+    if (k >= 1) {
+      this.megaFxAt = 0;
+      return;
+    }
+    const ease = 1 - Math.pow(1 - Math.min(1, k / 0.25), 3); // drops in during the first quarter
+    const out = k > 0.8 ? (k - 0.8) / 0.2 : 0; // bursts during the last fifth
+    const cx = this.x,
+      cy = this.y - this.bodyH - 24 - (1 - ease) * 40 + Math.sin(t * 6) * 1.5;
+    const sz = 30 * (0.5 + ease * 0.5) * (1 + out * 0.6);
+    const col = this.form.aura;
+    ctx.save();
+    // Light rays spinning behind the stone.
+    ctx.globalAlpha = 0.55 * ease * (1 - out);
+    ctx.fillStyle = col;
+    for (let j = 0; j < 8; j++) {
+      const a = t * 2.2 + (j * Math.PI) / 4,
+        len = 36 + Math.sin(t * 9 + j) * 8;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(a - 0.12) * len, cy + Math.sin(a - 0.12) * len);
+      ctx.lineTo(cx + Math.cos(a + 0.12) * len, cy + Math.sin(a + 0.12) * len);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // Glow, then the stone.
+    ctx.globalAlpha = (0.45 + Math.sin(t * 14) * 0.15) * ease * (1 - out);
+    ctx.beginPath();
+    ctx.arc(cx, cy, sz * 0.8, 0, 6.2832);
+    ctx.fill();
+    ctx.globalAlpha = 1 - out;
+    Icons.draw(ctx, 'mega:' + this.form.dex, cx - sz / 2, cy - sz / 2, sz);
+    // Final white flash.
+    if (out > 0) {
+      ctx.globalAlpha = (1 - out) * 0.8;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(cx, cy, sz * (0.6 + out * 1.4), 0, 6.2832);
+      ctx.fill();
+    }
+    ctx.restore();
+    if (Math.random() < 0.5 * (1 - out)) FX.px(cx + U.rand(-10, 10), cy + U.rand(-10, 10), col, { vy: -30, life: 0.5 });
   }
 
   /** Mega Evolves (systems/mega.js checks the meter): stats, shockwave, heal. */
@@ -736,6 +792,7 @@ export class Player {
 
     const alpha = this.invuln > 0 && !this.dead ? (Math.floor(this.invuln * 18) % 2 ? 0.45 : 1) : 1;
     this.anim.draw(ctx, this.x, this.y, { flash: this.flash > 0, softFlash: true, alpha, color: '#ffcb3d' });
+    this.drawMegaStone(ctx);
 
     // Buff arcs around the feet.
     const COL = Player.BUFF_COLOR;

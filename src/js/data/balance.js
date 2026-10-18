@@ -585,7 +585,9 @@ Balance.rift = {
   lineupSouth: 3, // players arrive this far south of the center (tiles; also the Judgment)
   legendNorth: 3.5, // the legendary appears this far north of the center (tiles)
   allDownGrace: 1.4, // seconds with everyone down before the fight is lost
-  wonDelay: 5, // seconds to grab the reward before going back
+  wonDelay: 5, // at most, seconds to grab the reward before going back
+  wonMin: 1.2, // at least this long after winning (the loot has to land and reach guests)
+  wonGrabbed: 0.6, // once nothing is left to grab, back this soon
   lostDelay: 1.2, // seconds before being thrown out after losing
   revive: 0.3, // HP fraction you come back with if you were down
   legend: {

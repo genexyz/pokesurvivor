@@ -13,12 +13,20 @@ export const CHANGELOG = [
       [
         'If fullscreen turns off during a run (for example after minimizing the browser), a fullscreen button appears at the top right of the screen and in the pause menu.',
         'Si la pantalla completa se desactiva durante una partida (por ejemplo, al minimizar el navegador), aparece un botón de pantalla completa arriba a la derecha de la pantalla y en el menú de pausa.'
+      ],
+      [
+        'When your partner Mega Evolves, its Mega Stone (or Orb) appears over its head, shines and bursts in a flash of light. Your teammates see it too in co-op.',
+        'Cuando tu compañero megaevoluciona, su megapiedra (o su prisma) aparece sobre su cabeza, brilla y estalla en un destello de luz. En cooperativo tus compañeros también lo ven.'
       ]
     ],
     chg: [
       [
         'Mega Evolution is a bit weaker: it lasts 20 seconds instead of 25, the meter rests for 60 seconds afterwards instead of 35 and charges more slowly on its own, the shockwave heals 15% of your HP instead of 25%, and the damage, speed, cooldown and defense bonuses are smaller.',
         'La Megaevolución es un poco más débil: dura 20 segundos en vez de 25, después el medidor descansa 60 segundos en vez de 35 y se carga más despacio por sí solo, la onda cura el 15% de tu vida en vez del 25%, y las mejoras de daño, velocidad, enfriamiento y defensa son menores.'
+      ],
+      [
+        'After beating a rift legendary, you go back to the map as soon as you have picked up all its rewards, instead of always waiting 5 seconds.',
+        'Tras vencer al legendario de una fisura, vuelves al mapa en cuanto recoges todas sus recompensas, en vez de esperar siempre 5 segundos.'
       ]
     ],
     fix: [
